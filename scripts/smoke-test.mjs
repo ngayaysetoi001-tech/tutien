@@ -123,8 +123,8 @@ ok('Lôi Kiếp thất bại khi khí huyết quá thấp', () => {
   assert.ok(g.exp.lt(g.requirement))
   g.bonus.hp = 0
 })
-ok('bậc cuối cùng (Hợp Thể Hậu Kỳ) không thể đột phá', () => {
-  g.stageIdx = 26
+ok('bậc cuối cùng (Độ Kiếp Hậu Kỳ) không thể đột phá', () => {
+  g.stageIdx = 32
   g.exp = g.requirement
   assert.equal(g.canBreakthrough, false)
 })
@@ -1783,7 +1783,7 @@ ok('mục tiêu kế tiếp: chọn tiến độ cao nhất; việc sẵn sàng 
   // hết cảnh giới và hết mốc thì vẫn trả về một mục tiêu
   const t = freshStore()
   t.init()
-  t.stageIdx = 26
+  t.stageIdx = 32
   t.campaign.milestone = C.MILESTONES.length
   assert.ok(GOALS.nextGoal(t))
 })
@@ -3275,14 +3275,18 @@ const GD = await import('../src/game/garden.js')
 const { STAGES, MAX_STAGE_IDX, TRIBULATIONS } = await import('../src/game/constants.js')
 const { DUNGEONS, RECIPES, ITEMS, MONSTERS } = await import('../src/game/data.js')
 
-ok('27 bậc tu vi, Hợp Thể là cuối; thiên kiếp cho từng đại cảnh giới (trừ Luyện Khí và Hợp Thể)', () => {
-  assert.equal(STAGES.length, 27)
-  assert.equal(MAX_STAGE_IDX, 26)
+ok('33 bậc tu vi, Độ Kiếp là cuối; thiên kiếp cho từng đại cảnh giới (trừ Luyện Khí và Độ Kiếp)', () => {
+  assert.equal(STAGES.length, 33)
+  assert.equal(MAX_STAGE_IDX, 32)
   assert.equal(STAGES[26].fullName, 'Hợp Thể Hậu Kỳ')
-  for (const realm of [1, 2, 3, 4, 5]) assert.ok(TRIBULATIONS[realm], 'thiếu thiên kiếp cho đại cảnh giới ' + realm)
+  assert.equal(STAGES[27].fullName, 'Đại Thừa Sơ Kỳ')
+  assert.equal(STAGES[32].fullName, 'Độ Kiếp Hậu Kỳ')
+  for (const realm of [1, 2, 3, 4, 5, 6, 7]) assert.ok(TRIBULATIONS[realm], 'thiếu thiên kiếp cho đại cảnh giới ' + realm)
   assert.equal(TRIBULATIONS[0], undefined)
-  assert.equal(TRIBULATIONS[6], undefined)
-  for (const cfg of Object.values(TRIBULATIONS)) assert.ok(cfg.bolts >= 3 && cfg.bolts <= 9)
+  assert.equal(TRIBULATIONS[8], undefined)
+  for (const cfg of Object.values(TRIBULATIONS)) assert.ok(cfg.bolts >= 3 && cfg.bolts <= 12)
+  const bolts = (r) => TRIBULATIONS[r].base
+  assert.ok(bolts(7) > bolts(6) && bolts(6) > bolts(5), 'thiên kiếp mạnh dần')
 })
 
 ok('dữ liệu nội dung nhất quán: vật phẩm, công thức, bí cảnh, trang bị mới', () => {
@@ -4425,7 +4429,7 @@ ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang b�
   s.stats[QS.templateById(q.tpl).key] += q.target
   if (QS.templateById(q.tpl).key === 'aiRecord') s.campaign.record = q.target + 5
   assert.ok(ids(s).includes('quest'))
-  s.stageIdx = 26
+  s.stageIdx = 32
   s.exp = s.requirement
   assert.ok(ids(s).includes('reborn'))
 })
@@ -4484,6 +4488,119 @@ ok('uiStore: chuyển màn, bỏ qua id sai, ghi nhớ màn cuối', () => {
   assert.equal(ui.hasCanvas, true)
   setActivePinia(createPinia())
   assert.equal(useUiStore().tab, 'battle')
+})
+
+// =====================================================================
+// Đại Thừa và Độ Kiếp (cảnh giới sau Hợp Thể)
+// =====================================================================
+ok('cảnh giới mới: yêu cầu đột phá tăng chậm hơn sau Hợp Thể nhưng vẫn tăng đều, thiên kiếp đúng bậc cuối đại cảnh giới', () => {
+  const req = (i) => F.stageRequirement(i)
+  for (let i = 1; i <= MAX_STAGE_IDX; i++) assert.ok(req(i).gt(req(i - 1)), 'yêu cầu tăng đều ở bậc ' + i)
+  const before = req(26).div(req(25)).toNumber()
+  const after = req(27).div(req(26)).toNumber()
+  assert.ok(Math.abs(before - BALANCE.requirementGrowth) < 1e-6)
+  assert.ok(Math.abs(after - BALANCE.postRequirementGrowth) < 1e-6)
+  assert.ok(after < before)
+  // thời gian mỗi bậc (không tăng cường) không phình vô lý ở các bậc cuối
+  const t = (i) => req(i).div(F.expPerSecond({ arrayLevel: 0, rootMult: 1, stageIdx: i, expBonus: 0 })).toNumber()
+  assert.ok(t(32) / t(26) < 3, 'sáu bậc cuối chỉ chậm thêm vài lần: ' + (t(32) / t(26)).toFixed(2))
+  assert.equal(F.isMajorBreakthrough(26), true, 'Hợp Thể Hậu Kỳ nay còn đột phá được')
+  assert.equal(F.isMajorBreakthrough(29), true, 'Đại Thừa Hậu Kỳ sang Độ Kiếp có thiên kiếp')
+  assert.equal(F.isMajorBreakthrough(28), false)
+  assert.equal(F.isMajorBreakthrough(32), false, 'bậc cuối không còn đột phá')
+  assert.equal(F.tribulationFor(26).name, TRIBULATIONS[6].name)
+  assert.equal(F.tribulationFor(29).name, TRIBULATIONS[7].name)
+})
+
+ok('đột phá từ Hợp Thể Hậu Kỳ lên Đại Thừa: phải độ thiên kiếp, qua thì lên bậc mới và đổi cảnh giới', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 26
+  s.stats.maxStage = 26
+  s.bonus.hp = 1e9 // trụ vững mọi đạo lôi
+  s.bonus.def = 1e6
+  s.exp = s.requirement
+  assert.ok(s.nextTribulation, 'có thiên kiếp ở bậc này')
+  assert.equal(s.nextStageName, 'Đại Thừa Sơ Kỳ')
+  Math.random = () => 0
+  s.breakthrough()
+  assert.equal(s.tribulation.active, true)
+  drainTimers()
+  Math.random = realRandom
+  assert.equal(s.stageIdx, 27)
+  assert.equal(s.stage.realmName, 'Đại Thừa')
+  assert.equal(s.realmIdx, 7)
+  assert.equal(s.isMaxStage, false)
+  // mở khoá điển tịch theo bậc
+  assert.ok(s.loreUnlocked(LOREM.loreById('realm_dai_thua')))
+  assert.ok(!s.loreUnlocked(LOREM.loreById('realm_do_kiep')))
+  s.stats.maxStage = 30
+  assert.ok(s.loreUnlocked(LOREM.loreById('realm_do_kiep')))
+})
+
+ok('đạt Độ Kiếp Hậu Kỳ là cực hạn; save giữ bậc mới và chặn bậc vượt quá; cảnh giới mới có lời dẫn và thưởng ô', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = MAX_STAGE_IDX
+  s.exp = s.requirement
+  assert.equal(s.isMaxStage, true)
+  assert.equal(s.canBreakthrough, false)
+  assert.equal(s.nextStageName, null)
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.stageIdx, MAX_STAGE_IDX)
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.stageIdx = 999
+  raw.data.stats.maxStage = 999
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.stageIdx, MAX_STAGE_IDX)
+  assert.equal(s3.stats.maxStage, MAX_STAGE_IDX)
+  assert.equal(STORY.REALM_FLAVOR.length, CON9.REALMS?.length ?? 9)
+  for (let i = 1; i < STORY.REALM_FLAVOR.length; i++) assert.ok(STORY.REALM_FLAVOR[i].length > 20)
+  assert.equal(s3.skillSlots >= 4, true)
+  assert.equal(s3.petSlots, 2)
+  assert.equal(s3.artSlots, AR.MAX_ART_SLOTS)
+})
+
+ok('trang bị rơi ở vòng ải thứ hai trở đi luôn là phẩm cấp cao nhất, vòng đầu theo bối cảnh', () => {
+  assert.equal(C.gearTierOf(1), 0)
+  assert.equal(C.gearTierOf(15), 1)
+  assert.equal(C.gearTierOf(80), 7)
+  assert.equal(C.gearTierOf(81), 7, 'vòng 2 không rơi đồ phẩm cấp thấp')
+  assert.equal(C.gearTierOf(200), 7)
+  assert.equal(C.gearTierOf(500), 7)
+  // trong trận
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 30
+  s.campaign.best = 99 // ải 100: Chúa Tể (vòng 2)
+  const b = useBattleStore()
+  b.start()
+  b.enemy.hp = 0
+  Math.random = () => 0.01
+  b.onKill()
+  Math.random = realRandom
+  assert.ok(s.gear.bag.length >= 1)
+  assert.ok(s.gear.bag.every((it) => it.tier === 7), 'toàn phẩm cấp cao nhất')
+})
+
+ok('nhân vật Đại Thừa và Độ Kiếp vẽ được và có hiệu ứng riêng so với Hợp Thể', () => {
+  const calls = (realm) => {
+    const fx = makeGfx()
+    ART.drawHeroFx(fx, { t: 2.1, realmIdx: realm, pose: 'meditate', fill: 0, color: 0xffffff })
+    assert.ok(finite(fx.calls))
+    return fx.calls.length
+  }
+  assert.ok(calls(7) > calls(6), 'Đại Thừa nhiều nét hơn Hợp Thể')
+  assert.equal(calls(8), calls(7))
+  for (const realm of [7, 8]) {
+    const b = makeGfx()
+    ART.drawHeroBody(b, { pose: 'sword', realmIdx: realm })
+    assert.ok(b.calls.length > 20 && finite(b.calls))
+  }
 })
 
 console.log(`\nTất cả ${passed} kiểm tra đã đạt.`)

@@ -558,6 +558,15 @@ export function drawHeroFx(g, { t, realmIdx, pose, fill = 0, color = 0xffffff })
       g.moveTo(x - 3 * tw, y).lineTo(x + 3 * tw, y).moveTo(x, y - 3 * tw).lineTo(x, y + 3 * tw).stroke({ width: 1.3, color: 0xdfeaff, alpha: 0.9 })
     }
   }
+  if (realmIdx >= 7) {
+    // Đại Thừa và Độ Kiếp: thêm vòng ánh sáng ngoài và những đốm sáng bay lên như đang tách khỏi mặt đất
+    const pulse2 = 0.5 + 0.5 * sin(t * 1.1)
+    g.circle(0, mid - 6, 76 + pulse2 * 4).stroke({ width: 2, color, alpha: 0.4 })
+    for (let i = 0; i < 10; i++) {
+      const rise = (t * 22 + i * 17) % 120
+      g.circle(sin(i * 2.3) * 40, mid + 60 - rise, 1.8).fill({ color: 0xffffff, alpha: 0.8 * (1 - rise / 120) })
+    }
+  }
   if (realmIdx >= 6) {
     // Hợp Thể: vầng sáng vàng và đôi cánh ánh sáng phía sau lưng
     const pulse = 0.5 + 0.5 * sin(t * 1.6)

@@ -45,6 +45,8 @@ export const REALMS = [
   { id: 'hoa_than', name: 'Hóa Thần', stages: ['Sơ Kỳ', 'Trung Kỳ', 'Hậu Kỳ'], color: 0xff8fb8 },
   { id: 'luyen_hu', name: 'Luyện Hư', stages: ['Sơ Kỳ', 'Trung Kỳ', 'Hậu Kỳ'], color: 0x8fb8ff },
   { id: 'hop_the', name: 'Hợp Thể', stages: ['Sơ Kỳ', 'Trung Kỳ', 'Hậu Kỳ'], color: 0xfff2a8 },
+  { id: 'dai_thua', name: 'Đại Thừa', stages: ['Sơ Kỳ', 'Trung Kỳ', 'Hậu Kỳ'], color: 0xff9ad5 },
+  { id: 'do_kiep', name: 'Độ Kiếp', stages: ['Sơ Kỳ', 'Trung Kỳ', 'Hậu Kỳ'], color: 0xe8f4ff },
 ]
 
 /**
@@ -81,6 +83,8 @@ export const TRIBULATIONS = {
   3: { name: 'Nguyên Anh Thiên Kiếp', bolts: 9, base: 105, growth: 1.2 },
   4: { name: 'Hóa Thần Cửu Trọng Thiên Phạt', bolts: 9, base: 131, growth: 1.2 },
   5: { name: 'Luyện Hư Hỗn Độn Kiếp', bolts: 9, base: 159, growth: 1.2 },
+  6: { name: 'Hợp Thể Đại Thừa Thiên Kiếp', bolts: 9, base: 193, growth: 1.2 },
+  7: { name: 'Độ Kiếp Phi Thăng Thiên Kiếp', bolts: 12, base: 234, growth: 1.2 },
 }
 
 /** Tên hiển thị của kho đồ (dùng ở tab Túi Đồ). */
@@ -95,6 +99,8 @@ export const INVENTORY_GROUPS = [
 export const BALANCE = {
   baseRequirement: 100, // linh khí cần cho tầng 1
   requirementGrowth: 2.22, // mỗi bậc cần gấp 2.22 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
+  postStage: 26, // từ sau bậc này (sau Hợp Thể Hậu Kỳ) dùng hệ số tăng yêu cầu nhẹ hơn để Đại Thừa / Độ Kiếp không kéo dài vô lý
+  postRequirementGrowth: 1.62,
   stageExpGrowth: 1.5, // mỗi bậc tăng tốc hấp thụ ~1.5 lần
   baseSuccessRate: 0.9, // tỉ lệ đột phá bậc đầu
   successDropPerStage: 0.03, // giảm mỗi bậc

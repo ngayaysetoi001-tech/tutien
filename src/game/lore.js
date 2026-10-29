@@ -48,6 +48,12 @@ export const LORE = [
   { id: 'realm_hop_the', cat: 'Cảnh giới', title: 'Hợp Thể',
     text: `Thân, hồn, đạo hợp làm một. Cảnh giới cuối cùng mà phàm nhân biết đến, và là bậc thang đưa lên những tầng cao hơn nữa của đại đạo.`,
     auto: { stage: 24 } },
+  { id: 'realm_dai_thua', cat: 'Cảnh giới', title: 'Đại Thừa',
+    text: `Đạo tâm viên mãn, mỗi lời nói đều có thể hoá thành pháp tắc. Ở cảnh giới này, tu sĩ không còn tranh đoạt với người mà tranh đoạt với đại đạo. Kẻ đạt Đại Thừa phải đối mặt với thiên kiếp lớn nhất trong lịch sử các thế hệ.`,
+    auto: { stage: 27 } },
+  { id: 'realm_do_kiep', cat: 'Cảnh giới', title: 'Độ Kiếp',
+    text: `Bước cuối cùng trước khi phi thăng. Thiên kiếp ở đây không còn là thử thách mà như lời mời gọi của thiên đạo: vượt qua thì thành tiên, hỏng thì tan vào đất trời. Chưa ai trong sử sách quay về kể lại.`,
+    auto: { stage: 30 } },
 
   // ---------------- Bí cảnh ----------------
   { id: 'dungeon_hac_phong', cat: 'Bí cảnh', title: 'Hắc Phong Cốc',

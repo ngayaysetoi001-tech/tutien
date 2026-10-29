@@ -7,7 +7,9 @@ import { BALANCE, MAX_STAGE_IDX, STAGES, TRIBULATIONS } from './constants.js'
 
 /** Linh khí cần để đột phá khỏi bậc `stageIdx`. */
 export function stageRequirement(stageIdx) {
-  return new Decimal(BALANCE.requirementGrowth).pow(stageIdx).mul(BALANCE.baseRequirement)
+  const base = new Decimal(BALANCE.requirementGrowth).pow(Math.min(stageIdx, BALANCE.postStage)).mul(BALANCE.baseRequirement)
+  // Đại Thừa / Độ Kiếp: yêu cầu tăng chậm hơn (1.62 mỗi bậc thay vì 2.2) vì sức mạnh gốc chỉ tăng 1.5 mỗi bậc
+  return stageIdx > BALANCE.postStage ? base.mul(new Decimal(BALANCE.postRequirementGrowth).pow(stageIdx - BALANCE.postStage)) : base
 }
 
 /**

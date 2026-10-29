@@ -36,6 +36,12 @@ export function aiKind(n) {
 
 export const chapterOf = (n) => Math.ceil(n / AIS_PER_CHAPTER)
 
+/** Phẩm cấp trang bị rơi ở ải n: theo bối cảnh ở vòng đầu, từ vòng thứ hai trở đi luôn là phẩm cấp cao nhất (không rơi đồ thấp hơn). */
+export function gearTierOf(n) {
+  const t = themeOf(n)
+  return t.round === 0 ? t.idx : DUNGEONS.length - 1
+}
+
 /** Bối cảnh của ải n: bí cảnh gốc cho yêu thú, nền, bảng rơi; `round` = đã quay vòng mấy lần. */
 export function themeOf(n) {
   const idx = (chapterOf(n) - 1) % DUNGEONS.length
@@ -262,7 +268,7 @@ export function simulateOfflineClimb({ stats, best, grit = 0, seconds, stageIdx 
       out.grit = 0
       out.wins++
       out.stones = out.stones.add(aiStoneReward(n, kind, stageIdx)).add(firstClearStones(n))
-      if (out.gear.length < MAX_OFFLINE_GEAR && rng() < AI_KINDS[kind].gear) out.gear.push(themeOf(n).idx)
+      if (out.gear.length < MAX_OFFLINE_GEAR && rng() < AI_KINDS[kind].gear) out.gear.push(gearTierOf(n))
     } else {
       out.grit = Math.min(GRIT_MAX, out.grit + 1)
     }

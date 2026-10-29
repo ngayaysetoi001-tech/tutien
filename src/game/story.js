@@ -383,6 +383,8 @@ export const REALM_FLAVOR = [
   'Hóa Thần: thần hồn thấu hiểu một mảnh pháp tắc, nhấc tay nhấc chân đã có uy áp trời đất.',
   'Luyện Hư: hư thực giao hoà, thân thể và hư không không còn ranh giới rõ ràng.',
   'Hợp Thể: thân, hồn, đạo hợp làm một. Từ đây, trước mắt chỉ còn con đường chạm tới cõi vô thượng.',
+  'Đại Thừa: đạo tâm viên mãn, một lời nói ra đã thành pháp tắc, tiếng vọng của đại đạo thôi thúc người bước tiếp.',
+  'Độ Kiếp: bước cuối cùng trước khi phi thăng. Thiên kiếp không còn là thử thách mà là lời mời gọi của thiên đạo.',
 ]
 
 /** Một câu mô tả khi vào từng bí cảnh (nhật ký). */

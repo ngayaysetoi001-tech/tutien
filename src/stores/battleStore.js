@@ -446,7 +446,7 @@ export const useBattleStore = defineStore('battle', {
       if (Math.random() < C.AI_KINDS[kind].gear * (1 + game.lootLuck)) {
         const slot = EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)]
         // Chúa Tể: 60% rơi đồ Huyền Thoại đặc hiệu cố định, còn lại là đồ thường
-        const gear = kind === 'lord' && Math.random() < 0.6 ? EQ.generateLegend(slot, C.themeOf(n).idx) : EQ.generateItem(slot, C.themeOf(n).idx, EQ.DROP_RARITY_WEIGHTS)
+        const gear = kind === 'lord' && Math.random() < 0.6 ? EQ.generateLegend(slot, C.gearTierOf(n)) : EQ.generateItem(slot, C.gearTierOf(n), EQ.DROP_RARITY_WEIGHTS)
         game.addGear(gear)
         this.run.gear.push(EQ.itemFullName(gear))
         if (this.run.gear.length > 50) this.run.gear.shift() // tránh phình bộ nhớ khi để chạy nhiều giờ
