@@ -4476,7 +4476,7 @@ ok('màn hình: 13 màn thuộc 5 nhóm, id duy nhất, chỉ Nhân Vật và B�
   assert.deepEqual(SCREENS.filter((x) => hasCanvas(x.id)).map((x) => x.id), ['character', 'battle'])
   const s0 = freshStore(); s0.init()
   assert.deepEqual(SCR.unlockedGroups(s0).map((g) => g.id), ['tuluyen', 'vuotai', 'them'], 'game mới chỉ có 3 nhóm')
-  assert.equal(SCR.groupOf('skills'), 'vuotai')
+  assert.equal(SCR.groupOf('skills'), 'tuluyen')
   assert.equal(DEFAULT_SCREEN, 'character')
 })
 ok('uiStore: chuyển màn, bỏ qua id sai, ghi nhớ màn cuối', () => {

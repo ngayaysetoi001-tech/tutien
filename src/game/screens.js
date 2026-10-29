@@ -6,11 +6,11 @@
 
 export const SCREENS = [
   { id: 'character', label: 'Nhân Vật', icon: 'character', canvas: true, group: 'tuluyen' },
+  { id: 'skills', label: 'Công Pháp', icon: 'arts', canvas: false, group: 'tuluyen' },
   { id: 'dwelling', label: 'Động Phủ', icon: 'home', canvas: false, group: 'tuluyen' },
   { id: 'garden', label: 'Linh Điền', icon: 'garden', canvas: false, group: 'tuluyen' },
   { id: 'reincarnation', label: 'Luân Hồi', icon: 'reborn', canvas: false, group: 'tuluyen' },
   { id: 'battle', label: 'Vượt Ải', icon: 'dungeon', canvas: true, group: 'vuotai' },
-  { id: 'skills', label: 'Công Pháp', icon: 'arts', canvas: false, group: 'vuotai' },
   { id: 'gear', label: 'Trang Bị', icon: 'gear', canvas: false, group: 'hanhtrang' },
   { id: 'inventory', label: 'Túi Đồ', icon: 'bag', canvas: false, group: 'hanhtrang' },
   { id: 'sect', label: 'Tông Môn', icon: 'sect', canvas: false, group: 'monphai' },
