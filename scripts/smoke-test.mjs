@@ -2662,6 +2662,218 @@ ok('bộ nhớ: để chạy nhiều giờ thì nhật ký, danh sách trang b�
 })
 
 // =====================================================================
+// Linh Thú đồng hành
+// =====================================================================
+const PT10 = await import('../src/game/pets.js')
+
+ok('linh thú: dữ liệu hợp lệ, có Phách trong kho vật phẩm, cửa hàng và bảng rơi theo ải', () => {
+  assert.ok(Object.keys(PT10.PETS).length >= 8)
+  for (const [id, p] of Object.entries(PT10.PETS)) {
+    assert.ok(p.name && p.text && p.minAi >= 1 && ['kim', 'moc', 'thuy', 'hoa', 'tho'].includes(p.element), id)
+    assert.ok(Object.keys(p.perk).every((k) => k in PT10.ZERO_PET_PERK), id + ' khoá thưởng lạ')
+    if (p.kind === 'hunter') assert.ok(p.power > 0 && p.interval > 0, id)
+    if (p.kind === 'healer') assert.ok(p.heal > 0 && p.interval > 0, id)
+    assert.ok(['hunter', 'healer', 'guard', 'lucky', 'scholar'].includes(p.kind))
+    assert.ok(ALL_ITEMS[PT10.petFragmentId(id)], 'thiếu Phách ' + id)
+    assert.ok(SECT_SHOP.some((e) => e.item === PT10.petFragmentId(id)), 'cửa hàng thiếu ' + id)
+    assert.ok(PT10.petDesc(id, 3, 'kim').length > 10)
+  }
+  assert.ok(Object.values(PT10.PETS).filter((p) => p.minAi <= 5).length >= 2)
+  assert.deepEqual([0, 3, 4, 8].map(PT10.petSlotCount), [1, 1, 2, 2])
+  assert.ok(PT10.petLevelMult(10) > PT10.petLevelMult(1))
+})
+
+ok('linh thú: thu phục, nuôi lớn, ra trận theo ô mở (ô 2 ở Hóa Thần), không trùng, cấp tối đa', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.petSlots, 1)
+  assert.equal(s.learnPet('tieu_ho'), false, 'chưa đủ Phách')
+  s.addItem('scrolls', PT10.petFragmentId('tieu_ho'), PT10.PET_LEARN_COST + PT10.petUpgradeCost(1))
+  s.addItem('scrolls', PT10.petFragmentId('linh_hac'), PT10.PET_LEARN_COST)
+  assert.equal(s.learnPet('tieu_ho'), true)
+  assert.equal(s.pets.active[0], 'tieu_ho')
+  assert.equal(s.learnPet('tieu_ho'), false)
+  assert.equal(s.learnPet('linh_hac'), true)
+  assert.equal(s.pets.active[1], null, 'ô 2 chưa mở nên không tự cho ra trận')
+  assert.deepEqual(s.activePets, ['tieu_ho'])
+  assert.equal(s.equipPet('linh_hac', 1), false)
+  assert.equal(s.equipPet('linh_hac', 0), true)
+  assert.deepEqual(s.activePets, ['linh_hac'])
+  assert.equal(s.pets.active.indexOf('tieu_ho'), -1)
+  s.stageIdx = 18
+  assert.equal(s.petSlots, 2)
+  assert.equal(s.equipPet('tieu_ho', 1), true)
+  assert.deepEqual(s.activePets, ['linh_hac', 'tieu_ho'])
+  s.unequipPet(0)
+  assert.deepEqual(s.activePets, ['tieu_ho'])
+  assert.equal(s.upgradePet('tieu_ho'), true)
+  assert.equal(s.pets.owned.tieu_ho, 2)
+  assert.equal(s.upgradePet('tieu_ho'), false)
+  s.pets.owned.tieu_ho = PT10.PET_MAX_LEVEL
+  s.addItem('scrolls', PT10.petFragmentId('tieu_ho'), 99)
+  assert.equal(s.upgradePet('tieu_ho'), false)
+  assert.equal(s.achievementValue('petLevels'), PT10.PET_MAX_LEVEL + 1)
+})
+
+ok('thưởng bị động của linh thú: đúng khoá, cùng hệ +25%, gộp vào chỉ số, linh khí, rơi đồ, linh thạch', () => {
+  const p = PT10.petPerks(['quy_giap'], { quy_giap: 4 }, 'kim')
+  assert.ok(Math.abs(p.def - 0.03 * 4) < 1e-9 && Math.abs(p.thorns - 0.015 * 4) < 1e-9)
+  const same = PT10.petPerks(['quy_giap'], { quy_giap: 4 }, 'tho')
+  assert.ok(Math.abs(same.def - p.def * 1.25) < 1e-9)
+  assert.deepEqual(PT10.petPerks([null, 'khong_co'], {}, 'kim'), { ...PT10.ZERO_PET_PERK })
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  s.element = 'kim'
+  const c0 = s.combat
+  const e0 = s.expRate
+  const st0 = s.stonesRate
+  const l0 = s.lootLuck
+  s.pets.owned = { quy_giap: 5, van_ho: 5, kim_thiem: 5 }
+  s.pets.active = ['quy_giap', null]
+  assert.ok(s.combat.def > c0.def)
+  s.stageIdx = 18 // ô 2
+  s.pets.active = ['quy_giap', 'van_ho']
+  assert.ok(s.expRate.gt(e0))
+  s.pets.active = ['kim_thiem', 'van_ho']
+  assert.ok(s.stonesRate.gt(st0) && s.lootLuck > l0)
+  assert.ok(s.extraPerk.luck > 0 && s.extraPerk.exp > 0 && s.extraPerk.stones > 0)
+  assert.ok(Math.abs(s.battlePerk.thorns - 0) < 1e-9, 'Kim Thiềm và Vân Hồ không phản sát thương')
+  s.pets.active = ['quy_giap', null]
+  assert.ok(s.battlePerk.thorns > 0)
+  // chưa ra trận thì không có tác dụng
+  s.pets.active = [null, null]
+  assert.ok(Object.values(s.extraPerk).every((v) => v === 0))
+})
+
+ok('linh thú thợ săn cắn đúng chu kỳ và không dồn đòn khi lỡ nhịp; tiên hạc hồi khí huyết', () => {
+  const x = arena()
+  const { s, b } = x
+  s.pets.owned = { tieu_ho: 3, linh_hac: 2 }
+  s.pets.active = ['tieu_ho', null]
+  s.element = 'tho'
+  const hp0 = b.enemy.hp
+  b.clock = 100
+  b.processPets() // lần đầu chỉ đặt hẹn giờ
+  assert.equal(b.enemy.hp, hp0)
+  b.clock = 103
+  b.processPets()
+  assert.equal(b.enemy.hp, hp0, 'chưa tới 4 giây')
+  b.clock = 104.1
+  b.processPets()
+  const bite = hp0 - b.enemy.hp
+  assert.ok(bite > 0, 'cắn đúng nhịp')
+  b.clock = 104.5
+  b.processPets()
+  assert.equal(hp0 - b.enemy.hp, bite, 'chưa tới nhịp kế')
+  b.clock = 200 // lỡ nhịp rất lâu: chỉ cắn một lần
+  b.processPets()
+  assert.ok(Math.abs(hp0 - b.enemy.hp - bite * 2) < bite * 0.6 + 1, 'không dồn nhiều đòn')
+  b.processPets()
+  assert.ok(hp0 - b.enemy.hp < bite * 3.6)
+  // tiên hạc
+  s.pets.active = ['linh_hac', null]
+  b.petNext = {}
+  b.hp = 10
+  b.clock = 300
+  b.processPets()
+  b.clock = 306
+  b.processPets()
+  assert.ok(b.hp > 10, 'tiên hạc hồi khí huyết')
+  assert.ok(b.hp <= b.maxHp)
+  // không có linh thú thì không làm gì
+  s.pets.active = [null, null]
+  const e = b.enemy.hp
+  b.clock = 500
+  b.processPets()
+  b.clock = 600
+  b.processPets()
+  assert.equal(b.enemy.hp, e)
+})
+
+ok('linh thú hạ gục yêu thú: tính là hạ quái bình thường', () => {
+  const { s, b } = arena()
+  s.pets.owned = { hoa_phuong: 10 }
+  s.pets.active = ['hoa_phuong', null]
+  b.enemy.hp = 1
+  b.enemy.maxHp = 1
+  b.enemy.def = 0
+  const kills = s.stats.kills
+  b.clock = 10
+  b.processPets()
+  b.clock = 16
+  b.processPets()
+  assert.equal(s.stats.kills, kills + 1)
+  assert.equal(b.lastResult, 'win')
+})
+
+ok('Linh Thú Phách rơi từ boss theo ải; ải thường không rơi; trong trận rơi thật', () => {
+  assert.deepEqual(PT10.rollPetDrops(3, 'normal', () => 0), [])
+  assert.equal(PT10.rollPetDrops(5, 'mini', () => 0.99).length, 0)
+  const d = PT10.rollPetDrops(5, 'mini', () => 0)
+  assert.ok(d.length === 1 && d[0].id.startsWith('ln_') && d[0].count >= 1)
+  assert.equal(PT10.rollPetDrops(10, 'lord', () => 0.99).length, 1, 'Chúa Tể luôn rơi')
+  for (let i = 0; i < 100; i++) {
+    const [x] = PT10.rollPetDrops(5, 'big', Math.random)
+    if (!x) continue
+    assert.ok(PT10.PETS[x.id.slice(3)].minAi <= 5, 'rơi linh thú chưa mở: ' + x.id)
+  }
+  assert.equal(PT10.rollPetDrops(5, 'mini', () => 0.3).length, 0)
+  assert.equal(PT10.rollPetDrops(5, 'mini', () => 0.3, 0.5).length, 1)
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  s.campaign.best = 99 // ải 100: Chúa Tể
+  const b = useBattleStore()
+  b.start()
+  const count = () => Object.keys(ALL_ITEMS).filter((id) => id.startsWith('ln_')).reduce((n, id) => n + s.itemCount(id), 0)
+  const before = count()
+  b.enemy.hp = 0
+  b.onKill()
+  assert.ok(count() > before, 'Chúa Tể rơi Linh Thú Phách')
+})
+
+ok('save/load giữ linh thú; loại linh thú lạ, cấp vượt trần, ô trùng hoặc chưa thu phục; save cũ vẫn tải được', () => {
+  const s = freshStore()
+  s.init()
+  s.pets = { owned: { tieu_ho: 4, linh_hac: 2 }, active: ['linh_hac', 'tieu_ho'] }
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.deepEqual({ ...s2.pets.owned }, { tieu_ho: 4, linh_hac: 2 })
+  assert.deepEqual([...s2.pets.active], ['linh_hac', 'tieu_ho'])
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.pets = { owned: { tieu_ho: 99, khong_co: 3, quy_giap: -2 }, active: ['tieu_ho', 'tieu_ho', 'khong_co'] }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.pets.owned.tieu_ho, PT10.PET_MAX_LEVEL)
+  assert.equal(s3.pets.owned.quy_giap, 1)
+  assert.ok(!('khong_co' in s3.pets.owned))
+  assert.deepEqual([...s3.pets.active], ['tieu_ho', null], 'ô trùng bị loại')
+  delete raw.data.pets
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s4 = freshStore(true)
+  s4.init()
+  assert.deepEqual({ ...s4.pets.owned }, {})
+  assert.equal(s4.pets.active.length, PT10.MAX_PET_SLOTS)
+  // luân hồi giữ linh thú
+  s.stageIdx = 12
+  s.reincarnate()
+  assert.equal(s.pets.owned.tieu_ho, 4)
+})
+
+ok('gợi ý: đủ Linh Thú Phách thì nhắc thu phục', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  s.addItem('scrolls', PT10.petFragmentId('tieu_ho'), PT10.PET_LEARN_COST)
+  assert.ok(GUIDE.nextHints(s).some((h) => h.id === 'pet'))
+  s.learnPet('tieu_ho')
+  assert.ok(!GUIDE.nextHints(s).some((h) => h.id === 'pet'))
+})
+
+// =====================================================================
 // Giai đoạn 3: cảnh giới mới, luân hồi, Linh Điền, khoáng mạch, farm offline
 // =====================================================================
 const RB = await import('../src/game/reincarnation.js')

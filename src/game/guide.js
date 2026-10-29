@@ -7,6 +7,7 @@
 import { RECIPES } from './data.js'
 import { SKILLS, fragmentId, LEARN_COST } from './skills.js'
 import { ARTS, ART_LEARN_COST, artFragmentId } from './arts.js'
+import { PETS, PET_LEARN_COST, petFragmentId } from './pets.js'
 import { plotCount, seedCost } from './garden.js'
 import { recruitCost } from './disciples.js'
 import { SLOT_IDS } from './equipment.js'
@@ -53,6 +54,8 @@ export function nextHints(g) {
   if (learnable) add('skill', 'Đủ tàn quyển để học một võ kỹ mới.', 'skills')
   const learnableArt = Object.keys(ARTS).find((id) => !g.arts.owned[id] && g.itemCount(artFragmentId(id)) >= ART_LEARN_COST)
   if (learnableArt) add('art', 'Đủ tàn quyển để học một công pháp bị động mới.', 'skills')
+  const learnablePet = Object.keys(PETS).find((id) => !g.pets.owned[id] && g.itemCount(petFragmentId(id)) >= PET_LEARN_COST)
+  if (learnablePet) add('pet', 'Đủ Linh Thú Phách để thu phục một linh thú đồng hành.', 'skills')
   const emptySlot = SLOT_IDS.some((slot) => !g.gear.equipped[slot] && g.gear.bag.some((it) => it.slot === slot))
   if (emptySlot) add('gear', 'Túi có trang bị chưa mặc.', 'gear')
   if (g.sect.id && g.disciples.length === 0 && g.spiritStones.gte(recruitCost(g.stageIdx, 0))) {

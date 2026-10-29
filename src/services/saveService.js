@@ -11,6 +11,7 @@ import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
+import { MAX_PET_SLOTS, PETS, PET_MAX_LEVEL } from '../game/pets.js'
 import { PATHS } from '../game/paths.js'
 import { MAX_SKILL_SLOTS } from '../game/skills.js'
 import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
@@ -50,6 +51,7 @@ export function serialize(state, now = Date.now()) {
       element: state.element,
       skills: JSON.parse(JSON.stringify(state.skills)),
       arts: JSON.parse(JSON.stringify(state.arts)),
+      pets: JSON.parse(JSON.stringify(state.pets)),
       path: state.path ?? null,
       challenge: state.challenge ?? null,
       daily: JSON.parse(JSON.stringify(state.daily)),
@@ -142,6 +144,18 @@ export function deserialize(save, defaults) {
     const id = d.arts?.slots?.[i]
     if (!artsOwned[id] || artSeen.has(id)) return null
     artSeen.add(id)
+    return id
+  })
+  // Linh thú: giữ linh thú tồn tại, cấp hợp lệ; ô ra trận phải là linh thú đã thu phục, không trùng
+  const petsOwned = {}
+  for (const [k, v] of Object.entries(d.pets?.owned && typeof d.pets.owned === 'object' ? d.pets.owned : {})) {
+    if (PETS[k]) petsOwned[k] = Math.floor(num(v, 1, 1, PET_MAX_LEVEL))
+  }
+  const petSeen = new Set()
+  const petActive = Array.from({ length: MAX_PET_SLOTS }, (_, i) => {
+    const id = d.pets?.active?.[i]
+    if (!petsOwned[id] || petSeen.has(id)) return null
+    petSeen.add(id)
     return id
   })
   // Trang bị: kiểm tra từng món, bỏ món hỏng; ô mặc phải trỏ tới món có thật đúng ô
@@ -263,6 +277,7 @@ export function deserialize(save, defaults) {
     element: ELEMENTS[d.element] ? d.element : defaults.element,
     skills: { owned, slots },
     arts: { owned: artsOwned, slots: artSlots },
+    pets: { owned: petsOwned, active: petActive },
     path: PATHS[d.path] ? d.path : null,
     challenge: CHALLENGES[d.challenge] ? d.challenge : null,
     daily,

@@ -5,6 +5,7 @@
 
 import { LEARN_COST, SKILLS, fragmentId } from './skills.js'
 import { ARTS, ART_LEARN_COST, artFragmentId } from './arts.js'
+import { PETS, PET_LEARN_COST, petFragmentId } from './pets.js'
 
 /**
  * Hiệu ứng khi dùng vật phẩm:
@@ -62,6 +63,14 @@ export const ITEMS = {
   kim_than_dan: { name: 'Kim Thân Đan', group: 'pills', sell: 4000, effect: { type: 'stat', stat: 'atk', amount: 15 }, desc: '+15 Công kích vĩnh viễn.' },
   thien_pha_dan: { name: 'Thiên Phá Đan', group: 'pills', sell: 20000, effect: { type: 'buff', buff: 'success', amount: 0.2 }, desc: '+20% tỉ lệ cho lần đột phá kế tiếp.' },
   ngo_dao_dan: { name: 'Ngộ Đạo Đan', group: 'pills', sell: 2000, effect: { type: 'expBonus', amount: 0.02 }, desc: '+2% tốc độ linh khí vĩnh viễn.' },
+}
+
+// Linh Thú Phách: sinh tự động từ danh sách PETS
+for (const [id, pet] of Object.entries(PETS)) {
+  ITEMS[petFragmentId(id)] = {
+    name: `${pet.name} Phách`, group: 'scrolls', sell: 60,
+    desc: `Gom ${PET_LEARN_COST} bản để thu phục hoặc nuôi lớn linh thú ${pet.name} (tab Công Pháp > Linh Thú).`,
+  }
 }
 
 // Công Pháp Tàn Quyển: sinh tự động từ danh sách ARTS

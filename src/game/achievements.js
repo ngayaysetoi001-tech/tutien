@@ -17,6 +17,7 @@ export const ACHIEVEMENTS = [
   { id: 'arts', name: 'Tâm Pháp Thâm Hậu', desc: 'Tổng cấp công pháp đã luyện', key: 'artLevels', targets: [3, 15, 40, 80], stat: 'exp' },
   { id: 'challenges', name: 'Vượt Thử Thách', desc: 'Hoàn thành Kiếp Thử Thách', key: 'challengesDone', targets: [1, 3, 6, 12], stat: 'hp' },
   { id: 'daily', name: 'Chuyên Cần', desc: 'Hoàn thành nhiệm vụ ngày', key: 'dailyTasks', targets: [3, 15, 45, 120], stat: 'exp' },
+  { id: 'pets', name: 'Bạn Đồng Hành', desc: 'Tổng cấp linh thú đã nuôi', key: 'petLevels', targets: [1, 5, 15, 30], stat: 'hp' },
   { id: 'events', name: 'Kỳ Ngộ', desc: 'Trải qua kỳ ngộ', key: 'events', targets: [3, 10, 30], stat: 'hp' },
   { id: 'reborn', name: 'Luân Hồi', desc: 'Luân hồi chuyển thế', key: 'reincarnations', targets: [1, 3, 10], stat: 'exp' },
   { id: 'harvest', name: 'Nông Phu Tu Tiên', desc: 'Thu hoạch Linh Điền', key: 'harvests', targets: [5, 30, 100], stat: 'hp' },

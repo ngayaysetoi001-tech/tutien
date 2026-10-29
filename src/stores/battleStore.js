@@ -15,6 +15,7 @@ import { itemName, MONSTERS } from '../game/data.js'
 import * as B from '../game/battle.js'
 import * as C from '../game/campaign.js'
 import { rollArtDrops } from '../game/arts.js'
+import { PETS, petLevelMult, rollPetDrops } from '../game/pets.js'
 import { ELEMENTS, elementEdge, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as EQ from '../game/equipment.js'
@@ -64,6 +65,7 @@ export const useBattleStore = defineStore('battle', {
     rageAmt: 0,
     reflectUntil: 0,
     reflectAmt: 0,
+    petNext: {}, // thời điểm ra đòn kế tiếp của từng linh thú (theo clock)
   }),
 
   getters: {
@@ -107,6 +109,7 @@ export const useBattleStore = defineStore('battle', {
       this.cd = {}
       this.shield = this.shieldUntil = this.hasteUntil = this.slowUntil = 0
       this.dotUntil = this.lifestealUntil = this.rageUntil = this.reflectUntil = 0
+      this.petNext = {}
       emit('battle-start', { dungeonId: this.dungeon.id })
       this.spawnEnemy()
       return true
@@ -188,6 +191,7 @@ export const useBattleStore = defineStore('battle', {
 
       this.clock += dt
       this.processDot()
+      this.processPets()
       let guard = 0 // chặn vòng lặp vô hạn khi tick quá lớn
       while (this.phase === 'fighting' && guard++ < 50) {
         if (Math.min(this.nextPlayer, this.nextEnemy) > this.clock) break
@@ -269,6 +273,33 @@ export const useBattleStore = defineStore('battle', {
         e.reborn = true
         e.hp = Math.min(e.maxHp, e.hp + Math.round(e.maxHp * 0.25))
         game.addLog(`${e.name} Huyết Hồn Tái Sinh, hồi 25% khí huyết!`, 'bad')
+      }
+    },
+
+    /** Linh thú ra trận: thợ săn cắn địch, tiên hạc hồi khí huyết, theo chu kỳ riêng của từng con. */
+    processPets() {
+      const game = useGameStore()
+      for (const id of game.activePets) {
+        const p = PETS[id]
+        if ((p.kind !== 'hunter' && p.kind !== 'healer') || !this.enemy) continue
+        const next = (this.petNext[id] ??= this.clock + p.interval)
+        if (this.clock < next) continue
+        this.petNext[id] = Math.max(next + p.interval, this.clock) // lỡ nhịp (tick thưa) thì không dồn đòn
+        const mult = petLevelMult(game.pets.owned[id])
+        if (p.kind === 'hunter') {
+          const elem = elementMult(p.element, this.enemy.element) * game.artElementMult(p.element, this.enemy.element)
+          const raw = Math.max(1, Math.round(this.playerStats().atk * p.power * mult * (100 / (100 + this.enemy.def)) * elem))
+          const damage = this.hurtEnemy(raw)
+          fx('battle-hit', { target: 'enemy', damage, crit: false, skill: true, color: ELEMENTS[p.element].color, edge: elementEdge(p.element, this.enemy.element) })
+          if (this.enemy.hp <= 0) {
+            this.onKill()
+            return
+          }
+        } else {
+          const amount = Math.round(this.maxHp * p.heal * mult)
+          this.hp = Math.min(this.maxHp, this.hp + amount)
+          fx('battle-heal', { amount })
+        }
       }
     },
 
@@ -398,8 +429,8 @@ export const useBattleStore = defineStore('battle', {
       const n = this.ai
       const kind = this.enemy.tier
       const tmpl = MONSTERS[this.enemy.id]
-      const stones = C.aiStoneReward(n, kind, game.stageIdx).mul(1 + game.artBonus.stones)
-      const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck)]
+      const stones = C.aiStoneReward(n, kind, game.stageIdx).mul(1 + game.artBonus.stones + game.extraPerk.stones)
+      const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck), ...rollPetDrops(n, kind, Math.random, game.lootLuck)]
         .filter(({ id }) => !(id.startsWith('qk_') && SK.SKILLS[id.slice(3)]?.path && SK.SKILLS[id.slice(3)].path !== game.path)) // võ kỹ độc quyền chỉ rơi cho đúng đạo lộ
 
       game.spiritStones = game.spiritStones.add(stones)

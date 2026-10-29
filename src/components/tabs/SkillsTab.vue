@@ -11,12 +11,14 @@ import {
   ARTS, ART_LEARN_COST, ART_MAX_LEVEL, MAX_ART_SLOTS, artDesc, artFragmentId, artUpgradeCost,
 } from '../../game/arts.js'
 import { REALMS } from '../../game/constants.js'
+import { MAX_PET_SLOTS, PETS, PET_LEARN_COST, PET_MAX_LEVEL, petDesc, petFragmentId, petUpgradeCost } from '../../game/pets.js'
 
 const game = useGameStore()
 const sub = ref('skills') // 'skills' | 'arts'
 const SUBS = [
   { id: 'skills', label: 'Võ Kỹ' },
   { id: 'arts', label: 'Công Pháp' },
+  { id: 'pets', label: 'Linh Thú' },
 ]
 
 // ---------- Võ kỹ ----------
@@ -44,6 +46,15 @@ function equipArt(id) {
   game.equipArt(id, free >= 0 ? free : game.artSlots - 1)
 }
 
+// ---------- Linh thú ----------
+const petFrags = (id) => game.itemCount(petFragmentId(id))
+const petEquippedAt = (id) => game.pets.active.indexOf(id)
+const petLocked = (id) => game.campaign.record < PETS[id].minAi
+function equipPet(id) {
+  const free = game.pets.active.findIndex((x, i) => i < game.petSlots && !x)
+  game.equipPet(id, free >= 0 ? free : game.petSlots - 1)
+}
+
 const BONUS_LABELS = [
   ['exp', 'tốc độ linh khí'], ['hp', 'khí huyết'], ['atk', 'công kích'], ['def', 'phòng ngự'], ['speed', 'Thân pháp'],
   ['stones', 'linh thạch'], ['income', 'thu nhập ải'], ['luck', 'tỉ lệ rơi đồ'], ['elem', 'sát thương khắc hệ'], ['dao', 'Đạo Vận'],
@@ -53,7 +64,7 @@ const bonusLines = () => BONUS_LABELS.filter(([k]) => game.artBonus[k] > 0).map(
 
 <template>
   <div class="space-y-2">
-    <div class="grid grid-cols-2 gap-1.5">
+    <div class="grid grid-cols-3 gap-1.5">
       <button
         v-for="t in SUBS"
         :key="t.id"
@@ -122,7 +133,7 @@ const bonusLines = () => BONUS_LABELS.filter(([k]) => game.artBonus[k] > 0).map(
     </template>
 
     <!-- ===== Công Pháp (bị động) ===== -->
-    <template v-else>
+    <template v-else-if="sub === 'arts'">
       <div class="card">
         <div class="title-rule mb-1.5">Ô công pháp (tăng bị động liên tục)</div>
         <div class="grid grid-cols-5 gap-1">
@@ -180,6 +191,62 @@ const bonusLines = () => BONUS_LABELS.filter(([k]) => game.artBonus[k] > 0).map(
           </template>
           <button v-else class="btn-gold w-full py-1 text-xs" :disabled="artFrags(id) < ART_LEARN_COST" @click="game.learnArt(id)">
             Học ({{ ART_LEARN_COST }} tàn quyển)
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== Linh Thú ===== -->
+    <template v-else>
+      <div class="card">
+        <div class="title-rule mb-1.5">Linh thú ra trận (cùng hệ với ngươi: +25%)</div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <div
+            v-for="i in MAX_PET_SLOTS"
+            :key="i"
+            class="rounded border px-1 py-2 text-center text-[11px]"
+            :class="i - 1 < game.petSlots ? 'border-ink-600 bg-ink-900' : 'border-ink-700 bg-ink-900/40 text-slate-600'"
+          >
+            <template v-if="i - 1 < game.petSlots">
+              <div v-if="game.pets.active[i - 1]" :style="{ color: ELEMENTS[PETS[game.pets.active[i - 1]].element].css }" class="font-bold">
+                {{ PETS[game.pets.active[i - 1]].name }}
+              </div>
+              <div v-else class="text-slate-500">Trống</div>
+            </template>
+            <template v-else>🔒 Mở ở {{ REALMS[4].name }}</template>
+          </div>
+        </div>
+        <p class="mt-1 text-[11px] text-slate-500">Linh Thú Phách rơi từ boss (Tiểu Boss trở lên) và bán ở cửa hàng tông môn từ Trưởng Lão.</p>
+      </div>
+
+      <div v-for="(pet, id) in PETS" :key="id" class="card" :class="{ 'opacity-60': petLocked(id) && !game.pets.owned[id] }">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-bold" :style="{ color: ELEMENTS[pet.element].css }">
+            {{ pet.name }}
+            <span class="text-[10px] font-normal text-slate-400">({{ ELEMENTS[pet.element].name }})</span>
+          </div>
+          <div v-if="game.pets.owned[id]" class="text-xs text-gold-300">Cấp {{ game.pets.owned[id] }}/{{ PET_MAX_LEVEL }}</div>
+          <div v-else class="text-[11px] text-slate-400">Phách {{ petFrags(id) }}/{{ PET_LEARN_COST }}</div>
+        </div>
+        <p class="mt-0.5 text-[11px] text-slate-500">{{ pet.text }}</p>
+        <p class="text-[11px] text-slate-400">
+          {{ petDesc(id, game.pets.owned[id] ?? 1, game.element) }}
+          <span v-if="petLocked(id) && !game.pets.owned[id]" class="text-cinnabar-400"> · rơi từ ải {{ pet.minAi }} trở đi</span>
+        </p>
+        <div class="mt-1.5 flex gap-1.5">
+          <template v-if="game.pets.owned[id]">
+            <button v-if="petEquippedAt(id) >= 0" class="btn-ghost flex-1 py-1 text-xs" @click="game.unequipPet(petEquippedAt(id))">Cất</button>
+            <button v-else class="btn-jade flex-1 py-1 text-xs" @click="equipPet(id)">Cho ra trận</button>
+            <button
+              class="btn-gold flex-1 py-1 text-xs"
+              :disabled="game.pets.owned[id] >= PET_MAX_LEVEL || petFrags(id) < petUpgradeCost(game.pets.owned[id])"
+              @click="game.upgradePet(id)"
+            >
+              Nuôi lớn ({{ petFrags(id) }}/{{ game.pets.owned[id] >= PET_MAX_LEVEL ? '-' : petUpgradeCost(game.pets.owned[id]) }})
+            </button>
+          </template>
+          <button v-else class="btn-gold w-full py-1 text-xs" :disabled="petFrags(id) < PET_LEARN_COST" @click="game.learnPet(id)">
+            Thu phục ({{ PET_LEARN_COST }} Phách)
           </button>
         </div>
       </div>
