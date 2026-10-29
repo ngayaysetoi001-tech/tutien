@@ -190,3 +190,15 @@ Màn **Công Pháp** có hai tab con (`src/components/tabs/SkillsTab.vue`):
 - **Võ Kỹ** (`src/game/skills.js`) là chiêu thức chủ động, 13 loại, tự thi triển khi hồi chiêu xong. Ngoài sát thương, hồi máu, lá chắn, tăng tốc và làm chậm còn có: **Độc** (sát thương mỗi giây), **Choáng** (địch mất lượt), **Tuyệt Sát** (gấp đôi khi địch dưới 30% khí huyết), **Hút máu**, **Cuồng Bạo** (tăng công kích), **Phản Chấn** (phản sát thương) và **Tuyệt kỹ** (Thiên Hà Tuyệt Kích, sát thương rất lớn, cần Nguyên Anh để trang bị). Bốn ô, ô thứ tư mở ở Hóa Thần. Tàn quyển rơi ở ải theo chương và bán ở cửa hàng tông môn.
 - **Công Pháp** (`src/game/arts.js`) là tăng bị động, 10 loại: linh khí, khí huyết, công kích, phòng ngự, Thân pháp, linh thạch, thu nhập thụ động từ ải, tỉ lệ rơi đồ, sát thương khi khắc hệ, Đạo Vận khi luân hồi. Trang bị vào năm ô công pháp (hai ô ở Luyện Khí, thêm một mỗi đại cảnh giới), cấp 1-10, thăng cấp bằng Công Pháp Tàn Quyển. Công pháp cùng hệ ngũ hành với tông môn được +50%. Tàn quyển rơi từ Tiểu Boss trở lên (công pháp mạnh hơn mở dần theo số ải) và bán ở cửa hàng tông môn từ Chân Truyền.
 - Cả hai được giữ nguyên khi luân hồi. Save cũ tải bình thường: 6 võ kỹ cũ giữ nguyên cấp và ô trang bị.
+
+## Đạo Lộ
+
+Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó (đặt lại khi luân hồi để chọn lại; `src/game/paths.js`, thẻ "Đạo Lộ" ở màn Nhân Vật). Mỗi đạo lộ đổi cách chơi và có một **võ kỹ độc quyền** (chỉ trang bị được khi theo đúng đạo lộ; tàn quyển chỉ rơi cho người theo đạo lộ đó):
+
+| Đạo lộ | Đặc quyền | Võ kỹ độc quyền |
+|---|---|---|
+| Kiếm Tu | +15% công kích, +10% chí mạng, chí mạng mạnh hơn, +15% sát thương võ kỹ tấn công | Vạn Kiếm Quy Tông |
+| Thể Tu | +15% khí huyết, +15% phòng ngự, mọi đòn hút 5% sát thương | Bất Diệt Kim Thân |
+| Pháp Tu | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ (tối đa 5 ô) | Ngũ Lôi Chính Pháp |
+| Đan Sư | +25% hiệu quả đan tăng chỉ số, +10% luyện đan ra gấp đôi | Đan Hỏa Phần Thân |
+| Trận Pháp Sư | +25% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |

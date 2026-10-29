@@ -198,7 +198,7 @@ export const useBattleStore = defineStore('battle', {
       for (let i = 0; i < game.skillSlots; i++) {
         const id = game.skills.slots[i]
         if (!id || (this.cd[id] ?? 0) > this.clock) continue
-        if (!SK.canEquip(id, game.realmIdx)) continue // tuyệt kỹ chưa đủ cảnh giới (ví dụ sau luân hồi)
+        if (!SK.canEquip(id, game.realmIdx, game.path)) continue // tuyệt kỹ chưa đủ cảnh giới hoặc sai đạo lộ (ví dụ sau luân hồi)
         const kind = SK.SKILLS[id].kind
         if (kind === 'heal' && this.hp / this.maxHp > 0.8) continue
         if (kind === 'shield' && this.clock < this.shieldUntil) continue
@@ -231,8 +231,9 @@ export const useBattleStore = defineStore('battle', {
 
     /** Hút máu: đòn đánh hồi khí huyết theo sát thương gây ra nếu Huyết Thực còn hiệu lực. */
     lifestealFrom(damage) {
-      if (this.clock >= this.lifestealUntil) return
-      const heal = Math.round(damage * this.lifestealAmt)
+      const rate = (this.clock < this.lifestealUntil ? this.lifestealAmt : 0) + useGameStore().pathPerk.lifesteal // Thể Tu hút máu nền
+      if (rate <= 0) return
+      const heal = Math.round(damage * rate)
       if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal)
     },
 
@@ -256,7 +257,7 @@ export const useBattleStore = defineStore('battle', {
     basicAttack(stats) {
       const game = useGameStore()
       const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
-      const { damage, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE, mult)
+      const { damage, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
       this.enemy.hp = Math.max(0, this.enemy.hp - damage)
       this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
@@ -268,15 +269,15 @@ export const useBattleStore = defineStore('battle', {
       const level = game.skills.owned[id]
       const lv = SK.skillLevelMult(level)
       const attack = ['damage', 'stun', 'execute', 'ultimate'].includes(skill.kind)
-      const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1)
-      this.cd[id] = this.clock + SK.skillCooldown(id, level)
+      const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1) * (attack ? 1 + game.pathPerk.skillDmg : 1)
+      this.cd[id] = this.clock + SK.skillCooldown(id, level) * (1 - game.pathPerk.cd) // Pháp Tu: hồi chiêu nhanh hơn
       fx('battle-skill', { name: skill.name, color: ELEMENTS[skill.element].color, kind: SK.visualKind(skill.kind), element: skill.element, seconds: skill.seconds })
       if (attack) {
         let pw = power
         // Tuyệt Sát: gấp bội khi địch sắp gục
         if (skill.kind === 'execute' && this.enemy.hp / this.enemy.maxHp < skill.threshold) pw *= 1 + skill.bonus
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
-        const { damage, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE, mult)
+        const { damage, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
         this.enemy.hp = Math.max(0, this.enemy.hp - damage)
         this.lifestealFrom(damage)
         if (skill.slow) {
@@ -345,6 +346,7 @@ export const useBattleStore = defineStore('battle', {
       const tmpl = MONSTERS[this.enemy.id]
       const stones = C.aiStoneReward(n, kind, game.stageIdx).mul(1 + game.artBonus.stones)
       const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck)]
+        .filter(({ id }) => !(id.startsWith('qk_') && SK.SKILLS[id.slice(3)]?.path && SK.SKILLS[id.slice(3)].path !== game.path)) // võ kỹ độc quyền chỉ rơi cho đúng đạo lộ
 
       game.spiritStones = game.spiritStones.add(stones)
       game.gainExp(game.expRate.mul(C.aiExpSeconds(n, kind, game.stageIdx)))

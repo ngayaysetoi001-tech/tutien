@@ -5,7 +5,8 @@
 import { ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { ELEMENTS } from '../../game/elements.js'
-import { LEARN_COST, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, upgradeCost } from '../../game/skills.js'
+import { LEARN_COST, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, upgradeCost } from '../../game/skills.js'
+import { PATHS } from '../../game/paths.js'
 import {
   ARTS, ART_LEARN_COST, ART_MAX_LEVEL, MAX_ART_SLOTS, artDesc, artFragmentId, artUpgradeCost,
 } from '../../game/arts.js'
@@ -19,10 +20,11 @@ const SUBS = [
 ]
 
 // ---------- Võ kỹ ----------
-const skillSlotLabel = (i) => `Mở ở ${REALMS[[0, 1, 2, 4][i]].name}`
+const skillSlotLabel = (i) => (i >= 4 ? 'Đạo lộ Pháp Tu' : `Mở ở ${REALMS[[0, 1, 2, 4][i]].name}`)
 const equippedAt = (id) => game.skills.slots.indexOf(id)
 const frags = (id) => game.itemCount(fragmentId(id))
-const realmLocked = (id) => !canEquip(id, game.realmIdx)
+const realmLocked = (id) => !canEquip(id, game.realmIdx, game.path)
+const lockText = (id) => (SKILLS[id].path && SKILLS[id].path !== game.path ? `Cần ${PATHS[SKILLS[id].path].name}` : `Cần ${REALMS[SKILLS[id].minRealm ?? 0].name}`)
 
 /** Trang bị vào ô trống đầu tiên đã mở, nếu hết ô thì thay ô cuối. */
 function equip(id) {
@@ -67,11 +69,11 @@ const bonusLines = () => BONUS_LABELS.filter(([k]) => game.artBonus[k] > 0).map(
     <template v-if="sub === 'skills'">
       <div class="card">
         <div class="title-rule mb-1.5">Ô võ kỹ (tự thi triển khi hồi chiêu xong)</div>
-        <div class="grid grid-cols-4 gap-1.5">
+        <div class="grid grid-cols-5 gap-1">
           <div
-            v-for="i in 4"
+            v-for="i in MAX_SKILL_SLOTS"
             :key="i"
-            class="rounded border px-1 py-2 text-center text-[11px]"
+            class="rounded border px-0.5 py-2 text-center text-[10px] leading-tight"
             :class="i - 1 < game.skillSlots ? 'border-ink-600 bg-ink-900' : 'border-ink-700 bg-ink-900/40 text-slate-600'"
           >
             <template v-if="i - 1 < game.skillSlots">
@@ -91,6 +93,7 @@ const bonusLines = () => BONUS_LABELS.filter(([k]) => game.artBonus[k] > 0).map(
             {{ skill.name }}
             <span class="text-[10px] font-normal text-slate-400">({{ ELEMENTS[skill.element].name }})</span>
             <span v-if="skill.kind === 'ultimate'" class="ml-1 rounded bg-cinnabar-500/60 px-1 text-[10px] font-normal text-white">Tuyệt kỹ</span>
+            <span v-if="skill.path" class="ml-1 rounded px-1 text-[10px] font-normal text-ink-900" :style="{ background: PATHS[skill.path].css }">{{ PATHS[skill.path].name }}</span>
           </div>
           <div v-if="game.skills.owned[id]" class="text-xs text-gold-300">Cấp {{ game.skills.owned[id] }}/{{ SKILL_MAX_LEVEL }}</div>
           <div v-else class="text-[11px] text-slate-400">Tàn quyển {{ frags(id) }}/{{ LEARN_COST }}</div>
@@ -101,7 +104,7 @@ const bonusLines = () => BONUS_LABELS.filter(([k]) => game.artBonus[k] > 0).map(
           <template v-if="game.skills.owned[id]">
             <button v-if="equippedAt(id) >= 0" class="btn-ghost flex-1 py-1 text-xs" @click="game.unequipSkill(equippedAt(id))">Tháo</button>
             <button v-else class="btn-jade flex-1 py-1 text-xs" :disabled="realmLocked(id)" @click="equip(id)">
-              {{ realmLocked(id) ? `Cần ${REALMS[skill.minRealm].name}` : 'Trang bị' }}
+              {{ realmLocked(id) ? lockText(id) : 'Trang bị' }}
             </button>
             <button
               class="btn-gold flex-1 py-1 text-xs"

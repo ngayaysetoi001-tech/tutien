@@ -30,6 +30,12 @@ export const SKILLS = {
   bao_nhan: { name: 'Cuồng Bạo Thuật', element: 'hoa', kind: 'rage', power: 0.4, cd: 15, seconds: 8 },
   phan_chan: { name: 'Phản Chấn Thể', element: 'tho', kind: 'reflect', power: 0.5, cd: 16, seconds: 6 },
   thien_ha: { name: 'Thiên Hà Tuyệt Kích', element: 'thuy', kind: 'ultimate', power: 5, cd: 40, minRealm: 3 },
+  // Võ kỹ độc quyền của đạo lộ (xem paths.js): chỉ trang bị được khi theo đạo lộ tương ứng
+  van_kiem: { name: 'Vạn Kiếm Quy Tông', element: 'kim', kind: 'damage', power: 3, cd: 10, path: 'kiem' },
+  kim_than: { name: 'Bất Diệt Kim Thân', element: 'tho', kind: 'shield', power: 0.5, cd: 18, seconds: 10, path: 'the' },
+  ngu_loi: { name: 'Ngũ Lôi Chính Pháp', element: 'hoa', kind: 'stun', power: 1.6, cd: 12, seconds: 2.5, path: 'phap' },
+  dan_hoa: { name: 'Đan Hỏa Phần Thân', element: 'hoa', kind: 'dot', power: 0.8, cd: 14, seconds: 8, path: 'dan' },
+  tran_dia: { name: 'Địa Cực Phản Trận', element: 'tho', kind: 'reflect', power: 0.8, cd: 16, seconds: 8, path: 'tran' },
 }
 
 export const SKILL_MAX_LEVEL = 5
@@ -43,10 +49,11 @@ export const skillCooldown = (id, level) => SKILLS[id].cd * (1 - 0.05 * (level -
 export const upgradeCost = (level) => 5 * level
 /** Số ô võ kỹ theo đại cảnh giới. */
 export const slotCount = (realmIdx) => (realmIdx >= 4 ? 4 : realmIdx >= 2 ? 3 : realmIdx >= 1 ? 2 : 1)
-export const MAX_SKILL_SLOTS = 4
+export const MAX_SKILL_SLOTS = 5 // 4 theo cảnh giới + 1 của Pháp Tu
 
-/** Có trang bị được ở đại cảnh giới `realmIdx` không (tuyệt kỹ cần cảnh giới tối thiểu). */
-export const canEquip = (id, realmIdx) => realmIdx >= (SKILLS[id].minRealm ?? 0)
+/** Có trang bị được ở đại cảnh giới `realmIdx` và đạo lộ `path` không (tuyệt kỹ cần cảnh giới; võ kỹ độc quyền cần đúng đạo lộ). */
+export const canEquip = (id, realmIdx, path = null) =>
+  realmIdx >= (SKILLS[id].minRealm ?? 0) && (!SKILLS[id].path || SKILLS[id].path === path)
 
 /** Loại hiệu ứng hình ảnh/âm thanh: các chiêu tấn công dùng cảnh bay của sát thương, chiêu tăng cường dùng cảnh tăng tốc/lá chắn. */
 export function visualKind(kind) {

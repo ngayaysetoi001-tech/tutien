@@ -11,6 +11,8 @@ import { AIS_PER_CHAPTER, GRIT_MAX } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
+import { PATHS } from '../game/paths.js'
+import { MAX_SKILL_SLOTS } from '../game/skills.js'
 import { BAG_LIMIT, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
 import { ACHIEVEMENTS } from '../game/achievements.js'
 import { PERKS } from '../game/reincarnation.js'
@@ -45,6 +47,7 @@ export function serialize(state, now = Date.now()) {
       element: state.element,
       skills: JSON.parse(JSON.stringify(state.skills)),
       arts: JSON.parse(JSON.stringify(state.arts)),
+      path: state.path ?? null,
       gear: JSON.parse(JSON.stringify(state.gear)),
       achTier: { ...state.achTier },
       reincarnation: JSON.parse(JSON.stringify(state.reincarnation)),
@@ -117,7 +120,7 @@ export function deserialize(save, defaults) {
   for (const [k, v] of Object.entries(d.skills?.owned && typeof d.skills.owned === 'object' ? d.skills.owned : {})) {
     if (SKILLS[k]) owned[k] = Math.floor(num(v, 1, 1, SKILL_MAX_LEVEL))
   }
-  const slots = [0, 1, 2, 3].map((i) => {
+  const slots = Array.from({ length: MAX_SKILL_SLOTS }, (_, i) => {
     const id = d.skills?.slots?.[i]
     return owned[id] ? id : null
   })
@@ -223,6 +226,7 @@ export function deserialize(save, defaults) {
     element: ELEMENTS[d.element] ? d.element : defaults.element,
     skills: { owned, slots },
     arts: { owned: artsOwned, slots: artSlots },
+    path: PATHS[d.path] ? d.path : null,
     gear: { bag, equipped },
     achTier,
     name: typeof d.name === 'string' && d.name.trim() ? d.name.slice(0, 24) : defaults.name,

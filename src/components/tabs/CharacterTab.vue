@@ -7,6 +7,8 @@ import { ELEMENTS } from '../../game/elements.js'
 import Icon from '../Icon.vue'
 import { useUiStore } from '../../stores/uiStore.js'
 import { SKILLS } from '../../game/skills.js'
+import { PATHS, PATH_IDS, PATH_MIN_REALM } from '../../game/paths.js'
+import { REALMS } from '../../game/constants.js'
 
 // Vòng tương khắc: Kim > Mộc > Thổ > Thủy > Hỏa > Kim
 const BEAT_TARGET = { kim: 'moc', moc: 'tho', tho: 'thuy', thuy: 'hoa', hoa: 'kim' }
@@ -39,6 +41,30 @@ const statRows = computed(() => [
       <div class="mt-1 text-xs text-slate-400">
         {{ game.spiritRoot.name }} (x{{ game.spiritRoot.mult }}) - {{ game.spiritRoot.desc }}
       </div>
+    </div>
+
+    <!-- Đạo Lộ: chọn một lần từ Trúc Cơ -->
+    <div class="card space-y-1.5">
+      <div class="flex items-center justify-between">
+        <div class="title-rule !m-0 flex-1">Đạo Lộ</div>
+        <div v-if="game.path" class="ml-2 text-xs font-bold" :style="{ color: PATHS[game.path].css }">{{ PATHS[game.path].name }}</div>
+      </div>
+      <template v-if="game.path">
+        <p class="text-[11px] text-slate-300">{{ PATHS[game.path].perkText }}.</p>
+        <p class="text-[11px] text-slate-500">Võ kỹ độc quyền: {{ SKILLS[PATHS[game.path].skill].name }}. Luân hồi để chọn lại đạo lộ.</p>
+      </template>
+      <p v-else-if="!game.canChoosePath" class="text-[11px] text-slate-400">Đạt {{ REALMS[PATH_MIN_REALM].name }} để chọn đạo lộ (mỗi kiếp chọn một lần).</p>
+      <template v-else>
+        <p class="text-[11px] text-jade-300">Hãy chọn đạo lộ cho kiếp này, mỗi hướng có đặc quyền và võ kỹ độc quyền riêng.</p>
+        <div v-for="id in PATH_IDS" :key="id" class="rounded border border-ink-600 bg-ink-900 p-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold" :style="{ color: PATHS[id].css }">{{ PATHS[id].name }}</span>
+            <button class="btn-gold !px-3 !py-0.5 text-xs" @click="game.choosePath(id)">Chọn</button>
+          </div>
+          <p class="mt-0.5 text-[11px] text-slate-400">{{ PATHS[id].desc }}</p>
+          <p class="text-[11px] text-slate-300">{{ PATHS[id].perkText }}. Võ kỹ độc quyền: {{ SKILLS[PATHS[id].skill].name }}.</p>
+        </div>
+      </template>
     </div>
 
     <!-- Lối tắt tới các màn hình của nhân vật -->

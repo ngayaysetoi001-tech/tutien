@@ -47,6 +47,7 @@ export function nextHints(g) {
   if (g.claimableCount > 0) add('ach', 'Có thành tựu có thể nhận thưởng.', 'achievements')
 
   // 4. Mở rộng hệ thống khi đủ điều kiện
+  if (g.canChoosePath) add('path', 'Đã đạt Trúc Cơ: hãy chọn Đạo Lộ (Kiếm Tu, Thể Tu, Pháp Tu, Đan Sư, Trận Pháp Sư).', 'character')
   if (!g.sect.id && maxStage >= 4) add('sect', 'Gia nhập một tông môn để nhận đặc quyền và Cống Hiến.', 'sect')
   const learnable = Object.keys(SKILLS).find((id) => !g.skills.owned[id] && g.itemCount(fragmentId(id)) >= LEARN_COST)
   if (learnable) add('skill', 'Đủ tàn quyển để học một võ kỹ mới.', 'skills')

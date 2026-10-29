@@ -24,6 +24,7 @@ import { ITEMS, MONSTERS, RECIPES, dungeonById, DUNGEONS, itemName } from '../ga
 import { ELEMENT_IDS, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as AR from '../game/arts.js'
+import { PATHS, PATH_MIN_REALM, pathPerk } from '../game/paths.js'
 import * as EQ from '../game/equipment.js'
 import { enemyStats, simulateFight } from '../game/battle.js'
 import * as C from '../game/campaign.js'
@@ -89,8 +90,9 @@ function createPlayerState(minRoot = 0) {
     bonus: { hp: 0, atk: 0, def: 0, speed: 0, exp: 0, success: 0 },
     inventory: { herbs: {}, ores: {}, scrolls: {}, pills: {} },
     element: ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)], // hệ ngũ hành chủ đạo
+    path: null, // Đạo Lộ (xem paths.js): chọn khi đạt Trúc Cơ, chọn lại sau luân hồi
     arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
-    skills: { owned: {}, slots: [null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
+    skills: { owned: {}, slots: [null, null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
     gear: { bag: [], equipped: { weapon: null, armor: null, trinket: null } }, // equipped lưu uid
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
@@ -145,6 +147,7 @@ export const useGameStore = defineStore('game', {
         arrayLevel: this.arrayLevel,
         rootMult: this.spiritRoot.mult,
         stageIdx: this.stageIdx,
+        arrayPower: 1 + this.pathPerk.array,
         expBonus: this.bonus.exp + this.gearStats.exp + this.artBonus.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx, 1 + this.artBonus.income),
       }).mul(1 + 0.1 * (this.reincarnation.upgrades.tu_chat ?? 0)) // Tu Chất
         .mul(1 + this.sectPerk.exp) // đặc quyền tông môn
@@ -201,7 +204,15 @@ export const useGameStore = defineStore('game', {
       return out
     },
     skillSlots() {
-      return SK.slotCount(this.realmIdx)
+      return Math.min(SK.MAX_SKILL_SLOTS, SK.slotCount(this.realmIdx) + this.pathPerk.slots)
+    },
+    /** Đặc quyền của Đạo Lộ đã chọn (mọi khoá, 0 nếu chưa chọn). */
+    pathPerk() {
+      return pathPerk(this.path)
+    },
+    /** Có thể chọn Đạo Lộ ngay bây giờ không. */
+    canChoosePath() {
+      return !this.path && this.realmIdx >= PATH_MIN_REALM
     },
     /** Số ô công pháp (bị động) đã mở. */
     artSlots() {
@@ -209,7 +220,10 @@ export const useGameStore = defineStore('game', {
     },
     /** Tổng bị động từ công pháp đang trang bị (đã tính thưởng cùng hệ với tông môn). */
     artBonus() {
-      return AR.totalArtBonus(this.arts.slots.slice(0, this.artSlots), this.arts.owned, this.sectDef?.element ?? null)
+      const t = AR.totalArtBonus(this.arts.slots.slice(0, this.artSlots), this.arts.owned, this.sectDef?.element ?? null)
+      const k = 1 + this.pathPerk.arts // Trận Pháp Sư: công pháp mạnh hơn
+      if (k !== 1) for (const key of Object.keys(t)) t[key] *= k
+      return t
     },
     /** Số thành tựu đang có thể nhận thưởng (hiện chấm đỏ ở tab). */
     claimableCount() {
@@ -234,9 +248,9 @@ export const useGameStore = defineStore('game', {
       const p = this.sectPerk
       const a = this.artBonus
       return {
-        hp: Math.round(base.hp * k * (1 + p.hp) * (1 + a.hp)),
-        atk: Math.round(base.atk * k * (1 + p.atk) * (1 + a.atk)),
-        def: Math.round(base.def * k * (1 + p.def) * (1 + a.def)),
+        hp: Math.round(base.hp * k * (1 + p.hp) * (1 + a.hp) * (1 + this.pathPerk.hp)),
+        atk: Math.round(base.atk * k * (1 + p.atk) * (1 + a.atk) * (1 + this.pathPerk.atk)),
+        def: Math.round(base.def * k * (1 + p.def) * (1 + a.def) * (1 + this.pathPerk.def)),
         speed: Math.round(base.speed * (1 + a.speed)),
       }
     },
@@ -499,7 +513,7 @@ export const useGameStore = defineStore('game', {
           this.gainExp(raw.gt(cap) ? cap : raw)
           this.expPillUses += 1
         }
-        else if (fx.type === 'stat') this.bonus[fx.stat] += fx.amount * factor
+        else if (fx.type === 'stat') this.bonus[fx.stat] += fx.amount * factor * (1 + this.pathPerk.pill) // Đan Sư: đan mạnh hơn
         else if (fx.type === 'expBonus') this.bonus.exp += fx.amount * factor
         else if (fx.type === 'buff') this.buffs[fx.buff] = fx.amount
         if (fx.type === 'stat' || fx.type === 'expBonus') this.usage[id] = (this.usage[id] ?? 0) + 1
@@ -543,7 +557,7 @@ export const useGameStore = defineStore('game', {
       for (let i = 0; i < times && this.canCraft(recipeId); i++) {
         for (const [id, n] of Object.entries(r.ingredients)) this.removeItem(id, n)
         this.spiritStones = this.spiritStones.sub(r.stones)
-        const count = Math.random() < F.alchemyDoubleChance(this.alchemy.level) ? 2 : 1
+        const count = Math.random() < F.alchemyDoubleChance(this.alchemy.level) + this.pathPerk.double ? 2 : 1
         this.addItem('pills', r.id, count)
         made += count
         this.stats.crafted += count
@@ -609,6 +623,19 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     // Võ kỹ
     // ------------------------------------------------------------
+    /** Chọn Đạo Lộ (một lần, từ Trúc Cơ; luân hồi để chọn lại). Tự trang bị võ kỹ độc quyền nếu đã học. */
+    choosePath(id) {
+      if (!PATHS[id] || !this.canChoosePath) return false
+      this.path = id
+      const sk = PATHS[id].skill
+      if (this.skills.owned[sk] && !this.skills.slots.includes(sk)) {
+        const free = this.skills.slots.findIndex((x, i) => i < this.skillSlots && !x)
+        if (free >= 0) this.skills.slots[free] = sk
+      }
+      this.addLog(`Chọn đạo lộ ${PATHS[id].name}: ${PATHS[id].perkText}.`, 'event')
+      return true
+    },
+
     /** Học võ kỹ mới bằng tàn quyển; tự trang bị vào ô trống đầu tiên đã mở. */
     learnSkill(id) {
       const frag = SK.fragmentId(id)
@@ -616,7 +643,7 @@ export const useGameStore = defineStore('game', {
       this.removeItem(frag, SK.LEARN_COST)
       this.skills.owned[id] = 1
       const free = this.skills.slots.findIndex((x, i) => i < this.skillSlots && !x)
-      if (free >= 0 && SK.canEquip(id, this.realmIdx)) this.skills.slots[free] = id
+      if (free >= 0 && SK.canEquip(id, this.realmIdx, this.path)) this.skills.slots[free] = id
       this.addLog(`Lĩnh ngộ võ kỹ ${SK.SKILLS[id].name}!`, 'good')
       return true
     },
@@ -633,7 +660,7 @@ export const useGameStore = defineStore('game', {
     },
 
     equipSkill(id, slot) {
-      if (!this.skills.owned[id] || slot < 0 || slot >= this.skillSlots || !SK.canEquip(id, this.realmIdx)) return false
+      if (!this.skills.owned[id] || slot < 0 || slot >= this.skillSlots || !SK.canEquip(id, this.realmIdx, this.path)) return false
       const prev = this.skills.slots.indexOf(id)
       if (prev >= 0) this.skills.slots[prev] = null
       this.skills.slots[slot] = id
@@ -887,7 +914,7 @@ export const useGameStore = defineStore('game', {
       rb.count += 1
       this.stats.reincarnations += 1
       const fresh = createPlayerState(rb.upgrades.thien_menh ?? 0)
-      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'spiritRoot', 'element', 'garden', 'mineAt']) {
+      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'path', 'spiritRoot', 'element', 'garden', 'mineAt']) {
         this[key] = fresh[key]
       }
       this.arrayLevel = 3 * (rb.upgrades.tuc_hue ?? 0) // Túc Huệ
@@ -1042,7 +1069,7 @@ export const useGameStore = defineStore('game', {
     // Đệ tử
     // ------------------------------------------------------------
     discipleCtx() {
-      return { sectElement: this.sectDef?.element ?? null, herbPerk: this.sectPerk.herb }
+      return { sectElement: this.sectDef?.element ?? null, herbPerk: this.sectPerk.herb, bonus: this.pathPerk.disciple }
     },
 
     /** Thu nhận đệ tử mới (tốn linh thạch, giới hạn theo cấp bậc tông môn). */

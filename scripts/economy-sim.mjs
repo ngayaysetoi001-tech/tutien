@@ -22,6 +22,7 @@ const MAX_HOURS = opt('hours', 80)
 const SEEDS = opt('seeds', 1)
 const REBIRTH = args.includes('--rebirth')
 const NO_EXP_PILLS = args.includes('--no-exp-pills') // bỏ qua Tụ Khí Đan để đo nhịp tự nhiên
+const PATH = args.includes('--path') ? args[args.indexOf('--path') + 1] : 'kiem' // đạo lộ bot chọn khi đạt Trúc Cơ
 
 const mem = new Map()
 globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) }
@@ -178,6 +179,9 @@ function createBot(s, b) {
       if (s.tribulation.active) return
     }
 
+    // Đạo lộ: chọn ngay khi mở
+    if (s.canChoosePath) s.choosePath(PATH)
+
     // Tông môn + nhiệm vụ
     if (!s.sect.id && s.stageIdx >= 4) s.joinSect(pickSect().id)
     for (const q of [...s.quests]) if (s.questDone(q)) s.claimQuest(q.uid)
@@ -198,7 +202,7 @@ function createBot(s, b) {
       s.learnSkill(id)
       if (s.skills.owned[id]) while (s.upgradeSkill(id));
     }
-    const owned = Object.keys(s.skills.owned).filter((id) => canEquipSkill(id, s.realmIdx)).sort((x, y) => score(y) - score(x))
+    const owned = Object.keys(s.skills.owned).filter((id) => canEquipSkill(id, s.realmIdx, s.path)).sort((x, y) => score(y) - score(x))
     for (let i = 0; i < s.skillSlots && i < owned.length; i++) if (s.skills.slots[i] !== owned[i]) s.equipSkill(owned[i], i)
     // Học, thăng cấp, trang bị công pháp bị động (ưu tiên linh khí, công, khí huyết, thu nhập ải...)
     const ART_ORDER = ['thanh_tam', 'ho_phap', 'pha_quan', 'cuong_the', 'kim_cang', 'tu_bao', 'truy_phong', 'thien_nhan', 'ngu_hanh', 'luan_hoi']

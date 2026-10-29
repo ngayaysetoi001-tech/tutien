@@ -161,6 +161,7 @@ export const DUNGEONS = [
     difficulty: 1, // hệ số cân bằng hp/atk yêu thú
     minStage: 4, power: 4, floors: 6, monsters: ['hau_yeu', 'moc_yeu'], boss: 'moc_linh',
     loot: [
+      { item: 'qk_van_kiem', chance: 0.04, bossChance: 0.4, min: 1, max: 1 },
       { item: 'qk_loi_dinh', chance: 0.03, bossChance: 0.3, min: 1, max: 1 },
       { item: 'qk_thanh_moc', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
       { item: 'qk_phong_loi', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
@@ -176,6 +177,7 @@ export const DUNGEONS = [
     difficulty: 0.92, // hệ số cân bằng hp/atk yêu thú
     minStage: 9, power: 9, floors: 6, monsters: ['huyet_lang', 'hac_thi'], boss: 'huyet_ma',
     loot: [
+      { item: 'qk_kim_than', chance: 0.04, bossChance: 0.4, min: 1, max: 1 },
       { item: 'qk_huyet_thuc', chance: 0.03, bossChance: 0.3, min: 1, max: 1 },
       { item: 'qk_liet_hoa', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
       { item: 'qk_hau_tho', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
@@ -191,6 +193,7 @@ export const DUNGEONS = [
     difficulty: 0.84, // hệ số cân bằng hp/atk yêu thú
     minStage: 12, power: 12, floors: 6, monsters: ['bang_yeu', 'bang_xa'], boss: 'bang_hoang',
     loot: [
+      { item: 'qk_ngu_loi', chance: 0.04, bossChance: 0.4, min: 1, max: 1 },
       { item: 'qk_tuyet_sat', chance: 0.03, bossChance: 0.3, min: 1, max: 1 },
       { item: 'qk_huyen_bang', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
       { item: 'qk_hau_tho', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
@@ -207,6 +210,7 @@ export const DUNGEONS = [
     difficulty: 0.84, // hệ số cân bằng hp/atk yêu thú
     minStage: 15, power: 15, floors: 6, monsters: ['u_hon', 'xuong_giap'], boss: 'hoang_tuyen_quy',
     loot: [
+      { item: 'qk_dan_hoa', chance: 0.04, bossChance: 0.4, min: 1, max: 1 },
       { item: 'qk_bao_nhan', chance: 0.03, bossChance: 0.3, min: 1, max: 1 },
       { item: 'qk_phan_chan', chance: 0.03, bossChance: 0.3, min: 1, max: 1 },
       { item: 'qk_phong_loi', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
@@ -225,6 +229,7 @@ export const DUNGEONS = [
     id: 'ma_uyen', name: 'Thái Cổ Ma Uyên', desc: 'Vực sâu phong ấn ma thần thượng cổ.',
     difficulty: 0.82, minStage: 18, power: 18, floors: 6, monsters: ['ma_vien', 'ma_thi'], boss: 'thai_co_ma_than',
     loot: [
+      { item: 'qk_tran_dia', chance: 0.04, bossChance: 0.4, min: 1, max: 1 },
       { item: 'qk_phan_chan', chance: 0.03, bossChance: 0.3, min: 1, max: 1 },
       { item: 'qk_liet_hoa', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },
       { item: 'qk_hau_tho', chance: 0.04, bossChance: 0.35, min: 1, max: 1 },

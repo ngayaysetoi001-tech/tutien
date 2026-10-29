@@ -32,10 +32,10 @@ export function enemyStats(dungeon, tmpl, floor, rng = null) {
 export const actionInterval = (speed) => clamp(10 / speed, 0.35, 2.5)
 
 /** Sát thương một đòn: công giảm theo phòng ngự, dao động ±20%, có thể chí mạng. */
-export function rollHit(atk, def, rng = Math.random, critChance = 0, elementMult = 1) {
+export function rollHit(atk, def, rng = Math.random, critChance = 0, elementMult = 1, critMult = CRIT_MULT) {
   const crit = rng() < critChance
   const variance = 0.8 + rng() * 0.4 // ±20%: kết quả trận mềm hơn, không còn "đủ bậc là thắng chắc"
-  const damage = Math.max(1, Math.round(atk * (100 / (100 + def)) * variance * (crit ? CRIT_MULT : 1) * elementMult))
+  const damage = Math.max(1, Math.round(atk * (100 / (100 + def)) * variance * (crit ? critMult : 1) * elementMult))
   return { damage, crit }
 }
 

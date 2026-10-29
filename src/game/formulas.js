@@ -17,8 +17,8 @@ export function stageRequirement(stageIdx) {
  *   * 1.5^bậc                            -> cảnh giới càng cao hút linh khí càng mạnh
  *   * (1 + thưởng vĩnh viễn từ đan dược)
  */
-export function expPerSecond({ arrayLevel, rootMult, stageIdx, expBonus }) {
-  const array = 1 + 0.1 * arrayLevel // tuyến tính: mỗi cấp trận +10% sản lượng gốc
+export function expPerSecond({ arrayLevel, rootMult, stageIdx, expBonus, arrayPower = 1 }) {
+  const array = 1 + 0.1 * arrayLevel * arrayPower // tuyến tính: mỗi cấp trận +10% sản lượng gốc (arrayPower: Trận Pháp Sư +50%)
   return new Decimal(BALANCE.stageExpGrowth)
     .pow(stageIdx)
     .mul(array)
