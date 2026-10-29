@@ -23,6 +23,12 @@ body {
   width: 4px;
   height: 4px;
 }
+.no-bar {
+  scrollbar-width: none;
+}
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
 .thin-scroll::-webkit-scrollbar-thumb {
   @apply rounded bg-ink-600;
 }
@@ -135,7 +141,7 @@ body {
 
   /* ---------- Điều hướng dưới ---------- */
   .nav-btn {
-    @apply relative flex flex-col items-center justify-center gap-0.5 rounded-lg px-0 py-0.5 text-[9.5px] font-semibold text-slate-400 transition;
+    @apply relative flex flex-col items-center justify-center gap-1 rounded-lg px-0 py-1.5 text-xs font-semibold text-slate-400 transition;
   }
   .nav-btn:hover {
     @apply text-slate-200;

@@ -1703,7 +1703,7 @@ ok('mở khoá dần: game mới chỉ có 3 màn, các màn mở theo điều k
   s.stats.maxStage = 12
   s.stageIdx = 0
   assert.ok(ids().includes('reincarnation') && ids().includes('sect'))
-  // đủ 13 màn khi mở hết
+  // đủ mọi màn khi mở hết
   const t = freshStore()
   t.init()
   t.stageIdx = 10; t.stats.maxStage = 10; t.stats.kills = 9; t.campaign.record = 10
@@ -4468,10 +4468,15 @@ ok('fmt rút gọn số lớn', () => {
 // Màn hình theo tab (screens.js + uiStore)
 // =====================================================================
 const { useUiStore } = await import('../src/stores/uiStore.js')
-ok('màn hình: 13 màn, id duy nhất, chỉ Nhân Vật và Bí Cảnh có canvas', () => {
-  assert.equal(SCREENS.length, 13)
-  assert.equal(new Set(SCREENS.map((x) => x.id)).size, 13)
+ok('màn hình: 15 màn thuộc 5 nhóm, id duy nhất, chỉ Nhân Vật và Bí Cảnh có canvas', () => {
+  assert.equal(SCREENS.length, 15)
+  assert.equal(new Set(SCREENS.map((x) => x.id)).size, 15)
+  assert.ok(SCREENS.every((x) => SCR.GROUPS.some((g) => g.id === x.group)), 'mỗi màn thuộc một nhóm có thật')
+  assert.equal(SCR.GROUPS.length, 5)
   assert.deepEqual(SCREENS.filter((x) => hasCanvas(x.id)).map((x) => x.id), ['character', 'battle'])
+  const s0 = freshStore(); s0.init()
+  assert.deepEqual(SCR.unlockedGroups(s0).map((g) => g.id), ['tuluyen', 'vuotai', 'them'], 'game mới chỉ có 3 nhóm')
+  assert.equal(SCR.groupOf('pets'), 'vuotai')
   assert.equal(DEFAULT_SCREEN, 'character')
 })
 ok('uiStore: chuyển màn, bỏ qua id sai, ghi nhớ màn cuối', () => {

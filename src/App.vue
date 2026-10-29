@@ -73,8 +73,8 @@ onBeforeUnmount(() => {
       <div
         :class="
           ui.hasCanvas
-            ? 'relative h-[34%] min-h-[190px] shrink-0'
-            : 'pointer-events-none invisible absolute inset-x-0 top-0 h-[34%] min-h-[190px]'
+            ? 'relative h-[30%] min-h-[170px] shrink-0'
+            : 'pointer-events-none invisible absolute inset-x-0 top-0 h-[30%] min-h-[170px]'
         "
       >
         <GameCanvas :active="ui.hasCanvas && !ui.meditate" />

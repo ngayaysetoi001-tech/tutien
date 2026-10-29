@@ -3,7 +3,7 @@
 // Nhớ màn hình gần nhất trong LocalStorage riêng để tải lại trang vẫn ở đúng chỗ.
 // =====================================================================
 import { defineStore } from 'pinia'
-import { DEFAULT_SCREEN, hasCanvas, screenById } from '../game/screens.js'
+import { DEFAULT_SCREEN, groupOf, hasCanvas, screenById } from '../game/screens.js'
 
 const UI_KEY = 'tutien-ui-v1'
 
@@ -29,6 +29,7 @@ export const useUiStore = defineStore('ui', {
   state: () => ({
     tab: initial().tab,
     seen: initial().seen ?? {}, // màn đã ghé thăm (để chấm "mới" ở màn vừa mở khoá)
+    lastInGroup: {}, // màn cuối cùng ghé thăm trong mỗi nhóm (bấm nhóm quay lại đúng màn đó)
     legacySeen: initial().seen === null, // chưa từng lưu: coi mọi màn đang mở là đã thấy
     logOpen: false, // bảng nhật ký đầy đủ (mở từ thanh trên)
     meditate: false, // chế độ thiền định: ẩn giao diện, ngừng vẽ cảnh, tick thưa để tiết kiệm pin (không lưu)
@@ -43,6 +44,7 @@ export const useUiStore = defineStore('ui', {
     go(id) {
       if (!screenById(id)) return false
       this.tab = id
+      this.lastInGroup[groupOf(id)] = id
       this.seen[id] = true
       persist(id, this.seen)
       return true

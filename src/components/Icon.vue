@@ -1,6 +1,7 @@
 <script setup>
 // Icon.vue - Bộ icon nét mảnh (SVG nội tuyến, đổi màu theo `currentColor`).
 import { computed } from 'vue'
+import { GLYPHS } from './glyphs.js'
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -39,7 +40,7 @@ const PATHS = {
   scroll: '<path d="M7 4h11a2 2 0 0 1 2 2v1H9v11a2 2 0 0 1-4 0V6a2 2 0 0 1 2-2z"/><path d="M9 18h9a2 2 0 0 0 2-2V7"/>',
 }
 
-const inner = computed(() => PATHS[props.name] ?? '')
+const inner = computed(() => PATHS[props.name] ?? GLYPHS[props.name] ?? '')
 </script>
 
 <template>

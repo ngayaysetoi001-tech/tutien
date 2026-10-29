@@ -1,20 +1,18 @@
 <script setup>
-// BottomNav.vue - Thanh điều hướng dưới đáy: mỗi ô là một màn hình riêng (tối đa 13 màn, 7 cột). Màn hiện dần khi mở khoá.
+// BottomNav.vue - Thanh điều hướng dưới đáy: 5 nhóm (Tu Luyện, Vượt Ải, Hành Trang, Môn Phái, Thêm).
+// Màn con của mỗi nhóm là chip ở đầu màn hình (ScreenHost). Nhóm/màn hiện dần khi mở khoá.
 import { useGameStore } from '../stores/gameStore.js'
 import { useUiStore } from '../stores/uiStore.js'
 import { computed, onMounted, watch } from 'vue'
-import { unlockedScreens } from '../game/screens.js'
+import { groupOf, groupScreens, unlockedGroups, unlockedScreens } from '../game/screens.js'
 import Icon from './Icon.vue'
 
 const game = useGameStore()
 const ui = useUiStore()
 
+const groups = computed(() => unlockedGroups(game))
 const screens = computed(() => unlockedScreens(game))
-// Chia đều các hàng: 8 màn -> 2 hàng x 4 cột chứ không phải 7 + 1
-const cols = computed(() => {
-  const rows = Math.ceil(screens.value.length / 7)
-  return Math.ceil(screens.value.length / rows)
-})
+const currentGroup = computed(() => groupOf(ui.tab))
 
 onMounted(() => {
   if (ui.legacySeen) ui.markSeen(screens.value.map((s) => s.id))
@@ -27,8 +25,15 @@ watch(
   },
 )
 
-/** Chấm đỏ báo có việc ở màn hình đó. */
-function badge(id) {
+/** Bấm nhóm: về màn con gần nhất đã xem trong nhóm (nếu còn mở), không thì màn đầu tiên. */
+function openGroup(id) {
+  const list = groupScreens(id, game)
+  const last = ui.lastInGroup[id]
+  ui.go(list.some((s) => s.id === last) ? last : list[0].id)
+}
+
+/** Chấm đỏ báo có việc ở một màn. */
+function screenBadge(id) {
   if (id === 'story') return game.loreUnread > 0 || (game.storyNext && !game.chapterLock(game.storyNext))
   if (id === 'achievements') return game.claimableCount > 0
   if (id === 'sect') return game.quests.some((q) => game.questDone(q))
@@ -36,16 +41,18 @@ function badge(id) {
   if (id === 'character') return game.dailyPending || game.canChoosePath || game.talentPending
   return !ui.seen[id] // màn vừa mở khoá, chưa ghé lần nào
 }
+/** Chấm đỏ của nhóm: có việc ở màn con nào đó (trừ màn đang xem). */
+const groupBadge = (id) => groupScreens(id, game).some((s) => s.id !== ui.tab && screenBadge(s.id))
 </script>
 
 <template>
-  <nav class="safe-bottom panel mx-2 mb-1 grid shrink-0 gap-0.5 p-0.5" :style="{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }">
-    <button v-for="s in screens" :key="s.id" class="nav-btn" :data-active="ui.tab === s.id" @click="ui.go(s.id)">
-      <Icon :name="s.icon" :size="17" />
-      <span class="leading-none">{{ s.label }}</span>
+  <nav class="safe-bottom panel mx-2 mb-1 grid shrink-0 gap-0.5 p-0.5" :style="{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }">
+    <button v-for="gr in groups" :key="gr.id" class="nav-btn" :data-active="currentGroup === gr.id" @click="openGroup(gr.id)">
+      <Icon :name="gr.icon" :size="22" />
+      <span class="leading-none">{{ gr.label }}</span>
       <span
-        v-if="badge(s.id)"
-        class="absolute right-2 top-0.5 h-2 w-2 rounded-full bg-cinnabar-500 shadow-[0_0_6px_rgb(229_73_58)]"
+        v-if="groupBadge(gr.id)"
+        class="absolute right-3 top-1 h-2.5 w-2.5 rounded-full bg-cinnabar-500 shadow-[0_0_6px_rgb(229_73_58)]"
       ></span>
     </button>
   </nav>

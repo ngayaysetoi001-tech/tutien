@@ -8,7 +8,7 @@ import { useGameStore } from '../stores/gameStore.js'
 import { useUiStore } from '../stores/uiStore.js'
 import { nextHints } from '../game/guide.js'
 import { nextGoal } from '../game/goals.js'
-import { screenUnlocked } from '../game/screens.js'
+import { groupOf, groupScreens } from '../game/screens.js'
 import { SCREEN_COMPONENTS } from './screens.js'
 import LogPanel from './LogPanel.vue'
 import Icon from './Icon.vue'
@@ -18,6 +18,11 @@ const ui = useUiStore()
 
 const comp = computed(() => SCREEN_COMPONENTS[ui.tab])
 const goal = computed(() => nextGoal(game))
+// Chip chuyển màn con trong cùng nhóm (chỉ hiện khi nhóm có từ 2 màn đã mở)
+const chips = computed(() => {
+  const list = groupScreens(groupOf(ui.tab), game)
+  return list.length > 1 ? list : []
+})
 
 // Gợi ý việc nên làm: gợi ý ưu tiên cao nhất chưa bị người chơi tắt (tắt đến khi tải lại trang)
 const dismissed = ref([])
@@ -43,11 +48,19 @@ const breakLabel = computed(() => {
         <span class="relative">🎯 {{ goal.label }}</span>
       </button>
 
-      <!-- Tiêu đề màn hình (các màn không có cảnh) -->
-      <div v-if="!ui.hasCanvas" class="flex items-center gap-2 px-0.5">
-        <Icon :name="ui.screen.icon" :size="17" class="text-gold-400" />
-        <h1 class="title-rule flex-1 !text-[13px]">{{ ui.screen.label }}</h1>
+      <!-- Chip chuyển màn con của nhóm -->
+      <div v-if="chips.length" class="flex shrink-0 gap-1 overflow-x-auto no-bar">
+        <button
+          v-for="c in chips"
+          :key="c.id"
+          class="flex min-h-[40px] shrink-0 items-center gap-1 rounded-full border px-2.5 text-[13px] font-bold transition"
+          :class="ui.tab === c.id ? 'border-gold-400 bg-gold-500/20 text-gold-200' : 'border-ink-600 bg-ink-900/70 text-slate-400'"
+          @click="ui.go(c.id)"
+        >
+          <Icon :name="c.icon" :size="16" />{{ c.label }}
+        </button>
       </div>
+      <h1 v-else-if="!ui.hasCanvas" class="title-rule px-0.5 !text-sm"><Icon :name="ui.screen.icon" :size="17" class="text-gold-400" />{{ ui.screen.label }}</h1>
 
       <!-- Nút hành động: chỉ ở màn Nhân Vật -->
       <div v-if="ui.tab === 'character'" class="shrink-0">
@@ -68,10 +81,8 @@ const breakLabel = computed(() => {
       </div>
 
       <!-- Nội dung màn hình -->
-      <div class="panel min-h-0 flex-1 p-2">
-        <div class="thin-scroll h-full overflow-y-auto pr-0.5">
-          <component :is="comp" />
-        </div>
+      <div class="thin-scroll min-h-0 flex-1 overflow-y-auto pb-2">
+        <component :is="comp" />
       </div>
 
       <!-- Nhật ký thu gọn: chỉ ở hai màn có cảnh -->
