@@ -2,7 +2,7 @@
 // economy-sim.mjs - Mô phỏng kinh tế dài hạn bằng chính store của game.
 //
 // Một "người chơi tự động" chơi trên đồng hồ ảo (Date.now và setTimeout bị thay), thực hiện đủ
-// các hoạt động: đột phá, bí cảnh tự lặp, luyện đan, rèn đồ, công pháp, tông môn + nhiệm vụ,
+// các hoạt động: đột phá, Vượt Ải tự chiến đấu, luyện đan, rèn đồ, công pháp, tông môn + nhiệm vụ,
 // đệ tử, Linh Điền, khoáng mạch, kỳ ngộ, truyện. Dùng để đo nhịp tiến triển.
 //
 // Chạy:  npm run econ                       (1 hạt giống, 1 kiếp)
@@ -61,7 +61,7 @@ const { createPinia, setActivePinia } = await import('pinia')
 const { useGameStore } = await import('../src/stores/gameStore.js')
 const { useBattleStore } = await import('../src/stores/battleStore.js')
 const { STAGES, MAX_STAGE_IDX } = await import('../src/game/constants.js')
-const { DUNGEONS, RECIPES, ITEMS } = await import('../src/game/data.js')
+const { RECIPES, ITEMS } = await import('../src/game/data.js')
 const { FORGE, SLOT_IDS } = await import('../src/game/equipment.js')
 const { SKILLS, fragmentId } = await import('../src/game/skills.js')
 const { CROPS, plotCount } = await import('../src/game/garden.js')
@@ -94,7 +94,7 @@ function trackExp(s) {
     const gained = s.exp.sub(before).toNumber()
     if (gained <= 0) return
     const stack = String(new Error().stack).split('\n').join(' ').slice(0, 900)
-    const src = /onKill/.test(stack) ? 'bí cảnh (hạ quái)' : /applyEffects/.test(stack) ? 'phần thưởng (kỳ ngộ/nhiệm vụ/truyện/thành tựu)' : /useItem/.test(stack) ? 'đan dược' : /farmOffline/.test(stack) ? 'farm offline' : 'thụ động (tick)'
+    const src = /onKill/.test(stack) ? 'Vượt Ải (hạ quái)' : /applyEffects/.test(stack) ? 'phần thưởng (kỳ ngộ/nhiệm vụ/truyện/thành tựu)' : /useItem/.test(stack) ? 'đan dược' : 'thụ động (tick)'
     expBySource[src] = (expBySource[src] ?? 0) + gained
   }
 }
@@ -113,7 +113,7 @@ function trackFlow(s, b) {
       return r
     }
   }
-  wrap(b, 'onKill', 'bí cảnh: hạ quái + thông quan')
+  wrap(b, 'onKill', 'Vượt Ải: hạ quái + thưởng ải')
   wrap(s, 'claimQuest', 'nhiệm vụ')
   wrap(s, 'collectDisciple', 'đệ tử')
   wrap(s, 'chooseEvent', 'kỳ ngộ')
@@ -241,12 +241,7 @@ function createBot(s, b) {
       s.collectAllDisciples()
     }
 
-    // Bí cảnh: vào bí cảnh cao nhất đã mở (tự lặp)
-    if (!b.active) {
-      const options = DUNGEONS.filter((d) => s.stageIdx >= d.minStage)
-      const pick = options[options.length - 1]
-      if (pick) b.enter(pick.id)
-    }
+    // Vượt Ải tự chạy trong tick (Tự chiến đấu mặc định bật); bot không cần làm gì thêm
   }
 }
 
@@ -268,7 +263,7 @@ function playLife(s, b, act, label, stageGoal = MAX_STAGE_IDX) {
       nextSnap += SNAP
       snapshots.push({
         h: sec / 3600, stage: s.stage.fullName, stones: s.spiritStones, rate: s.expRate, arr: s.arrayLevel,
-        rank: s.rankIdx, dis: s.disciples.length, gear: s.gear.bag.length, atk: s.combat.atk, hp: s.combat.hp,
+        rank: s.rankIdx, dis: s.disciples.length, gear: s.gear.bag.length, atk: s.combat.atk, hp: s.combat.hp, ai: s.campaign.best,
       })
     }
     if (s.stageIdx >= stageGoal && !s.tribulation.active) break
@@ -287,10 +282,10 @@ function report(res, s) {
     prev = h
   }
   console.log(`Thất bại đột phá/độ kiếp: ${res.failures}`)
-  console.log('\nGiờ  Cảnh giới            Linh thạch  Linh khí/s  Trận  Bậc TM  ĐT  Đồ   Công    Khí huyết')
+  console.log('\nGiờ  Cảnh giới            Linh thạch  Linh khí/s  Trận  Bậc TM  ĐT  Đồ   Công    Khí huyết    Ải')
   for (const x of res.snapshots.filter((_, i) => i % Math.max(1, Math.floor(res.snapshots.length / 16)) === 0)) {
     console.log(
-      `${x.h.toFixed(2).padStart(5)}  ${x.stage.padEnd(19)} ${fmt(x.stones).padStart(10)}  ${fmt(x.rate).padStart(10)}  ${String(x.arr).padStart(4)}  ${String(x.rank).padStart(5)}  ${String(x.dis).padStart(2)}  ${String(x.gear).padStart(3)}  ${String(x.atk).padStart(6)}  ${String(x.hp).padStart(8)}`,
+      `${x.h.toFixed(2).padStart(5)}  ${x.stage.padEnd(19)} ${fmt(x.stones).padStart(10)}  ${fmt(x.rate).padStart(10)}  ${String(x.arr).padStart(4)}  ${String(x.rank).padStart(5)}  ${String(x.dis).padStart(2)}  ${String(x.gear).padStart(3)}  ${String(x.atk).padStart(6)}  ${String(x.hp).padStart(8)}  ${String(x.ai).padStart(5)}`,
     )
   }
   const total = Object.values(expBySource).reduce((a, b) => a + b, 0)
@@ -321,7 +316,7 @@ Hệ số tăng cường linh khí: tổng x${(s.expRate.toNumber() / base).toFi
   flow.income = {}
   flow.spend = {}
   flow.contrib = {}
-  console.log(`Tổng: ${(res.seconds / 3600).toFixed(1)} giờ ảo, kết thúc ở ${s.stage.fullName}, Cống Hiến tổng ${s.sect.total}, nhiệm vụ xong ${s.stats.questsDone}, boss hạ ${s.stats.bossKills}`)
+  console.log(`Tổng: ${(res.seconds / 3600).toFixed(1)} giờ ảo, kết thúc ở ${s.stage.fullName}, Cống Hiến tổng ${s.sect.total}, nhiệm vụ xong ${s.stats.questsDone}, boss hạ ${s.stats.bossKills}, ải cao nhất ${s.campaign.best}`)
 }
 
 /** Mua cường hoá Đạo Vận rẻ nhất / hợp lý nhất. */

@@ -40,11 +40,11 @@ scripts/       smoke-test.mjs
 
 ## Giai đoạn 1 (đã có)
 
-- **Bí Cảnh:** 5 bí cảnh theo cảnh giới (6 tầng, tầng cuối là boss), auto-battle theo Thân pháp, chí mạng, tự lặp, tự dùng Hồi Huyết Đan, yêu thú vẽ trên canvas (4 dạng: thú, xà, linh, tượng).
+- **Bí Cảnh** (đã thay bằng Vượt Ải, xem mục "Vượt Ải" ở dưới): auto-battle theo Thân pháp, chí mạng, tự dùng Hồi Huyết Đan, yêu thú vẽ trên canvas (4 dạng: thú, xà, linh, tượng).
 - **Rơi đồ:** linh thạch, thảo dược, khoáng thạch, tàn quyển (gom 3 bản để lĩnh ngộ); dữ liệu trong `src/game/data.js`.
 - **Túi đồ:** dùng đan, lĩnh ngộ, bán lấy linh thạch. Chỉ số vĩnh viễn giảm hiệu quả theo số lần dùng (kháng đan).
 - **Luyện Đan:** 9 công thức, cấp Luyện Đan tăng tỉ lệ ra gấp đôi; có Phá Cảnh Đan (tăng tỉ lệ đột phá) và Hộ Kiếp Đan (giảm sát thương lôi).
-- **Cân bằng:** `npm run sim` mô phỏng số tầng/tỉ lệ hạ boss theo bậc; chỉnh hệ số ở `difficulty` của từng bí cảnh trong `data.js`.
+- **Cân bằng:** `npm run sim` đo ải cao nhất qua được theo bậc tu vi (xem mục "Vượt Ải").
 
 ## Giai đoạn 2 (đã có)
 
@@ -53,7 +53,7 @@ scripts/       smoke-test.mjs
 - **Trang bị:** vũ khí / y phục / pháp bảo, 5 phẩm cấp x 4 độ hiếm, cường hoá +10; rèn ở Động Phủ hoặc boss rơi. Pháp bảo còn tăng tốc độ linh khí.
 - **Kỳ ngộ ngẫu nhiên:** 8 sự kiện có lựa chọn và rủi ro (có cả giao chiến mô phỏng); chiến đấu tự tạm dừng khi hộp thoại hiện.
 - **Thành tựu:** 11 thành tựu nhiều mốc, nhận thưởng linh thạch và chỉ số vĩnh viễn.
-- Dữ liệu ở `src/game/{elements,skills,equipment,randomEvents,achievements}.js`. `npm run sim` có thêm bảng ảnh hưởng của ngũ hành.
+- Dữ liệu ở `src/game/{elements,skills,equipment,randomEvents,achievements}.js`. Ảnh hưởng ngũ hành vẫn như cũ (+20% / -15%).
 
 ## Giai đoạn 3 (đã có)
 
@@ -66,7 +66,7 @@ scripts/       smoke-test.mjs
 
 - **Kiên Trì:** mỗi lần tử trận trong một bí cảnh, lượt sau ở đó được +5% khí huyết/công/thủ (tối đa +30%), mất khi hạ boss. Hiện ở tab Bí Cảnh và log.
 - **Ngẫu nhiên hơn:** sát thương mỗi đòn dao động ±20%; mỗi yêu thú sinh ra lệch ±20% khí huyết và công kích.
-- `npm run sim` có thêm đường cong "hạ boss theo hệ số sức mạnh" và "số lượt thử trung bình để hạ boss nhờ Kiên Trì".
+- Kiên Trì vẫn còn trong Vượt Ải (mỗi lần thua liên tiếp ở cùng một ải +5% chỉ số, tối đa +30%, xoá khi vượt ải).
 
 ## Hình ảnh & âm thanh (đã có)
 
@@ -113,7 +113,7 @@ scripts/       smoke-test.mjs
 
 Công cụ: `npm run econ` chạy một "người chơi tự động" bằng chính store của game trên đồng hồ ảo
 (`scripts/economy-sim.mjs`; tuỳ chọn `--rebirth --seeds 4 --autobreak --act 1800`). Nó đo thời gian mỗi cảnh giới,
-nguồn linh khí, dòng linh thạch, Cống Hiến và nhịp luân hồi. `npm run sim` vẫn đo độ khó chiến đấu.
+nguồn linh khí, dòng linh thạch, Cống Hiến và nhịp luân hồi. `npm run sim` đo độ khó của ải.
 
 Vấn đề tìm ra và cách sửa:
 
@@ -158,3 +158,27 @@ Chơi thử như người chơi mới trên khung điện thoại 375px và ch�
 
 - Cài lên màn hình chính, chạy offline (`public/manifest.webmanifest`, `public/sw.js`, `public/icons/`).
 - Đẩy lên nhánh `main` thì GitHub Actions (`.github/workflows/deploy.yml`) tự build và đăng lên GitHub Pages.
+
+## Vượt Ải (thay cho Bí Cảnh)
+
+Chiến đấu không còn là chọn bí cảnh mà là **chuỗi ải vô hạn**, đánh tự động liên tục (`src/game/campaign.js`, `src/stores/battleStore.js`).
+
+- **Loại ải:** thường; chia hết cho 5 = **Tiểu Boss**; chia hết cho 10 = **Đại Boss**; chia hết cho 100 = **Chúa Tể**. Mỗi 10 ải là một chương, bối cảnh và yêu thú quay vòng qua 8 bí cảnh cũ (hết vòng thì quay lại với yêu thú mạnh hơn).
+- **Đánh liên tục:** thắng thì lên ải kế (khí huyết đầy ở mỗi ải); thua thì nghỉ 5 giây rồi thử lại đúng ải đó với Kiên Trì. Có thể tắt "Tự chiến đấu".
+- **Thu nhập thụ động theo ải cao nhất đã vượt:** +2% tốc độ linh khí mỗi ải, linh thạch mỗi giây và nguyên liệu mỗi giờ (theo chương). Kẹt ở ải kế tiếp vẫn nhận thu nhập của ải đã vượt. Trần ải được tính thu nhập = 10 + 8 x bậc tu vi, để kiếp mới có trang bị cũ không hưởng thu nhập cao ngay từ bậc đầu.
+- **Cày ải đã vượt:** chọn một ải cũ để đánh lặp (cày tàn quyển, trang bị) mà không tiến lên.
+- **Phần thưởng:** hạ yêu thú cho linh thạch, ít linh khí, rơi đồ theo chương; boss cho thưởng lần đầu vượt ải, Cống Hiến, trang bị (Tiểu Boss 25%, Đại Boss 70%, Chúa Tể 100%). Cày ải quá yếu so với tu vi (hơn 6 bậc) thì thưởng giảm dần.
+- **Offline:** nguyên liệu thụ động cộng đủ; ngoài ra mô phỏng tiếp tục thử ải kế tiếp ở hiệu suất 50%, báo cáo "ải X → ải Y".
+- **Luân hồi:** ải cao nhất đặt lại về 0, kỷ lục mọi kiếp được giữ (dùng cho thành tựu "Vượt Ải", cốt truyện, Điển Tịch). Save cũ tự chuyển: mỗi bí cảnh cũ = một chương 10 ải.
+
+**Cân bằng.** `npm run sim` đo ải cao nhất qua được theo bậc tu vi và hệ số chỉ số (người chơi thực tế khoảng x1.1 đầu game đến x4 cuối game nhờ trang bị/đan/công pháp). `npm run econ` (người chơi tự động) sau khi chỉnh:
+
+| Hằng số | Giá trị | Ý nghĩa |
+|---|---|---|
+| `STAGE_PER_AI` | 0.5 | 2 ải = sức mạnh chuẩn của 1 bậc tu vi |
+| `AI_GROWTH` | 1.006 | mỗi ải thêm 0.6% (cộng dồn) ngoài tăng theo bậc |
+| `AI_EXP_PER_CLEAR` | 0.02 | +2% linh khí mỗi ải |
+| `INCOME_AI_BASE/PER_STAGE` | 10 / 8 | trần ải tính thu nhập theo bậc |
+| `BALANCE.requirementGrowth` | 2.17 | tăng từ 2.1 để bù thu nhập từ ải |
+
+Nhịp đo được: kiếp đầu 15-27 giờ ảo (người chơi trực tuyến) và 23-28 giờ (ghé 30 phút/lần); kiếp 2 còn 7-11 giờ; kiếp 3 trở đi 5-8 giờ. Mỗi bậc đầu 1-6 phút, giữa 4-40 phút, cuối 1-7 giờ. Ải cao nhất cuối kiếp 1 khoảng 150-190.

@@ -6,7 +6,7 @@ import { STAGES } from '../src/game/constants.js'
 import { fmt } from '../src/game/format.js'
 
 const ZERO = { hp: 0, atk: 0, def: 0, speed: 0 }
-const MULTS = [1, 1.5, 2.5]
+const MULTS = [1, 2, 4] // chỉ số nhân thêm so với bậc chuẩn (trang bị + đan + công pháp: người chơi thực tế khoảng x1.1 đầu game, x4 cuối game)
 const frontier = (stats) => {
   let n = 1
   // ải cao nhất còn thắng >= 50%

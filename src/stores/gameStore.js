@@ -143,7 +143,7 @@ export const useGameStore = defineStore('game', {
         arrayLevel: this.arrayLevel,
         rootMult: this.spiritRoot.mult,
         stageIdx: this.stageIdx,
-        expBonus: this.bonus.exp + this.gearStats.exp + C.campaignExpBonus(this.campaign.best),
+        expBonus: this.bonus.exp + this.gearStats.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx),
       }).mul(1 + 0.1 * (this.reincarnation.upgrades.tu_chat ?? 0)) // Tu Chất
         .mul(1 + this.sectPerk.exp) // đặc quyền tông môn
     },
@@ -205,7 +205,7 @@ export const useGameStore = defineStore('game', {
     claimableCount() {
       return ACHIEVEMENTS.filter((a) => this.achievementClaimable(a)).length
     },
-    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best)),
+    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best, s.stageIdx)),
     /** Tiến độ tu vi 0..1 */
     progress() {
       return Math.min(1, this.exp.div(this.requirement).toNumber())
@@ -776,7 +776,7 @@ export const useGameStore = defineStore('game', {
     /** Nguyên liệu nhận được từ ải cao nhất: số lượng kỳ vọng theo `seconds`, làm tròn ngẫu nhiên. Trả về { id: n }. */
     grantCampaignItems(seconds) {
       const got = {}
-      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best)) {
+      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best, this.stageIdx)) {
         const x = (perHour * seconds) / 3600
         const n = Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0)
         if (n > 0) {

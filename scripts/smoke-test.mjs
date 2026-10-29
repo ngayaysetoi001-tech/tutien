@@ -310,13 +310,25 @@ ok('vượt boss: tiến độ, kỷ lục và thưởng lần đầu; ải thư
 ok('thu nhập thụ động tăng theo ải cao nhất (linh khí và linh thạch)', () => {
   const s = freshStore()
   s.init()
+  s.stageIdx = 10 // trần thu nhập theo bậc = ải 90
   const exp0 = s.expRate
   const st0 = s.stonesRate
   s.campaign.best = 20
   assert.ok(s.expRate.gt(exp0))
   assert.ok(s.stonesRate.gt(st0))
+  const exp20 = s.expRate
   s.campaign.best = 40
-  assert.ok(s.expRate.gt(exp0.mul(2)))
+  assert.ok(s.expRate.gt(exp20))
+  assert.ok(s.expRate.gt(exp0.mul(1 + C.campaignExpBonus(40) - 0.01)))
+  // trần theo bậc: kiếp mới (bậc thấp) có ải cao cũng không hưởng quá trần
+  s.stageIdx = 0
+  s.campaign.best = 200
+  const capped = s.expRate
+  s.campaign.best = C.INCOME_AI_BASE
+  assert.ok(capped.eq(s.expRate), 'ải vượt trần không tăng thu nhập')
+  assert.equal(C.incomeAi(200, 0), C.INCOME_AI_BASE)
+  assert.equal(C.incomeAi(5, 0), 5)
+  assert.equal(C.incomeAi(200, 10), C.INCOME_AI_BASE + 10 * C.INCOME_AI_PER_STAGE)
 })
 ok('nguyên liệu thụ động theo ải: ải 0 không có, có ải thì nhận được đúng nhóm', () => {
   const s = freshStore()
@@ -1731,7 +1743,7 @@ ok('nhiệm vụ và thành tựu theo ải: mẫu "Vượt thêm ải" đo kỷ
 })
 
 ok('Vượt Ải: thưởng linh khí và linh thạch giảm dần khi cày ải quá yếu so với tu vi, không giảm khi tu vi thấp hơn', () => {
-  const n = 13 // bậc tương đương = 3
+  const n = 7 // bậc tương đương = 3
   const on = C.aiExpSeconds(n, 'normal', 3)
   assert.ok(on <= 6, 'mỗi quái thường cho tối đa vài giây sản lượng')
   assert.equal(C.aiExpSeconds(n, 'normal', 3 + C.OVERLEVEL_GRACE), on, 'chưa vượt ngưỡng ân hạn thì chưa giảm')
@@ -1774,7 +1786,7 @@ ok('trần phần thưởng linh khí: kỳ ngộ không vượt 0.8% yêu cầu
 
 ok('đệ tử Trấn Thủ cho lượng linh thạch tương đương hàng chục lần hạ quái mỗi giờ (có ý nghĩa kinh tế)', () => {
   const d = DUNGEONS[2]
-  const kill = C.aiStoneReward(4 * d.power + 1, 'normal', d.power) // ải cùng bậc với bí cảnh này
+  const kill = C.aiStoneReward(2 * d.power + 1, 'normal', d.power) // ải cùng bậc với bậc đệ tử đang trấn thủ
   const disc = { uid: 'x', name: 'A', element: 'kim', grade: 0, level: 1, job: 'guard', since: 0 }
   const out = DS.outputPerHour(disc, d.power, {})
   assert.equal(out.kind, 'stones')

@@ -34,11 +34,12 @@ const cellClass = (c) => {
 const cellMark = (c) => ({ mini: '◆', big: '★', lord: '♛' })[c.kind] ?? ''
 
 const expIncome = computed(() => {
-  const camp = C.campaignExpBonus(best.value)
+  const camp = C.campaignExpBonus(best.value, game.stageIdx)
   return game.expRate.mul(camp / (1 + game.bonus.exp + game.gearStats.exp + camp))
 })
-const stoneIncome = computed(() => C.campaignStonesPerSecond(best.value))
-const itemIncome = computed(() => C.campaignItemsPerHour(best.value))
+const incomeAi = computed(() => C.incomeAi(best.value, game.stageIdx))
+const stoneIncome = computed(() => C.campaignStonesPerSecond(best.value, game.stageIdx))
+const itemIncome = computed(() => C.campaignItemsPerHour(best.value, game.stageIdx))
 const nextKind = computed(() => C.aiKind(target.value))
 const nextMonster = computed(() => MONSTERS[C.pickAiMonster(target.value, () => 0).id])
 const chance = computed(() => Math.round(C.winChance(battle.playerStats(), target.value, 30) * 100))
@@ -109,8 +110,9 @@ function stepFarm(d) {
         <div class="text-slate-400">Ải cao nhất: <b class="text-white">{{ best }}</b> · Kỷ lục: {{ game.campaign.record }}</div>
       </div>
       <template v-if="best > 0">
-        <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome) }}/giây)</div>
+        <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome) }}/giây)</div>
         <div class="text-gold-300">+{{ fmt(stoneIncome) }} linh thạch/giây</div>
+        <div v-if="incomeAi < best" class="text-[11px] text-slate-500">Thu nhập đang tính đến ải {{ incomeAi }} (trần theo cảnh giới, đột phá để mở rộng thêm).</div>
         <div v-if="itemIncome.length" class="text-slate-300">
           Mỗi giờ:
           <span v-for="(it, i) in itemIncome" :key="it.id">{{ i ? ', ' : '' }}{{ itemName(it.id) }} ~{{ it.perHour.toFixed(1) }}</span>
