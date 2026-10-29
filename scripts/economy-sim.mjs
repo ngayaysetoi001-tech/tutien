@@ -63,7 +63,8 @@ const { useBattleStore } = await import('../src/stores/battleStore.js')
 const { STAGES, MAX_STAGE_IDX } = await import('../src/game/constants.js')
 const { RECIPES, ITEMS } = await import('../src/game/data.js')
 const { FORGE, SLOT_IDS } = await import('../src/game/equipment.js')
-const { SKILLS, fragmentId } = await import('../src/game/skills.js')
+const { SKILLS, fragmentId, canEquip: canEquipSkill } = await import('../src/game/skills.js')
+const { ARTS } = await import('../src/game/arts.js')
 const { CROPS, plotCount } = await import('../src/game/garden.js')
 const { SECTS } = await import('../src/game/sect.js')
 const { JOB_IDS } = await import('../src/game/disciples.js')
@@ -190,13 +191,23 @@ function createBot(s, b) {
         s.useItem(id, 99)
       }
     }
-    // Học & trang bị công pháp tốt nhất
+    // Học & trang bị võ kỹ: ưu tiên chiêu tấn công theo sát thương trên hồi chiêu, rồi chiêu hỗ trợ
+    const ATTACK = ['damage', 'dot', 'stun', 'execute', 'ultimate']
+    const score = (id) => (ATTACK.includes(SKILLS[id].kind) ? 100 : 0) + SKILLS[id].power / SKILLS[id].cd
     for (const id of Object.keys(SKILLS)) {
       s.learnSkill(id)
       if (s.skills.owned[id]) while (s.upgradeSkill(id));
     }
-    const owned = Object.keys(s.skills.owned).sort((x, y) => SKILLS[y].power - SKILLS[x].power)
+    const owned = Object.keys(s.skills.owned).filter((id) => canEquipSkill(id, s.realmIdx)).sort((x, y) => score(y) - score(x))
     for (let i = 0; i < s.skillSlots && i < owned.length; i++) if (s.skills.slots[i] !== owned[i]) s.equipSkill(owned[i], i)
+    // Học, thăng cấp, trang bị công pháp bị động (ưu tiên linh khí, công, khí huyết, thu nhập ải...)
+    const ART_ORDER = ['thanh_tam', 'ho_phap', 'pha_quan', 'cuong_the', 'kim_cang', 'tu_bao', 'truy_phong', 'thien_nhan', 'ngu_hanh', 'luan_hoi']
+    for (const id of ART_ORDER) {
+      s.learnArt(id)
+      if (s.arts.owned[id]) while (s.upgradeArt(id));
+    }
+    const ownedArts = ART_ORDER.filter((id) => s.arts.owned[id])
+    for (let i = 0; i < s.artSlots && i < ownedArts.length; i++) if (s.arts.slots[i] !== ownedArts[i]) s.equipArt(ownedArts[i], i)
 
     // Tụ Linh Trận: chi tối đa nửa số linh thạch mỗi lần
     for (let k = 0; k < 20 && s.spiritStones.gte(s.arrayCost.mul(2)); k++) s.upgradeArray()

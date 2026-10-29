@@ -49,7 +49,7 @@ scripts/       smoke-test.mjs
 ## Giai đoạn 2 (đã có)
 
 - **Ngũ hành:** mỗi nhân vật một hệ (Kim/Mộc/Thủy/Hỏa/Thổ), yêu thú cũng có hệ; hệ khắc +20% sát thương, bị khắc -15%. Tab Bí Cảnh hiện mũi tên lợi/hại cho từng bí cảnh.
-- **Công pháp:** 6 thần thông (sát thương, hồi máu, lá chắn, tăng tốc, làm chậm), học bằng tàn quyển rơi từ bí cảnh, 5 cấp, 3 ô mở theo đại cảnh giới, tự thi triển khi hồi chiêu xong.
+- **Võ kỹ** (chiêu thức chủ động, xem mục "Võ Kỹ và Công Pháp"): học bằng tàn quyển, 5 cấp, ô mở theo đại cảnh giới, tự thi triển khi hồi chiêu xong.
 - **Trang bị:** vũ khí / y phục / pháp bảo, 5 phẩm cấp x 4 độ hiếm, cường hoá +10; rèn ở Động Phủ hoặc boss rơi. Pháp bảo còn tăng tốc độ linh khí.
 - **Kỳ ngộ ngẫu nhiên:** 8 sự kiện có lựa chọn và rủi ro (có cả giao chiến mô phỏng); chiến đấu tự tạm dừng khi hộp thoại hiện.
 - **Thành tựu:** 11 thành tựu nhiều mốc, nhận thưởng linh thạch và chỉ số vĩnh viễn.
@@ -179,6 +179,14 @@ Chiến đấu không còn là chọn bí cảnh mà là **chuỗi ải vô hạ
 | `AI_GROWTH` | 1.006 | mỗi ải thêm 0.6% (cộng dồn) ngoài tăng theo bậc |
 | `AI_EXP_PER_CLEAR` | 0.02 | +2% linh khí mỗi ải |
 | `INCOME_AI_BASE/PER_STAGE` | 10 / 8 | trần ải tính thu nhập theo bậc |
-| `BALANCE.requirementGrowth` | 2.17 | tăng từ 2.1 để bù thu nhập từ ải |
+| `BALANCE.requirementGrowth` | 2.19 | tăng từ 2.1 để bù thu nhập từ ải và công pháp bị động |
 
 Nhịp đo được: kiếp đầu 15-27 giờ ảo (người chơi trực tuyến) và 23-28 giờ (ghé 30 phút/lần); kiếp 2 còn 7-11 giờ; kiếp 3 trở đi 5-8 giờ. Mỗi bậc đầu 1-6 phút, giữa 4-40 phút, cuối 1-7 giờ. Ải cao nhất cuối kiếp 1 khoảng 150-190.
+
+## Võ Kỹ và Công Pháp
+
+Màn **Công Pháp** có hai tab con (`src/components/tabs/SkillsTab.vue`):
+
+- **Võ Kỹ** (`src/game/skills.js`) là chiêu thức chủ động, 13 loại, tự thi triển khi hồi chiêu xong. Ngoài sát thương, hồi máu, lá chắn, tăng tốc và làm chậm còn có: **Độc** (sát thương mỗi giây), **Choáng** (địch mất lượt), **Tuyệt Sát** (gấp đôi khi địch dưới 30% khí huyết), **Hút máu**, **Cuồng Bạo** (tăng công kích), **Phản Chấn** (phản sát thương) và **Tuyệt kỹ** (Thiên Hà Tuyệt Kích, sát thương rất lớn, cần Nguyên Anh để trang bị). Bốn ô, ô thứ tư mở ở Hóa Thần. Tàn quyển rơi ở ải theo chương và bán ở cửa hàng tông môn.
+- **Công Pháp** (`src/game/arts.js`) là tăng bị động, 10 loại: linh khí, khí huyết, công kích, phòng ngự, Thân pháp, linh thạch, thu nhập thụ động từ ải, tỉ lệ rơi đồ, sát thương khi khắc hệ, Đạo Vận khi luân hồi. Trang bị vào năm ô công pháp (hai ô ở Luyện Khí, thêm một mỗi đại cảnh giới), cấp 1-10, thăng cấp bằng Công Pháp Tàn Quyển. Công pháp cùng hệ ngũ hành với tông môn được +50%. Tàn quyển rơi từ Tiểu Boss trở lên (công pháp mạnh hơn mở dần theo số ải) và bán ở cửa hàng tông môn từ Chân Truyền.
+- Cả hai được giữ nguyên khi luân hồi. Save cũ tải bình thường: 6 võ kỹ cũ giữ nguyên cấp và ô trang bị.
