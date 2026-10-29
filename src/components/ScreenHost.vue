@@ -1,7 +1,7 @@
 <script setup>
 // ScreenHost.vue - Hiển thị màn hình hiện tại (mỗi tab một màn hình riêng).
 //   Nhân Vật : (canvas tu luyện ở trên) nút Đột Phá, gợi ý, thông tin nhân vật, nhật ký
-//   Bí Cảnh  : (canvas chiến đấu ở trên) danh sách bí cảnh, thu hoạch, nhật ký
+//   Vượt Ải  : (canvas chiến đấu ở trên) ải đang đánh, thu nhập thụ động, cày ải, nhật ký
 //   Còn lại  : tiêu đề + nội dung chiếm toàn bộ chiều cao còn lại
 import { computed, ref } from 'vue'
 import { useGameStore } from '../stores/gameStore.js'

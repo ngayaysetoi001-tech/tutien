@@ -1,5 +1,5 @@
 <script setup>
-// SkillsTab.vue - Công pháp: học bằng tàn quyển, thăng cấp, trang bị vào các ô (tự thi triển trong Bí Cảnh).
+// SkillsTab.vue - Công pháp: học bằng tàn quyển, thăng cấp, trang bị vào các ô (tự thi triển khi Vượt Ải).
 import { useGameStore } from '../../stores/gameStore.js'
 import { ELEMENTS } from '../../game/elements.js'
 import { LEARN_COST, SKILLS, SKILL_MAX_LEVEL, fragmentId, skillDesc, upgradeCost } from '../../game/skills.js'

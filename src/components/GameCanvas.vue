@@ -51,8 +51,8 @@ watch(
 
 // Ẩn canvas (sang màn không có cảnh) thì vẽ chậm lại để tiết kiệm pin; logic game vẫn chạy bình thường
 /**
- * Cảnh chiến đấu hiển thị ở màn Bí Cảnh: trận thật khi đang đánh, còn không thì xem trước bí cảnh hiện tại
- * (bí cảnh đánh gần nhất, hoặc bí cảnh đầu tiên đã mở) với yêu thú đầu tiên và khí huyết đầy.
+ * Cảnh chiến đấu hiển thị ở màn Vượt Ải: trận thật khi đang đánh, còn không thì xem trước ải mục tiêu
+ * với yêu thú đầu tiên và khí huyết đầy.
  */
 const view = computed(() => {
   if (ui.tab !== 'battle') return null // Vượt Ải đánh liên tục nhưng chỉ vẽ ở màn này
@@ -67,7 +67,7 @@ const view = computed(() => {
   return {
     preview: true,
     dungeon: C.themeOf(n).dungeon,
-    enemy: { id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss: kind !== 'normal', hp: stats.hp, maxHp: stats.hp },
+    enemy: { id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss: kind !== 'normal', tier: kind, hp: stats.hp, maxHp: stats.hp },
     hp: maxHp,
     maxHp,
   }
@@ -84,7 +84,7 @@ watch(
     if (v) syncBattle()
   },
 )
-// Đổi màn, vào/ra trận, đổi bí cảnh hoặc yêu thú -> cảnh theo kịp
+// Đổi màn, vào/ra trận, đổi chương (bối cảnh) hoặc yêu thú -> cảnh theo kịp
 watch(() => [ui.tab, battle.phase, view.value?.dungeon?.id, view.value?.enemy?.kind, view.value?.enemy?.boss], syncBattle)
 
 onBeforeUnmount(() => {
@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
   <div class="absolute inset-0">
     <div ref="host" class="absolute inset-0"></div>
 
-    <!-- Bí Cảnh đang đánh: tên và tầng (cảnh giới, linh thạch đã có ở thanh trên) -->
+    <!-- Vượt Ải: tên chương và số ải (cảnh giới, linh thạch đã có ở thanh trên) -->
     <div v-if="view" class="pointer-events-none absolute right-2.5 top-2.5">
       <div class="hud-chip border-gold-500/50 text-slate-200">
         <Icon name="dungeon" :size="13" class="text-gold-400" />
@@ -109,7 +109,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- Bí Cảnh: thanh khí huyết hai bên -->
+    <!-- Vượt Ải: thanh khí huyết hai bên -->
     <div v-if="view" class="pointer-events-none absolute inset-x-3 bottom-2 flex items-end justify-between gap-3">
       <div class="w-[44%]">
         <div class="mb-0.5 flex items-center gap-1 text-[11px] font-bold text-jade-300 [text-shadow:0_1px_3px_#000]">
@@ -125,6 +125,7 @@ onBeforeUnmount(() => {
           <Icon name="heart" :size="11" class="mr-0.5 inline text-cinnabar-400" />{{ fmt(Math.max(0, Math.ceil(view.enemy.hp))) }}/{{ fmt(Math.round(view.enemy.maxHp)) }}
         </div>
         <div class="mb-0.5 truncate text-[11px] font-bold [text-shadow:0_1px_3px_#000]" :class="view.enemy.boss ? 'text-cinnabar-400' : 'text-slate-100'">
+          <span v-if="view.enemy.tier && view.enemy.tier !== 'normal'" class="mr-0.5 rounded bg-cinnabar-500/70 px-1 text-[10px] text-white">{{ C.AI_KINDS[view.enemy.tier].name }}</span>
           <span :style="{ color: ELEMENTS[view.enemy.element]?.css }">[{{ ELEMENTS[view.enemy.element]?.name }}]</span> {{ view.enemy.name }}
         </div>
         <div class="hp-track">

@@ -40,7 +40,7 @@ const canEnhance = (it) => it.enh < MAX_ENHANCE && game.spiritStones.gte(enhance
         <span>Túi trang bị</span><span class="text-slate-500">{{ game.gear.bag.length }}/{{ BAG_LIMIT }}</span>
       </div>
       <div v-if="sortedBag.length === 0" class="text-xs text-slate-500">
-        Trống. Hạ boss bí cảnh hoặc rèn pháp khí ở Động Phủ để có trang bị.
+        Trống. Hạ boss ở màn Vượt Ải hoặc rèn pháp khí ở Động Phủ để có trang bị.
       </div>
       <div class="space-y-1">
         <div v-for="it in sortedBag" :key="it.uid" class="rounded bg-ink-900 px-2 py-1.5 text-xs">

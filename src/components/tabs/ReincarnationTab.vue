@@ -12,7 +12,7 @@ const maxed = (perk) => level(perk) >= perk.max
 function onReincarnate() {
   const msg =
     `Luân hồi từ ${game.stage.fullName} để nhận ${game.daoPreview} Đạo Vận?\n\n` +
-    'MẤT: cảnh giới, linh khí, linh thạch, Tụ Linh Trận, đan và chỉ số vĩnh viễn, túi vật phẩm, tiến độ bí cảnh, Linh Điền.\n' +
+    'MẤT: cảnh giới, linh khí, linh thạch, Tụ Linh Trận, đan và chỉ số vĩnh viễn, túi vật phẩm, ải cao nhất đã vượt (kỷ lục vẫn giữ), Linh Điền.\n' +
     'GIỮ: công pháp, trang bị, cấp Luyện Đan, thành tựu, Đạo Vận và cường hoá.'
   if (window.confirm(msg)) game.reincarnate()
 }

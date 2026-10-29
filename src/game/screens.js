@@ -1,6 +1,6 @@
 // =====================================================================
 // screens.js - Danh sách màn hình (mỗi tab là một màn hình riêng chiếm toàn bộ khung nội dung).
-// `canvas: true` = màn có cảnh PixiJS ở trên (Nhân Vật: tu luyện; Bí Cảnh: chiến đấu).
+// `canvas: true` = màn có cảnh PixiJS ở trên (Nhân Vật: tu luyện; Vượt Ải: chiến đấu).
 // Thuần dữ liệu (không import Vue) để test được trong Node; component nằm ở components/screens.js.
 // =====================================================================
 
@@ -8,7 +8,7 @@ export const SCREENS = [
   { id: 'character', label: 'Nhân Vật', icon: 'character', canvas: true },
   { id: 'skills', label: 'Công Pháp', icon: 'skills', canvas: false },
   { id: 'gear', label: 'Trang Bị', icon: 'gear', canvas: false },
-  { id: 'battle', label: 'Bí Cảnh', icon: 'dungeon', canvas: true },
+  { id: 'battle', label: 'Vượt Ải', icon: 'dungeon', canvas: true },
   { id: 'inventory', label: 'Túi Đồ', icon: 'bag', canvas: false },
   { id: 'sect', label: 'Tông Môn', icon: 'sect', canvas: false },
   { id: 'disciples', label: 'Đệ Tử', icon: 'disciple', canvas: false },
