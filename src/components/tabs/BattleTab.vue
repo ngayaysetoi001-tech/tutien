@@ -145,6 +145,15 @@ function stepFarm(d) {
       <div v-else class="text-slate-400">Vượt ải đầu tiên để bắt đầu nhận thu nhập. Mỗi ải vượt thêm làm thu nhập tăng lên.</div>
     </div>
 
+    <!-- Chọn phần thưởng boss -->
+    <div v-if="game.bossChoice" class="card space-y-1.5 border-gold-400 text-xs">
+      <div class="font-semibold text-gold-300">Chọn phần thưởng: {{ C.AI_KINDS[game.bossChoice.kind].name }} ải {{ game.bossChoice.n }}</div>
+      <button v-for="(o, i) in game.bossChoice.options" :key="o.id" class="btn-ghost w-full text-left" @click="game.chooseBossReward(i)">
+        {{ o.label }}
+      </button>
+      <div class="text-[11px] text-slate-500">Không chọn sau 10 phút sẽ tự lấy phương án đầu tiên.</div>
+    </div>
+
     <!-- Rương mốc ải -->
     <div v-if="milestone" class="card space-y-1 text-xs" :class="game.milestoneClaimable ? 'border-gold-400' : ''">
       <div class="flex items-center justify-between">

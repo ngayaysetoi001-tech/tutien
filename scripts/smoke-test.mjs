@@ -1754,6 +1754,9 @@ ok('mọi gợi ý có tab đích đều trỏ tới màn đã mở (không dẫ
 ok('mục tiêu kế tiếp: chọn tiến độ cao nhất; việc sẵn sàng (đột phá, rương mốc) lên đầu', () => {
   const s = freshStore()
   s.init()
+  assert.ok(GOALS.goalList(s).some((g) => g.id === 'daily' && g.ready), 'ngày mới: điểm danh chờ nhận')
+  assert.equal(GOALS.nextGoal(s).id, 'daily')
+  s.claimDaily()
   const list = GOALS.goalList(s)
   assert.deepEqual(list.map((g) => g.id).sort(), ['boss', 'breakthrough', 'milestone', 'unlock'])
   for (const g of list) assert.ok(g.label.length > 5 && g.progress >= 0 && g.progress <= 1)
@@ -2166,6 +2169,332 @@ ok('save/load giữ Kiếp Thử Thách đang theo, đã xong, số lần hoàn 
   s3.init()
   assert.equal(s3.challenge, null)
   assert.deepEqual({ ...s3.reincarnation.challenges }, {})
+})
+
+// =====================================================================
+// Điểm danh ngày, nhiệm vụ ngày, chọn thưởng boss, chuỗi kỳ ngộ, thông báo
+// =====================================================================
+const DY = await import('../src/game/daily.js')
+const BCH = await import('../src/game/bossChoice.js')
+const NTF = await import('../src/services/notify.js')
+const RE8 = await import('../src/game/randomEvents.js')
+const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h).getTime()
+
+ok('ngày: khoá ngày theo giờ địa phương, hôm trước đúng, vòng 7 ngày', () => {
+  assert.equal(DY.dayKey(at(2026, 3, 5)), '2026-03-05')
+  assert.equal(DY.dayKey(at(2026, 12, 31, 23)), '2026-12-31')
+  assert.equal(DY.previousDayKey(at(2026, 3, 1)), '2026-02-28')
+  assert.equal(DY.previousDayKey(at(2026, 1, 1)), '2025-12-31')
+  assert.deepEqual([0, 1, 6, 7, 8].map(DY.nextRewardDay), [1, 2, 7, 1, 2])
+  for (let day = 1; day <= 7; day++) {
+    const fx = DY.dailyReward(day, 'thanh_tam')
+    assert.ok(fx.length >= 1 && fx.every((e) => ['stones', 'item', 'expBonus'].includes(e.type)))
+    for (const e of fx) if (e.type === 'item') assert.ok(ALL_ITEMS[e.id], e.id)
+  }
+  assert.ok(DY.dailyReward(7, 'thanh_tam').some((e) => e.type === 'expBonus'))
+  assert.ok(DY.dailyArtPool(0).length >= 1 && DY.dailyArtPool(100).length > DY.dailyArtPool(1).length)
+})
+
+ok('điểm danh: nhận một lần mỗi ngày, liên tiếp thì chuỗi tăng, bỏ lỡ một ngày thì về 0, ngày 7 thưởng lớn', () => {
+  const s = freshStore()
+  s.init()
+  const base = at(2026, 6, 10)
+  s.daily = DY.emptyDaily()
+  assert.equal(s.ensureDaily(base), true)
+  assert.equal(s.ensureDaily(base + 3600e3), false, 'cùng ngày thì giữ nguyên')
+  assert.equal(s.daily.day, '2026-06-10')
+  assert.equal(s.daily.streak, 0)
+  assert.equal(s.dailyPending, true)
+  const stones = s.spiritStones
+  assert.equal(s.claimDaily(), true)
+  assert.equal(s.claimDaily(), false, 'một lần mỗi ngày')
+  assert.equal(s.daily.streak, 1)
+  assert.ok(s.spiritStones.gt(stones))
+  // ngày liên tiếp
+  s.ensureDaily(at(2026, 6, 11))
+  assert.equal(s.daily.streak, 1)
+  assert.equal(s.daily.claimed, false)
+  s.claimDaily()
+  assert.equal(s.daily.streak, 2)
+  // bỏ lỡ ngày 12, vào ngày 13: chuỗi về 0
+  s.ensureDaily(at(2026, 6, 13))
+  assert.equal(s.daily.streak, 0)
+  // quên điểm danh ngày hôm trước (chưa nhận) cũng mất chuỗi
+  s.claimDaily()
+  s.ensureDaily(at(2026, 6, 14))
+  assert.equal(s.daily.streak, 1)
+  s.ensureDaily(at(2026, 6, 15)) // không nhận ngày 14
+  assert.equal(s.daily.streak, 0)
+  // chuỗi 7 ngày: ngày 7 thưởng lớn, ngày kế quay về ngày 1
+  const t = freshStore()
+  t.init()
+  t.stageIdx = 5
+  t.daily = DY.emptyDaily()
+  for (let d = 1; d <= 7; d++) {
+    t.ensureDaily(at(2026, 7, d))
+    const bonus = t.bonus.exp
+    t.claimDaily()
+    if (d === 7) assert.ok(t.bonus.exp > bonus, 'ngày 7 cộng % linh khí')
+  }
+  assert.equal(t.daily.streak, 7)
+  t.ensureDaily(at(2026, 7, 8))
+  assert.equal(DY.nextRewardDay(t.daily.streak), 1)
+})
+
+ok('nhiệm vụ ngày: 3 nhiệm vụ khác nhau mỗi ngày, đo từ lúc bốc, nhận một lần, xong cả 3 thưởng thêm', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  s.daily = DY.emptyDaily()
+  s.ensureDaily(at(2026, 8, 1))
+  assert.equal(s.daily.tasks.length, DY.DAILY_TASK_COUNT)
+  assert.equal(new Set(s.daily.tasks.map((t) => t.tpl)).size, DY.DAILY_TASK_COUNT)
+  for (const t of s.daily.tasks) assert.ok(t.target >= 1 && !t.claimed && QS6.templateById(t.tpl))
+  assert.equal(s.claimDailyTask(0), false, 'chưa làm xong')
+  // làm xong từng nhiệm vụ rồi nhận
+  const finish = (t) => {
+    const key = QS6.templateById(t.tpl).key
+    if (key === 'aiRecord') s.campaign.record += t.target
+    else if (key === 'clears') s.campaign.record += t.target * 10
+    else s.stats[key] = (s.stats[key] ?? 0) + t.target
+  }
+  const stones = s.spiritStones
+  finish(s.daily.tasks[0])
+  assert.equal(s.dailyTaskDone(s.daily.tasks[0]), true)
+  assert.equal(s.claimDailyTask(0), true)
+  assert.equal(s.claimDailyTask(0), false, 'một lần')
+  assert.ok(s.spiritStones.gt(stones))
+  assert.equal(s.daily.bonus, false)
+  const pills = s.itemCount('hoi_huyet_dan')
+  finish(s.daily.tasks[1])
+  finish(s.daily.tasks[2])
+  s.claimDailyTask(1)
+  s.claimDailyTask(2)
+  assert.equal(s.daily.bonus, true)
+  assert.ok(s.itemCount('hoi_huyet_dan') >= pills + 5, 'xong cả 3: thưởng thêm')
+  assert.equal(s.achievementValue('dailyTasks'), 3)
+  // ngày mới: nhiệm vụ mới, tiến độ đo lại từ giá trị hiện tại
+  s.ensureDaily(at(2026, 8, 2))
+  assert.ok(s.daily.tasks.every((t) => !t.claimed && s.dailyProgress(t) === 0))
+})
+
+ok('save/load giữ điểm danh và nhiệm vụ ngày; loại ngày lạ, mẫu lạ, nhiều hơn 3 nhiệm vụ', () => {
+  const s = freshStore()
+  s.init()
+  s.daily = { day: '2026-09-01', streak: 4, claimed: true, bonus: false, tasks: [{ tpl: 'kills', target: 5, start: 2, claimed: true }] }
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.daily.streak >= 0, true)
+  // ngày đã qua: ensureDaily thay mới, nhưng save giữ nguyên chuỗi đã lưu cho lần sau
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  assert.equal(raw.data.daily.day.length, 10)
+  raw.data.daily = { day: 'xx', streak: 5, claimed: true, tasks: [] }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.daily.streak, 0, 'ngày hỏng thì làm lại từ đầu')
+  raw.data.daily = {
+    day: '2026-09-01', streak: -4, claimed: 'yes',
+    tasks: [{ tpl: 'kills', target: 5, start: 2 }, { tpl: 'khong_co', target: 1 }, { tpl: 'harvest', target: 0, start: 'x' }, { tpl: 'craft', target: 3 }, { tpl: 'forge', target: 1 }],
+  }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s4 = freshStore(true)
+  s4.init() // ngày 2026-09-01 đã cũ nên ensureDaily thay mới; kiểm tra bước tải trực tiếp qua deserialize
+  const loaded = deserialize(raw, { element: 'kim', spiritRoot: { id: 'ngu', name: 'x', mult: 1 }, name: 'n', createdAt: 1 })
+  assert.equal(loaded.daily.streak, 0)
+  assert.equal(loaded.daily.claimed, false)
+  assert.ok(loaded.daily.tasks.length <= DY.DAILY_TASK_COUNT)
+  assert.ok(loaded.daily.tasks.every((t) => QS6.templateById(t.tpl) && t.target >= 1))
+})
+
+ok('chọn thưởng boss: 3 lựa chọn khác loại, hiệu lực hợp lệ, đúng đạo lộ, lớn dần theo boss', () => {
+  for (const kind of ['mini', 'big', 'lord']) {
+    for (let i = 0; i < 40; i++) {
+      const opts = BCH.bossChoiceOptions({ n: 5 + i * 10, kind, path: i % 2 ? 'kiem' : null })
+      assert.equal(opts.length, 3)
+      assert.equal(new Set(opts.map((o) => o.id)).size, 3, 'ba loại khác nhau')
+      for (const o of opts) {
+        assert.ok(o.label.length > 5 && o.effects.length >= 1)
+        for (const e of o.effects) {
+          assert.ok(['stones', 'stat', 'item', 'expBonus'].includes(e.type))
+          if (e.type === 'item') assert.ok(ALL_ITEMS[e.id], e.id)
+        }
+      }
+    }
+  }
+  // võ kỹ độc quyền của đạo lộ khác không xuất hiện
+  for (let i = 0; i < 200; i++) {
+    for (const o of BCH.bossChoiceOptions({ n: 50, kind: 'big', path: 'the' })) {
+      for (const e of o.effects) if (e.type === 'item' && e.id.startsWith('qk_')) {
+        const sk = SK.SKILLS[e.id.slice(3)]
+        assert.ok(!sk.path || sk.path === 'the', 'sai đạo lộ: ' + e.id)
+      }
+    }
+  }
+  const stones = (kind) => BCH.bossChoiceOptions({ n: 30, kind }, seq(0, 0, 0, 0, 0, 0)).find((o) => o.id === 'stones')?.effects[0].base
+  const rngStones = (kind) => {
+    for (let i = 0; i < 100; i++) {
+      const o = BCH.bossChoiceOptions({ n: 30, kind }).find((x) => x.id === 'stones')
+      if (o) return o.effects[0].base
+    }
+  }
+  assert.ok(rngStones('lord') > rngStones('big') && rngStones('big') > rngStones('mini'))
+})
+
+ok('chọn thưởng boss trong game: mở khi lần đầu hạ boss, không mở với ải thường hay ải đã vượt, chọn áp dụng, tự chọn sau 10 phút', () => {
+  const kill = (best, ai) => {
+    const s = freshStore()
+    s.init()
+    s.stageIdx = 20
+    s.campaign.best = best
+    const b = useBattleStore()
+    b.start()
+    assert.equal(b.ai, ai)
+    b.enemy.hp = 0
+    b.onKill()
+    return s
+  }
+  assert.equal(kill(3, 4).bossChoice, null, 'ải thường không có')
+  const s = kill(4, 5)
+  assert.ok(s.bossChoice && s.bossChoice.n === 5 && s.bossChoice.kind === 'mini' && s.bossChoice.options.length === 3)
+  assert.equal(GOALS.nextGoal(s).id === 'choice' || GOALS.goalList(s).some((g) => g.id === 'choice'), true)
+  // đã vượt rồi (cày ải): không mở lại
+  const f = freshStore()
+  f.init()
+  f.stageIdx = 20
+  f.campaign.best = 10
+  f.campaign.record = 10
+  f.campaign.farm = 5
+  const b = useBattleStore()
+  b.start()
+  b.enemy.hp = 0
+  b.onKill()
+  assert.equal(f.bossChoice, null)
+  // chọn
+  const opt = s.bossChoice.options[1]
+  assert.equal(s.chooseBossReward(5), false)
+  assert.equal(s.chooseBossReward(1), true)
+  assert.equal(s.bossChoice, null)
+  assert.ok(s.log.some((l) => l.text.includes('phần thưởng ải 5')))
+  assert.ok(opt.effects.length >= 1)
+  // lựa chọn cũ chưa chọn bị chốt phương án đầu khi có boss mới
+  const t = kill(4, 5)
+  const first = t.bossChoice.options[0]
+  t.offerBossChoice(10, 'big')
+  assert.equal(t.bossChoice.n, 10)
+  assert.ok(t.log.some((l) => l.text.includes('Tự chọn')))
+  // tự chọn sau 10 phút
+  const u = kill(4, 5)
+  u.settings.autoRepeat = false // dừng chiến đấu để không có boss mới chen vào
+  useBattleStore().retreat()
+  for (let i = 0; i < BCH.BOSS_CHOICE_SECONDS / 2 + 5; i++) u.tick(2)
+  assert.equal(u.bossChoice, null)
+  assert.ok(first.effects.length >= 1)
+})
+
+ok('chuỗi kỳ ngộ: bước nối có thật, chỉ xuất hiện qua chuỗi, phương án an toàn không nối, mọi chuỗi đều kết thúc', () => {
+  const chainOnly = RE8.RANDOM_EVENTS.filter((e) => e.chainOnly)
+  assert.ok(chainOnly.length >= 4)
+  for (const e of chainOnly) assert.equal(e.weight, 0, e.id)
+  const nexts = new Set()
+  for (const e of RE8.RANDOM_EVENTS) {
+    e.choices.forEach((c, idx) => {
+      const outs = c.fight ? [c.win, c.lose] : c.outcomes
+      for (const o of outs) if (o.next) {
+        assert.ok(RE8.eventById(o.next), 'bước nối không tồn tại: ' + o.next)
+        nexts.add(o.next)
+        if (idx === e.safe) assert.fail('phương án an toàn không được nối chuỗi: ' + e.id)
+      }
+    })
+  }
+  for (const e of chainOnly) assert.ok(nexts.has(e.id), e.id + ' không có bước nào dẫn tới')
+  // đi theo mọi nhánh không vòng lặp vô hạn
+  const depth = (id, seen = 0) => {
+    if (seen > 10) throw new Error('vòng lặp chuỗi')
+    const e = RE8.eventById(id)
+    let max = 0
+    for (const c of e.choices) for (const o of c.fight ? [c.win, c.lose] : c.outcomes) if (o.next) max = Math.max(max, 1 + depth(o.next, seen + 1))
+    return max
+  }
+  assert.ok(depth('co_mo_1') >= 2 && depth('ho_ly_1') >= 2)
+  // không bốc ngẫu nhiên các bước chỉ nằm trong chuỗi
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 20
+  for (let i = 0; i < 300; i++) {
+    s.event = null
+    s.triggerEvent()
+    assert.ok(!RE8.eventById(s.event.id).chainOnly)
+  }
+})
+
+ok('chuỗi kỳ ngộ chạy trong game: kết quả nối thì Tiếp tục mở bước kế, kết thúc thì đóng; bỏ ngỏ thì dừng ở phương án an toàn', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  s.event = { id: 'co_mo_1', phase: 'choose', resultText: '', effectsText: [], next: null }
+  Math.random = () => 0.1 // outcome đầu (nối tiếp)
+  s.chooseEvent(0)
+  Math.random = realRandom
+  assert.equal(s.event.phase, 'result')
+  assert.equal(s.event.next, 'co_mo_2')
+  s.closeEvent()
+  assert.equal(s.event.id, 'co_mo_2')
+  assert.equal(s.event.phase, 'choose')
+  assert.ok(s.log.some((l) => l.text.includes('Kỳ ngộ tiếp nối')))
+  // bước 2: nhánh an toàn kết thúc chuỗi
+  s.chooseEvent(1)
+  assert.equal(s.event.next, null)
+  s.closeEvent()
+  assert.equal(s.event, null)
+  // bước nối thất bại không nối
+  s.event = { id: 'co_mo_1', phase: 'choose', resultText: '', effectsText: [], next: null }
+  Math.random = () => 0.99
+  s.chooseEvent(0)
+  Math.random = realRandom
+  assert.equal(s.event.next, null)
+  s.closeEvent()
+  assert.equal(s.event, null)
+  // bỏ ngỏ: tự chọn an toàn và dừng
+  const t = freshStore()
+  t.init()
+  t.stageIdx = 6
+  t.event = { id: 'ho_ly_1', phase: 'choose', resultText: '', effectsText: [], next: null }
+  t.eventAge = 0
+  for (let i = 0; i < 110; i++) t.tick(1)
+  assert.equal(t.event, null)
+  // chuỗi Hồ Ly đi hết đến phần thưởng cuối
+  const u = freshStore()
+  u.init()
+  u.stageIdx = 6
+  u.event = { id: 'ho_ly_1', phase: 'choose', resultText: '', effectsText: [], next: null }
+  Math.random = () => 0.05
+  u.chooseEvent(0); u.closeEvent()
+  assert.equal(u.event.id, 'ho_ly_2')
+  u.chooseEvent(0); u.closeEvent()
+  assert.equal(u.event.id, 'ho_ly_3')
+  const bonus = u.bonus.exp
+  u.chooseEvent(0)
+  Math.random = realRandom
+  assert.ok(u.bonus.exp > bonus)
+  assert.ok(u.itemCount('cp_cuong_the') >= 2)
+  u.closeEvent()
+  assert.equal(u.event, null)
+})
+
+ok('thông báo: không có API thì không lỗi; cài đặt thông báo lưu và tải', async () => {
+  assert.equal(NTF.notifySupported(), false)
+  assert.equal(await NTF.requestNotify(), 'unsupported')
+  assert.doesNotThrow(() => NTF.notify('a', 'b'))
+  const s = freshStore()
+  s.init()
+  assert.equal(s.settings.notify, false)
+  s.settings.notify = true
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.settings.notify, true)
 })
 
 // =====================================================================

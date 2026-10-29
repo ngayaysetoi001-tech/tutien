@@ -26,6 +26,7 @@ const ev = computed(() => (game.event ? eventById(game.event.id) : null))
         <div v-if="game.event.effectsText.length" class="mb-3 text-center text-xs text-jade-300">
           {{ game.event.effectsText.join(' · ') }}
         </div>
+        <div v-if="game.event.next" class="mb-2 text-center text-xs italic text-gold-300">… câu chuyện còn tiếp …</div>
         <button class="btn-gold w-full" @click="game.closeEvent()">Tiếp tục</button>
       </div>
     </div>

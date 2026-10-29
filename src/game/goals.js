@@ -11,6 +11,9 @@ export function goalList(g) {
   const out = []
   const best = g.campaign.best
 
+  if (g.bossChoice) out.push({ id: 'choice', tab: 'battle', ready: true, label: 'Chọn phần thưởng boss (1 trong 3)', progress: 1 })
+  if (g.daily.day && !g.daily.claimed) out.push({ id: 'daily', tab: 'character', ready: true, label: 'Điểm danh nhận thưởng ngày', progress: 1 })
+
   const m = MILESTONES[g.campaign.milestone]
   if (m) {
     const ready = g.campaign.record >= m.ai

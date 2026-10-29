@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { AUTOMATIONS, automationUnlocked, automationValue } from '../../game/automation.js'
 import { RECIPES, itemName } from '../../game/data.js'
+import { notifySupported, requestNotify } from '../../services/notify.js'
 
 const game = useGameStore()
 const recipes = computed(() => RECIPES.filter((r) => game.stageIdx >= r.minStage && game.alchemy.level >= r.minAlchemy))
@@ -30,6 +31,17 @@ async function onImport(event) {
     say('Nhập save thành công!')
   } catch (e) {
     say(e.message || 'Nhập save thất bại.', true)
+  }
+}
+
+async function onNotifyChange() {
+  if (!game.settings.notify) return
+  const res = await requestNotify()
+  if (res !== 'granted') {
+    game.settings.notify = false
+    say(res === 'unsupported' ? 'Trình duyệt này không hỗ trợ thông báo.' : 'Bạn chưa cấp quyền thông báo.', true)
+  } else {
+    say('Sẽ báo khi linh khí đầy lúc tab ở nền.')
   }
 }
 
@@ -79,6 +91,10 @@ function onReset() {
         </select>
       </div>
     </div>
+    <label v-if="notifySupported()" class="card flex items-center justify-between text-sm">
+      <span>Thông báo khi linh khí đầy<br /><span class="text-[11px] text-slate-500">Chỉ khi trang vẫn mở ở nền, không báo được khi đã đóng hẳn</span></span>
+      <input v-model="game.settings.notify" type="checkbox" class="h-4 w-4 accent-emerald-500" @change="onNotifyChange" />
+    </label>
     <label class="card flex items-center justify-between text-sm">
       <span>Tự động lưu mỗi 5 giây</span>
       <input v-model="game.settings.autoSave" type="checkbox" class="h-4 w-4 accent-emerald-500" />

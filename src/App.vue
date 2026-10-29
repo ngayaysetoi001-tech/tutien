@@ -14,6 +14,7 @@ import EventModal from './components/EventModal.vue'
 import StoryModal from './components/StoryModal.vue'
 import { bindAudio } from './game/audioDirector.js'
 import { setAudioPrefs } from './game/audio.js'
+import { notify } from './services/notify.js'
 
 const game = useGameStore()
 const ui = useUiStore()
@@ -31,6 +32,14 @@ watch(
   () => [game.settings.sound, game.settings.music],
   ([sound, music]) => setAudioPrefs({ sfx: sound, music }),
   { immediate: true },
+)
+
+// Thông báo khi linh khí đầy lúc tab đang ở nền (tuỳ chọn, cần được cấp quyền)
+watch(
+  () => game.isFull,
+  (full) => {
+    if (full && game.ready && game.settings.notify && document.hidden) notify('Tu Tiên Ký', 'Linh khí đã đầy, có thể Đột Phá!')
+  },
 )
 
 onMounted(() => {

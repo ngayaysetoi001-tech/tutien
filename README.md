@@ -224,3 +224,11 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Tự động hoá mở khoá dần** (`src/game/automation.js`, mục "Tự động hoá" ở Cài Đặt, mặc định tắt): tự mặc đồ tốt nhất (ải 20), tự nhận thưởng nhiệm vụ / thành tựu / rương mốc (10 nhiệm vụ), tự nâng Tụ Linh Trận (Luyện Khí Tầng 6), tự thu hoạch Linh Điền / khoáng mạch / đệ tử (10 lần thu hoạch), tự luyện loại đan đã chọn (25 đan), tự phân giải đồ Phàm khi túi quá 30 món (ải 40). Việc vặt trở thành phần thưởng của tiến độ.
 - **Cường hoá luân hồi mới:** Ải Lộ (+5 ải trần thu nhập mỗi cấp), Pháp Duyên (+5% công pháp), Võ Đạo (+5% sát thương võ kỹ), Khai Thiên (+10% Đạo Vận). Tu Chất và Thân Thể nâng trần lên 30 cấp.
 - **Kiếp Thử Thách** (`src/game/challenges.js`, tab Luân Hồi): chọn một ràng buộc cho kiếp sau, đạt bậc mục tiêu thì nhận thêm Đạo Vận (lần sau cùng thử thách thưởng nhiều hơn 50% mỗi lượt): **Tịnh Tâm** (không dùng đan), **Độc Hành** (không tông môn, đệ tử, công pháp), **Tay Không** (trang bị vô hiệu), **Đơn Nhất** (chỉ một võ kỹ). Có thành tựu "Vượt Thử Thách".
+
+## Giữ chân người chơi và quyết định có ý nghĩa
+
+- **Điểm danh ngày** (`src/game/daily.js`, thẻ "Điểm danh" ở màn Nhân Vật): chuỗi 7 ngày, ngày 7 thưởng lớn (công pháp tàn quyển, +1% linh khí vĩnh viễn). Ngày tính theo giờ địa phương, bỏ lỡ một ngày thì chuỗi về 0.
+- **3 nhiệm vụ ngày** ngắn (mẫu nhiệm vụ có sẵn, mục tiêu bằng 60% nhiệm vụ Dễ), xong cả 3 nhận thêm thưởng. Có thành tựu "Chuyên Cần".
+- **Thông báo khi linh khí đầy** (tuỳ chọn ở Cài Đặt, `src/services/notify.js`): chỉ khi trang / PWA còn mở ở nền, vì game không có máy chủ đẩy nên không báo được khi đã đóng hẳn.
+- **Chọn 1 trong 3 phần thưởng boss** (`src/game/bossChoice.js`): lần đầu hạ Tiểu Boss / Đại Boss / Chúa Tể của một ải mới thì chọn một trong ba phần thưởng khác loại (linh thạch, chỉ số vĩnh viễn, công pháp tàn quyển, võ kỹ tàn quyển, +% linh khí). Không chọn sau 10 phút thì tự lấy phương án đầu.
+- **Chuỗi kỳ ngộ nhiều bước:** kỳ ngộ có thể nối sang bước kế (`next`, `chainOnly` trong `randomEvents.js`). Hiện có chuỗi Cổ Mộ (3 bước, có giao chiến) và chuỗi Hồ Ly (3 bước). Bỏ ngỏ thì chuỗi dừng ở phương án an toàn.

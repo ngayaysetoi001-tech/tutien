@@ -31,9 +31,13 @@ import * as C from '../game/campaign.js'
 import { MIN_STAGE, daoGain, perkById, perkCost } from '../game/reincarnation.js'
 import { AUTOMATIONS, AUTOMATION_INTERVAL, SALVAGE_BAG_LIMIT, automationById, automationUnlocked } from '../game/automation.js'
 import { CHALLENGES, challengeReward } from '../game/challenges.js'
+import {
+  DAILY_BONUS_REWARD, DAILY_TASK_COUNT, DAILY_TASK_REWARD, DAILY_TEMPLATE_IDS, STREAK_DAYS, dailyArtPool, dailyReward, dayKey, emptyDaily, nextRewardDay, previousDayKey,
+} from '../game/daily.js'
+import { BOSS_CHOICE_SECONDS, bossChoiceOptions } from '../game/bossChoice.js'
 import { CROPS, cropById, mineAmount, mineInfo, plotCount, seedCost, MAX_PLOTS } from '../game/garden.js'
 import { RANKS, RANK_PERK_STEP, SHOP, SWITCH_PENALTY, discipleCap, rankIndex, sectById } from '../game/sect.js'
-import { BOARD_SIZE, REFRESH_COST_BASE, generateQuest, questReward, templateById } from '../game/quests.js'
+import { BOARD_SIZE, REFRESH_COST_BASE, generateQuest, questReward, questTarget, templateById } from '../game/quests.js'
 import {
   GRADES, JOBS, NAMES as DISCIPLE_NAMES, collectResult, levelCap, levelCost, recruitCost, rollGrade,
 } from '../game/disciples.js'
@@ -93,6 +97,7 @@ function createPlayerState(minRoot = 0) {
     inventory: { herbs: {}, ores: {}, scrolls: {}, pills: {} },
     element: ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)], // hệ ngũ hành chủ đạo
     path: null, // Đạo Lộ (xem paths.js): chọn khi đạt Trúc Cơ, chọn lại sau luân hồi
+    daily: emptyDaily(), // điểm danh ngày và nhiệm vụ ngày (giữ khi luân hồi)
     challenge: null, // Kiếp Thử Thách đang theo (xem challenges.js), null = kiếp thường
     challengeDone: false, // đã hoàn thành thử thách trong kiếp này
     arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
@@ -101,10 +106,11 @@ function createPlayerState(minRoot = 0) {
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
       breakthroughs: 0, failures: 0, tribulations: 0, playSeconds: 0,
-      kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0,
+      kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0, dailyTasks: 0,
     },
     settings: {
       particles: true, autoSave: true, autoRepeat: true, autoHeal: true, sound: true, music: true, autoBreak: false,
+      notify: false, // thông báo trình duyệt khi linh khí đầy lúc tab ở nền
       auto: Object.fromEntries(AUTOMATIONS.map((a) => [a.id, false])), // tự động hoá đã mở khoá: bật / tắt từng cái
       autoCraft: null, // id công thức tự luyện
     },
@@ -137,6 +143,8 @@ export const useGameStore = defineStore('game', {
     tribulation: { active: false, bolt: 0, total: 0, hp: 0, maxHp: 0, name: '' },
     storyView: null, // trình đọc truyện đang mở: { id, idx, replay, phase, result, effectsText }
     storyTimer: 0,
+    bossChoice: null, // lựa chọn phần thưởng boss đang chờ: { n, kind, options: [{ label, effects }] }
+    bossChoiceAge: 0,
     autoTimer: 0, // đếm giây cho tự động hoá
     event: null, // kỳ ngộ đang chờ người chơi: { id, resultText, effectsText } hoặc null
     eventTimer: 0,
@@ -251,6 +259,10 @@ export const useGameStore = defineStore('game', {
       const m = C.MILESTONES[this.campaign.milestone]
       return !!m && this.campaign.record >= m.ai
     },
+    /** Điểm danh hoặc nhiệm vụ ngày còn chờ nhận (hiện chấm đỏ ở màn Nhân Vật). */
+    dailyPending() {
+      return (!this.daily.claimed && !!this.daily.day) || this.daily.tasks.some((t) => !t.claimed && this.dailyTaskDone(t))
+    },
     canChoosePath() {
       return !this.path && this.realmIdx >= PATH_MIN_REALM
     },
@@ -343,6 +355,7 @@ export const useGameStore = defineStore('game', {
         this.addLog('Linh khí tự tích luỹ theo thời gian, đầy 100% thì bấm "Đột Phá".', 'info')
       }
       this.refillQuests()
+      this.ensureDaily()
       this.ready = true
       this.save()
     },
@@ -383,6 +396,11 @@ export const useGameStore = defineStore('game', {
         this.autoTimer = 0
         this.runAutomation()
         this.checkChallenge()
+        this.ensureDaily()
+        if (this.bossChoice) {
+          this.bossChoiceAge += AUTOMATION_INTERVAL
+          if (this.bossChoiceAge >= BOSS_CHOICE_SECONDS) this.chooseBossReward(0, true)
+        }
       }
       // Tự động đột phá các bậc nhỏ (bậc có thiên kiếp luôn phải tự bấm để chuẩn bị đan)
       if (this.settings.autoBreak && this.canBreakthrough && !this.nextTribulation && !this.storyView && !this.event) this.breakthrough()
@@ -932,7 +950,7 @@ export const useGameStore = defineStore('game', {
       this.eventTimer = 0
       this.eventNext = rollEventDelay()
       if (this.tribulation.active || this.event || this.storyView) return
-      const pool = RANDOM_EVENTS.filter((e) => this.stageIdx >= e.minStage)
+      const pool = RANDOM_EVENTS.filter((e) => this.stageIdx >= e.minStage && !e.chainOnly)
       let pick = Math.random() * pool.reduce((n, e) => n + e.weight, 0)
       const ev = pool.find((e) => (pick -= e.weight) <= 0) ?? pool[0]
       this.eventAge = 0
@@ -956,13 +974,25 @@ export const useGameStore = defineStore('game', {
       const texts = this.applyEffects(outcome.effects)
       this.stats.events += 1
       this.eventAge = 0
-      Object.assign(this.event, { phase: 'result', resultText: outcome.text, effectsText: texts })
+      Object.assign(this.event, { phase: 'result', resultText: outcome.text, effectsText: texts, next: outcome.next ?? null })
       this.addLog(`${outcome.text} ${texts.join(', ')}`, 'event')
     },
 
     closeEvent() {
+      const next = this.event?.next ?? null
       this.event = null
       this.eventTimer = 0
+      if (next && eventById(next)) this.openEvent(next) // chuỗi kỳ ngộ: nối sang bước kế tiếp
+    },
+
+    /** Mở thẳng một kỳ ngộ (bước tiếp theo của chuỗi). */
+    openEvent(id) {
+      const ev = eventById(id)
+      if (!ev) return false
+      this.eventAge = 0
+      this.event = { id: ev.id, phase: 'choose', resultText: '', effectsText: [], next: null }
+      this.addLog(`Kỳ ngộ tiếp nối: ${ev.title}`, 'event')
+      return true
     },
 
     // ------------------------------------------------------------
@@ -972,6 +1002,7 @@ export const useGameStore = defineStore('game', {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
       if (key === 'aiRecord') return this.campaign.record
       if (key === 'skills') return Object.keys(this.skills.owned).length
+      if (key === 'dailyTasks') return this.stats.dailyTasks ?? 0
       if (key === 'challengesDone') return Object.values(this.reincarnation.challenges).reduce((n, v) => n + v, 0)
       if (key === 'artLevels') return Object.values(this.arts.owned).reduce((n, v) => n + v, 0)
       if (key === 'playHours') return Math.floor(this.stats.playSeconds / 3600)
@@ -1471,6 +1502,88 @@ export const useGameStore = defineStore('game', {
       this.spiritStones = this.spiritStones.add(bonus)
       this.addLog(`Vượt ải ${n} (${C.AI_KINDS[kind].name})! Thưởng thêm ${fmt(bonus)} linh thạch. Thu nhập thụ động tăng.`, 'good')
       return bonus
+    },
+
+    // ------------------------------------------------------------
+    // Điểm danh ngày, nhiệm vụ ngày
+    // ------------------------------------------------------------
+    /** Sang ngày mới (giờ địa phương) thì đặt lại điểm danh và bốc 3 nhiệm vụ ngày; bỏ lỡ một ngày thì chuỗi về 0. */
+    ensureDaily(now = Date.now()) {
+      const today = dayKey(now)
+      const d = this.daily
+      if (d.day === today) return false
+      const keep = d.day === previousDayKey(now) && d.claimed
+      const pool = [...DAILY_TEMPLATE_IDS]
+      const tasks = []
+      while (tasks.length < DAILY_TASK_COUNT && pool.length) {
+        const tpl = templateById(pool.splice(Math.floor(Math.random() * pool.length), 1)[0])
+        tasks.push({
+          tpl: tpl.id, target: Math.max(1, Math.round(questTarget(tpl, 0, this.stageIdx) * 0.6)),
+          start: this.achievementValue(tpl.key), claimed: false,
+        })
+      }
+      this.daily = { day: today, streak: keep ? d.streak : 0, claimed: false, bonus: false, tasks }
+      return true
+    },
+
+    /** Điểm danh nhận thưởng ngày (chuỗi 7 ngày). */
+    claimDaily() {
+      const d = this.daily
+      if (d.claimed || !d.day) return false
+      const day = nextRewardDay(d.streak)
+      const pool = dailyArtPool(this.campaign.record)
+      const texts = this.applyEffects(dailyReward(day, pool[Math.floor(Math.random() * pool.length)]))
+      d.streak += 1
+      d.claimed = true
+      this.addLog(`Điểm danh ngày ${day}/${STREAK_DAYS} (chuỗi ${d.streak} ngày): ${texts.join(', ')}.`, 'event')
+      return true
+    },
+
+    dailyProgress(t) {
+      return Math.max(0, this.achievementValue(templateById(t.tpl).key) - t.start)
+    },
+
+    dailyTaskDone(t) {
+      return this.dailyProgress(t) >= t.target
+    },
+
+    /** Nhận thưởng nhiệm vụ ngày thứ `i`; xong cả 3 nhận thêm thưởng. */
+    claimDailyTask(i) {
+      const t = this.daily.tasks[i]
+      if (!t || t.claimed || !this.dailyTaskDone(t)) return false
+      t.claimed = true
+      this.applyEffects(DAILY_TASK_REWARD)
+      this.stats.dailyTasks = (this.stats.dailyTasks ?? 0) + 1
+      if (!this.daily.bonus && this.daily.tasks.every((x) => x.claimed)) {
+        this.daily.bonus = true
+        const texts = this.applyEffects(DAILY_BONUS_REWARD)
+        this.addLog(`Xong cả ${DAILY_TASK_COUNT} nhiệm vụ ngày: ${texts.join(', ')}.`, 'event')
+      }
+      return true
+    },
+
+    /** Có thưởng điểm danh hoặc nhiệm vụ ngày chờ nhận. */
+    // ------------------------------------------------------------
+    // Chọn phần thưởng boss
+    // ------------------------------------------------------------
+    /** Mở lựa chọn 1 trong 3 phần thưởng sau khi lần đầu hạ boss ải `n`. Lựa chọn cũ chưa chọn được tự chốt phương án đầu. */
+    offerBossChoice(n, kind) {
+      if (this.bossChoice) this.chooseBossReward(0, true)
+      this.bossChoice = { n, kind, options: bossChoiceOptions({ n, kind, path: this.path }) }
+      this.bossChoiceAge = 0
+      this.addLog(`Hạ ${C.AI_KINDS[kind].name} ải ${n}: chọn một trong ba phần thưởng!`, 'event')
+    },
+
+    /** Chọn phương án `i` của lựa chọn phần thưởng boss (`auto`: hết giờ tự chọn). */
+    chooseBossReward(i, auto = false) {
+      const bc = this.bossChoice
+      const opt = bc?.options[i]
+      if (!opt) return false
+      const texts = this.applyEffects(opt.effects)
+      this.bossChoice = null
+      this.bossChoiceAge = 0
+      this.addLog(`${auto ? 'Tự chọn' : 'Chọn'} phần thưởng ải ${bc.n}: ${texts.join(', ')}.`, 'good')
+      return true
     },
 
     /** Nhận rương mốc ải kế tiếp nếu đã đạt mốc. */

@@ -18,6 +18,7 @@ import { ACHIEVEMENTS } from '../game/achievements.js'
 import { PERKS } from '../game/reincarnation.js'
 import { AUTOMATION_IDS } from '../game/automation.js'
 import { CHALLENGES } from '../game/challenges.js'
+import { DAILY_TASK_COUNT, emptyDaily } from '../game/daily.js'
 import { CROPS, MAX_PLOTS } from '../game/garden.js'
 import { sectById } from '../game/sect.js'
 import { TIERS as QUEST_TIERS, templateById } from '../game/quests.js'
@@ -51,6 +52,7 @@ export function serialize(state, now = Date.now()) {
       arts: JSON.parse(JSON.stringify(state.arts)),
       path: state.path ?? null,
       challenge: state.challenge ?? null,
+      daily: JSON.parse(JSON.stringify(state.daily)),
       challengeDone: !!state.challengeDone,
       gear: JSON.parse(JSON.stringify(state.gear)),
       achTier: { ...state.achTier },
@@ -167,6 +169,18 @@ export function deserialize(save, defaults) {
   }
   const achTier = {}
   for (const a of ACHIEVEMENTS) achTier[a.id] = Math.floor(num(d.achTier?.[a.id], 0, 0, a.targets.length))
+  // Điểm danh và nhiệm vụ ngày: ngày hợp lệ YYYY-MM-DD, mẫu nhiệm vụ có thật, tối đa DAILY_TASK_COUNT nhiệm vụ
+  const daily = emptyDaily()
+  if (d.daily && typeof d.daily.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.daily.day)) {
+    daily.day = d.daily.day
+    daily.streak = Math.floor(num(d.daily.streak, 0, 0, 100000))
+    daily.claimed = d.daily.claimed === true
+    daily.bonus = d.daily.bonus === true
+    for (const t of Array.isArray(d.daily.tasks) ? d.daily.tasks : []) {
+      if (daily.tasks.length >= DAILY_TASK_COUNT || !t || !templateById(t.tpl)) continue
+      daily.tasks.push({ tpl: t.tpl, target: Math.max(1, Math.floor(num(t.target, 1))), start: num(t.start, 0), claimed: t.claimed === true })
+    }
+  }
   // Kiếp Thử Thách: số lần hoàn thành mỗi thử thách hợp lệ
   const challenges = {}
   for (const id of Object.keys(CHALLENGES)) {
@@ -250,6 +264,7 @@ export function deserialize(save, defaults) {
     arts: { owned: artsOwned, slots: artSlots },
     path: PATHS[d.path] ? d.path : null,
     challenge: CHALLENGES[d.challenge] ? d.challenge : null,
+    daily,
     challengeDone: d.challengeDone === true,
     gear: { bag, equipped },
     achTier,
@@ -298,6 +313,7 @@ export function deserialize(save, defaults) {
       reincarnations: num(d.stats?.reincarnations, 0),
       harvests: num(d.stats?.harvests, 0),
       questsDone: num(d.stats?.questsDone, 0),
+      dailyTasks: num(d.stats?.dailyTasks, 0),
     },
     settings: {
       particles: d.settings?.particles !== false,
@@ -307,6 +323,7 @@ export function deserialize(save, defaults) {
       sound: d.settings?.sound !== false,
       music: d.settings?.music !== false,
       autoBreak: d.settings?.autoBreak === true,
+      notify: d.settings?.notify === true,
       auto: Object.fromEntries(AUTOMATION_IDS.map((id) => [id, d.settings?.auto?.[id] === true])),
       autoCraft: RECIPES.some((r) => r.id === d.settings?.autoCraft) ? d.settings.autoCraft : null,
     },

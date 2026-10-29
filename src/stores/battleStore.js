@@ -431,6 +431,7 @@ export const useBattleStore = defineStore('battle', {
       if (n > game.campaign.best) {
         const bonus = game.recordAi(n) // ải mới: cập nhật tiến độ, thưởng lần đầu, xoá Kiên Trì
         if (bonus) this.run.stones = this.run.stones.add(bonus)
+        if (kind !== 'normal') game.offerBossChoice(n, kind) // chọn 1 trong 3 phần thưởng
       }
       this.run.wins += 1
       this.lastResult = 'win'

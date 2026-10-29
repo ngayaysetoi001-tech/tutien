@@ -33,6 +33,7 @@ function badge(id) {
   if (id === 'achievements') return game.claimableCount > 0
   if (id === 'sect') return game.quests.some((q) => game.questDone(q))
   if (id === 'battle') return game.milestoneClaimable || !!game.bossChoice
+  if (id === 'character') return game.dailyPending || game.canChoosePath
   return !ui.seen[id] // màn vừa mở khoá, chưa ghé lần nào
 }
 </script>

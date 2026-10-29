@@ -4,6 +4,8 @@
 //   outcomes: [{ p, text, effects }]      - kết quả theo xác suất (p cộng lại = 1)
 //   hoặc fight: { monster, floor } + win / lose: { text, effects }  - giao chiến mô phỏng
 // safe: chỉ số phương án ít rủi ro nhất, dùng khi người chơi không trả lời kịp
+// Chuỗi kỳ ngộ: một kết quả có thể có next: 'id' để nối sang kỳ ngộ kế tiếp (chainOnly: chỉ xuất hiện qua chuỗi,
+// không bốc ngẫu nhiên). Phương án an toàn không được nối tiếp nên bỏ ngỏ thì chuỗi dừng.
 // effects: exp{seconds} | expLoss{ratio} | stones{base} (nhân 1.45^bậc) | item{id,count}
 //          stat{stat,amount} | expBonus{amount}
 // =====================================================================
@@ -280,6 +282,87 @@ export const RANDOM_EVENTS = [
         lose: { text: 'Cấm chế quá mạnh, ngươi trọng thương và mất ít linh thạch.', effects: [{ type: 'stones', base: -50 }, { type: 'expLoss', ratio: 0.1 }] },
       },
       { label: 'Ghi nhớ vị trí, quay lại sau', outcomes: [{ p: 1, text: 'Ngươi nhặt vài mảnh vụn bên ngoài cổng.', effects: [{ type: 'item', id: 'hu_khong_thach', count: 1 }] }] },
+    ],
+  },
+  // ---- Chuỗi 1: Cổ Mộ (3 bước) ----
+  {
+    id: 'co_mo_1', title: 'Cổ Mộ Dưới Gốc Cây', minStage: 4, weight: 2, safe: 1,
+    text: 'Rễ một cây cổ thụ trồi lên làm lộ ra phiến đá khắc chữ cổ: dấu tích một ngôi mộ tu sĩ.',
+    choices: [
+      {
+        label: 'Đào mộ',
+        outcomes: [
+          { p: 0.65, text: 'Nắp quan tài lộ ra, hàn khí toả ra từ khe hở.', effects: [], next: 'co_mo_2' },
+          { p: 0.35, text: 'Âm khí xộc lên làm ngươi choáng váng.', effects: [{ type: 'expLoss', ratio: 0.04 }] },
+        ],
+      },
+      { label: 'Bỏ đi', outcomes: [{ ...nothing, text: 'Ngươi để yên giấc ngủ của người đã khuất.' }] },
+    ],
+  },
+  {
+    id: 'co_mo_2', title: 'Quan Tài Cổ', minStage: 0, weight: 0, chainOnly: true, safe: 1,
+    text: 'Bên trong là một bộ hài cốt mặc đạo bào, tay nắm chặt một ngọc giản.',
+    choices: [
+      {
+        label: 'Lấy ngọc giản',
+        fight: { monster: 'hac_thi', floor: 5 },
+        win: { text: 'Hài cốt đứng dậy rồi bị ngươi đánh tan. Ngọc giản chỉ tới một mật thất.', effects: [{ type: 'exp', seconds: 600 }], next: 'co_mo_3' },
+        lose: { text: 'Hài cốt đánh ngươi trọng thương, ngươi phải rút lui.', effects: [{ type: 'expLoss', ratio: 0.08 }] },
+      },
+      { label: 'Cúi bái rồi đóng nắp', outcomes: [{ p: 1, text: 'Ngươi cúi bái, một luồng linh khí ấm áp rót vào người.', effects: [{ type: 'exp', seconds: 900 }] }] },
+    ],
+  },
+  {
+    id: 'co_mo_3', title: 'Mật Thất Tiền Bối', minStage: 0, weight: 0, chainOnly: true, safe: 0,
+    text: 'Trong mật thất, tàn hồn vị tiền bối mỉm cười: "Kẻ hậu bối có duyên, ta truyền lại chút tâm đắc."',
+    choices: [
+      {
+        label: 'Nhận truyền thừa',
+        outcomes: [
+          { p: 1, text: 'Tàn hồn truyền lại một đoạn tâm pháp rồi tan biến.', effects: [{ type: 'stat', stat: 'atk', amount: 12 }, { type: 'stat', stat: 'hp', amount: 40 }, { type: 'item', id: 'cp_thanh_tam', count: 2 }] },
+        ],
+      },
+    ],
+  },
+  // ---- Chuỗi 2: Hồ Ly (3 bước) ----
+  {
+    id: 'ho_ly_1', title: 'Hồ Ly Nhỏ Bị Thương', minStage: 2, weight: 2, safe: 1,
+    text: 'Một con hồ ly lông trắng nằm bên đường, chân bị bẫy thú kẹp chặt, mắt long lanh nhìn ngươi.',
+    choices: [
+      {
+        label: 'Cứu giúp',
+        outcomes: [
+          { p: 0.9, text: 'Ngươi gỡ bẫy và băng bó cho nó. Nó liếm tay ngươi rồi chạy vào rừng.', effects: [], next: 'ho_ly_2' },
+          { p: 0.1, text: 'Nó cắn ngươi một cái rồi bỏ chạy.', effects: [{ type: 'stones', base: -10 }] },
+        ],
+      },
+      { label: 'Đi qua', outcomes: [{ ...nothing, text: 'Ngươi bước đi, không ngoái nhìn lại.' }] },
+    ],
+  },
+  {
+    id: 'ho_ly_2', title: 'Hồ Ly Quay Lại', minStage: 0, weight: 0, chainOnly: true, safe: 1,
+    text: 'Vài ngày sau, con hồ ly xuất hiện trước cửa, ngậm vạt áo ngươi như muốn dẫn đường.',
+    choices: [
+      {
+        label: 'Theo nó vào thung lũng',
+        outcomes: [
+          { p: 0.7, text: 'Thung lũng giấu kín có suối linh khí và nhiều linh thảo.', effects: [{ type: 'exp', seconds: 900 }, { type: 'item', id: 'linh_thao', count: 5 }], next: 'ho_ly_3' },
+          { p: 0.3, text: 'Yêu thú canh giữ thung lũng buộc ngươi phải rút lui.', effects: [{ type: 'expLoss', ratio: 0.05 }] },
+        ],
+      },
+      { label: 'Từ chối', outcomes: [{ ...nothing, text: 'Con hồ ly buồn bã bỏ đi.' }] },
+    ],
+  },
+  {
+    id: 'ho_ly_3', title: 'Hồ Tiên Tặng Quà', minStage: 0, weight: 0, chainOnly: true, safe: 0,
+    text: 'Một nữ tử áo trắng hiện ra bên suối: "Đa tạ ngươi đã cứu tiểu muội ta."',
+    choices: [
+      {
+        label: 'Nhận quà',
+        outcomes: [
+          { p: 1, text: 'Nàng tặng ngươi hai viên tiên đan và một đoạn công pháp.', effects: [{ type: 'item', id: 'duong_the_dan', count: 2 }, { type: 'item', id: 'cp_cuong_the', count: 2 }, { type: 'expBonus', amount: 0.01 }] },
+        ],
+      },
     ],
   },
 ]

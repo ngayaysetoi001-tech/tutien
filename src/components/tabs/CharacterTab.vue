@@ -9,6 +9,8 @@ import { useUiStore } from '../../stores/uiStore.js'
 import { SKILLS } from '../../game/skills.js'
 import { PATHS, PATH_IDS, PATH_MIN_REALM } from '../../game/paths.js'
 import { CHALLENGES } from '../../game/challenges.js'
+import { STREAK_DAYS, nextRewardDay } from '../../game/daily.js'
+import { QUEST_TEMPLATES } from '../../game/quests.js'
 import { REALMS, STAGES } from '../../game/constants.js'
 const STAGES_TEXT = (i) => STAGES[i].fullName
 
@@ -43,6 +45,39 @@ const statRows = computed(() => [
       <div class="mt-1 text-xs text-slate-400">
         {{ game.spiritRoot.name }} (x{{ game.spiritRoot.mult }}) - {{ game.spiritRoot.desc }}
       </div>
+    </div>
+
+    <!-- Điểm danh và nhiệm vụ ngày -->
+    <div class="card space-y-1.5">
+      <div class="flex items-center justify-between">
+        <div class="title-rule !m-0 flex-1">Điểm danh</div>
+        <div class="ml-2 text-xs text-slate-400">Chuỗi {{ game.daily.streak }} ngày</div>
+      </div>
+      <div class="grid grid-cols-7 gap-0.5">
+        <div
+          v-for="d in STREAK_DAYS"
+          :key="d"
+          class="rounded border py-0.5 text-center text-[10px]"
+          :class="d <= game.daily.streak % STREAK_DAYS || (game.daily.claimed && game.daily.streak > 0 && game.daily.streak % STREAK_DAYS === 0)
+            ? 'border-jade-500/60 bg-jade-500/20 text-jade-200'
+            : d === nextRewardDay(game.daily.streak) && !game.daily.claimed ? 'border-gold-400 text-gold-200' : 'border-ink-600 text-slate-500'"
+        >
+          {{ d }}
+        </div>
+      </div>
+      <button class="btn-gold w-full py-1 text-xs" :disabled="game.daily.claimed" @click="game.claimDaily()">
+        {{ game.daily.claimed ? 'Hôm nay đã điểm danh' : `Điểm danh nhận thưởng ngày ${nextRewardDay(game.daily.streak)}` }}
+      </button>
+      <div class="text-[11px] font-semibold text-slate-300">Nhiệm vụ ngày</div>
+      <div v-for="(t, i) in game.daily.tasks" :key="i" class="flex items-center justify-between gap-2 text-xs">
+        <span :class="t.claimed ? 'text-slate-500 line-through' : 'text-slate-300'">
+          {{ QUEST_TEMPLATES.find((x) => x.id === t.tpl).label }}: {{ Math.min(game.dailyProgress(t), t.target) }}/{{ t.target }}
+        </span>
+        <button class="btn-jade !px-2 !py-0.5 text-[11px]" :disabled="t.claimed || !game.dailyTaskDone(t)" @click="game.claimDailyTask(i)">
+          {{ t.claimed ? 'Đã nhận' : 'Nhận' }}
+        </button>
+      </div>
+      <div v-if="game.daily.tasks.length" class="text-[11px] text-slate-500">Xong cả {{ game.daily.tasks.length }} nhiệm vụ: thưởng thêm.</div>
     </div>
 
     <!-- Kiếp Thử Thách đang theo -->
