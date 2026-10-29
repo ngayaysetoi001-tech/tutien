@@ -22,6 +22,7 @@ import { PERKS } from '../game/reincarnation.js'
 import { AUTOMATION_IDS } from '../game/automation.js'
 import { CHALLENGES } from '../game/challenges.js'
 import { DAILY_TASK_COUNT, emptyDaily } from '../game/daily.js'
+import { TALENTS, TALENT_OFFER_SIZE } from '../game/talents.js'
 import { CROPS, MAX_PLOTS } from '../game/garden.js'
 import { sectById } from '../game/sect.js'
 import { TIERS as QUEST_TIERS, templateById } from '../game/quests.js'
@@ -58,6 +59,8 @@ export function serialize(state, now = Date.now()) {
       expeditions: JSON.parse(JSON.stringify(state.expeditions)),
       path: state.path ?? null,
       challenge: state.challenge ?? null,
+      talent: state.talent ?? null,
+      talentOffer: [...state.talentOffer],
       daily: JSON.parse(JSON.stringify(state.daily)),
       timeBank: Math.floor(state.timeBank ?? 0),
       challengeDone: !!state.challengeDone,
@@ -306,6 +309,8 @@ export function deserialize(save, defaults) {
     expeditions,
     path: PATHS[d.path] ? d.path : null,
     challenge: CHALLENGES[d.challenge] ? d.challenge : null,
+    talent: TALENTS[d.talent] ? d.talent : null,
+    talentOffer: TALENTS[d.talent] ? [] : [...new Set(Array.isArray(d.talentOffer) ? d.talentOffer : [])].filter((id) => TALENTS[id]).slice(0, TALENT_OFFER_SIZE),
     daily,
     timeBank: Math.floor(num(d.timeBank, 0, 0, TIME_BANK_CAP)),
     challengeDone: d.challengeDone === true,

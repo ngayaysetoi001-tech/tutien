@@ -28,6 +28,7 @@ import { ELEMENT_IDS, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as AR from '../game/arts.js'
 import * as PT from '../game/pets.js'
+import { TALENTS, TALENT_REROLL_COST, rollTalentOffer, talentPerk } from '../game/talents.js'
 import { MAX_PARTY, MISSIONS, expeditionSlots, missionEffects, partyPower, successChance } from '../game/expedition.js'
 import { BUILDINGS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage, dwellingPerks, emptyDwelling } from '../game/dwelling.js'
 import { PATHS, PATH_MIN_REALM, pathPerk } from '../game/paths.js'
@@ -107,6 +108,8 @@ function createPlayerState(minRoot = 0) {
     inventory: { herbs: {}, ores: {}, scrolls: {}, pills: {} },
     element: ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)], // hệ ngũ hành chủ đạo
     path: null, // Đạo Lộ (xem paths.js): chọn khi đạt Trúc Cơ, chọn lại sau luân hồi
+    talent: null, // Thiên Phú của kiếp này (xem talents.js)
+    talentOffer: [], // 3 thiên phú đang chờ chọn (rỗng khi đã chọn)
     daily: emptyDaily(), // điểm danh ngày và nhiệm vụ ngày (giữ khi luân hồi)
     timeBank: 0, // kho thời gian tích luỹ (giây), tiêu để tăng tốc x4; giữ khi luân hồi
     challenge: null, // Kiếp Thử Thách đang theo (xem challenges.js), null = kiếp thường
@@ -279,6 +282,10 @@ export const useGameStore = defineStore('game', {
     dailyPending() {
       return (!this.daily.claimed && !!this.daily.day) || this.daily.tasks.some((t) => !t.claimed && this.dailyTaskDone(t))
     },
+    /** Đang có thiên phú chờ chọn. */
+    talentPending() {
+      return !this.talent && this.talentOffer.length > 0
+    },
     canChoosePath() {
       return !this.path && this.realmIdx >= PATH_MIN_REALM
     },
@@ -303,6 +310,7 @@ export const useGameStore = defineStore('game', {
       const out = { ...ZERO_EXTRA }
       for (const [k, v] of Object.entries(this.petPerk)) out[k] += v
       for (const [k, v] of Object.entries(dwellingPerks(this.dwelling))) out[k] += v
+      for (const [k, v] of Object.entries(talentPerk(this.talent))) out[k] += v
       return out
     },
     /** Số ô công pháp (bị động) đã mở. */
@@ -396,6 +404,7 @@ export const useGameStore = defineStore('game', {
       }
       this.refillQuests()
       this.ensureDaily()
+      if (!this.talent && this.talentOffer.length === 0) this.talentOffer = rollTalentOffer() // game mới hoặc save cũ: bốc thiên phú
       this.ready = true
       this.save()
     },
@@ -762,6 +771,24 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     // Võ kỹ
     // ------------------------------------------------------------
+    /** Chọn một trong các thiên phú đang chờ. */
+    chooseTalent(id) {
+      if (this.talent || !this.talentOffer.includes(id) || !TALENTS[id]) return false
+      this.talent = id
+      this.talentOffer = []
+      this.addLog(`Thiên phú ${TALENTS[id].name}: ${TALENTS[id].text}.`, 'event')
+      return true
+    },
+
+    /** Bốc lại bộ thiên phú (tốn Đạo Vận), chỉ khi chưa chọn. */
+    rerollTalents() {
+      const rb = this.reincarnation
+      if (this.talent || rb.dao < TALENT_REROLL_COST) return false
+      rb.dao -= TALENT_REROLL_COST
+      this.talentOffer = rollTalentOffer()
+      return true
+    },
+
     /** Chọn Đạo Lộ (một lần, từ Trúc Cơ; luân hồi để chọn lại). Tự trang bị võ kỹ độc quyền nếu đã học. */
     choosePath(id) {
       if (!PATHS[id] || !this.canChoosePath) return false
@@ -1265,12 +1292,13 @@ export const useGameStore = defineStore('game', {
       rb.count += 1
       this.stats.reincarnations += 1
       const fresh = createPlayerState(rb.upgrades.thien_menh ?? 0)
-      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'path', 'challenge', 'challengeDone', 'spiritRoot', 'element', 'garden', 'mineAt']) {
+      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'path', 'talent', 'talentOffer', 'challenge', 'challengeDone', 'spiritRoot', 'element', 'garden', 'mineAt']) {
         this[key] = fresh[key]
       }
       this.arrayLevel = 3 * (rb.upgrades.tuc_hue ?? 0) // Túc Huệ
       this.campaign = { best: 0, record: this.campaign.record, grit: 0, farm: null, milestone: this.campaign.milestone } // ải cao nhất mất, kỷ lục và rương mốc giữ lại
       this.challenge = CHALLENGES[challengeId] ? challengeId : null // Kiếp Thử Thách của kiếp mới
+      this.talentOffer = rollTalentOffer() // Thiên Phú: bốc lại cho kiếp mới
       this.quests = [] // nhiệm vụ cũ đo theo thống kê của kiếp trước
       this.refillQuests()
       this.fullNotified = false

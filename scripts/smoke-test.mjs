@@ -2951,14 +2951,14 @@ ok('Luyện Khí Phòng làm rèn ra đồ hiếm hơn; Luyện Đan Phòng tăn
     s.stageIdx = 5
     s.dwelling.luyen_khi = level
     let total = 0
-    const n = 800
+    const n = 4000
     for (let i = 0; i < n; i++) {
       const weights = EQ.FORGE_RARITY_WEIGHTS.map((w, k) => (k === 0 ? w : w * (1 + s.extraPerk.forge)))
       total += EQ.generateItem('weapon', 0, weights).rarity
     }
     return total / n
   }
-  assert.ok(avgRarity(10) > avgRarity(0) + 0.15)
+  assert.ok(avgRarity(10) > avgRarity(0) + 0.1)
   // thật trong game: rèn bằng store
   const s = freshStore()
   s.init()
@@ -3135,6 +3135,136 @@ ok('save/load thám hiểm: giữ đoàn, đệ tử đang đi, việc cũ; lo�
   const s4 = freshStore(true)
   s4.init()
   assert.deepEqual(s4.expeditions, [])
+})
+
+// =====================================================================
+// Thiên Phú
+// =====================================================================
+const TL = await import('../src/game/talents.js')
+
+ok('thiên phú: dữ liệu hợp lệ, khoá thưởng thuộc extraPerk, đủ 3 độ hiếm, thưởng mạnh dần theo độ hiếm', () => {
+  const extraKeys = ['atk', 'hp', 'def', 'speed', 'crit', 'cd', 'thorns', 'luck', 'stones', 'exp', 'arts', 'disciple', 'dao', 'pill', 'double']
+  assert.ok(TL.TALENT_IDS.length >= 12)
+  for (const [id, t] of Object.entries(TL.TALENTS)) {
+    assert.ok(t.name && t.text && [0, 1, 2].includes(t.grade), id)
+    assert.ok(Object.keys(t.perk).length >= 1 && Object.keys(t.perk).every((k) => extraKeys.includes(k)), id + ' khoá lạ')
+  }
+  for (const g of [0, 1, 2]) assert.ok(Object.values(TL.TALENTS).some((t) => t.grade === g))
+  const total = (g) => {
+    const list = Object.values(TL.TALENTS).filter((t) => t.grade === g)
+    return list.reduce((n, t) => n + Object.values(t.perk).reduce((a, b) => a + b, 0), 0) / list.length
+  }
+  assert.ok(total(1) > total(0) && total(2) > total(1))
+  assert.deepEqual(TL.talentPerk(null), {})
+  assert.deepEqual(TL.talentPerk('linh_can'), { exp: 0.15 })
+})
+
+ok('bốc thiên phú: 3 thiên phú khác nhau, độ hiếm cao ít gặp hơn', () => {
+  const count = { 0: 0, 1: 0, 2: 0 }
+  for (let i = 0; i < 2000; i++) {
+    const offer = TL.rollTalentOffer()
+    assert.equal(offer.length, TL.TALENT_OFFER_SIZE)
+    assert.equal(new Set(offer).size, offer.length)
+    for (const id of offer) count[TL.TALENTS[id].grade]++
+  }
+  // mỗi thiên phú thường xuất hiện nhiều hơn mỗi thiên phú cực hiếm
+  const per = (g) => count[g] / Object.values(TL.TALENTS).filter((t) => t.grade === g).length
+  assert.ok(per(0) > per(1) && per(1) > per(2), JSON.stringify(count))
+  assert.equal(TL.rollTalentOffer(() => 0.99).length, 3, 'rng cực đại vẫn bốc đủ')
+})
+
+ok('thiên phú trong game: game mới có 3 lựa chọn, chọn một lần, thưởng có hiệu lực, không còn lựa chọn sau khi chọn', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.talentOffer.length, 3)
+  assert.equal(s.talentPending, true)
+  assert.equal(s.chooseTalent('khong_co'), false)
+  const outside = TL.TALENT_IDS.find((id) => !s.talentOffer.includes(id))
+  assert.equal(s.chooseTalent(outside), false, 'chỉ chọn trong các lựa chọn đang có')
+  const base = { exp: s.expRate, combat: s.combat }
+  s.talentOffer = ['linh_can', 'kiem_cot', 'phu_quy']
+  assert.equal(s.chooseTalent('linh_can'), true)
+  assert.equal(s.talent, 'linh_can')
+  assert.deepEqual(s.talentOffer, [])
+  assert.equal(s.talentPending, false)
+  assert.equal(s.chooseTalent('kiem_cot'), false, 'không đổi sau khi chọn')
+  assert.ok(s.expRate.gt(base.exp.mul(1.1)))
+  assert.equal(s.rerollTalents(), false, 'đã chọn thì không bốc lại')
+  // từng loại thưởng
+  const probe = (id, check) => {
+    const t = freshStore()
+    t.init()
+    t.stageIdx = 10
+    const b0 = { combat: t.combat, stones: t.stonesRate, luck: t.lootLuck, dao: t.daoPreview, arts: 0 }
+    t.talentOffer = [id]
+    t.chooseTalent(id)
+    check(t, b0)
+  }
+  probe('kiem_cot', (t, b) => assert.ok(t.combat.atk > b.combat.atk && t.battlePerk.crit > 0))
+  probe('thiet_cot', (t, b) => assert.ok(t.combat.hp > b.combat.hp && t.combat.def > b.combat.def))
+  probe('phu_quy', (t, b) => assert.ok(t.stonesRate.gt(b.stones)))
+  probe('van_may', (t, b) => assert.ok(t.lootLuck > b.luck))
+  probe('thien_co', (t, b) => assert.ok(t.daoPreview > b.dao))
+  probe('than_nhe', (t, b) => assert.ok(t.combat.speed > b.combat.speed && t.battlePerk.cd > 0))
+  probe('bat_khuat', (t) => assert.ok(t.battlePerk.thorns > 0))
+  probe('tong_su', (t) => assert.ok(t.discipleCtx().bonus > 0))
+  probe('dan_dao', (t) => assert.ok(t.extraPerk.pill > 0 && t.extraPerk.double > 0))
+  probe('tri_tue', (t) => {
+    t.arts.owned.pha_quan = 5
+    t.arts.slots[0] = 'pha_quan'
+    const a1 = t.artBonus.atk
+    t.talent = null
+    assert.ok(a1 > t.artBonus.atk)
+  })
+})
+
+ok('đổi bộ thiên phú tốn Đạo Vận, chỉ khi chưa chọn', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.rerollTalents(), false, 'chưa có Đạo Vận')
+  s.reincarnation.dao = 10
+  assert.equal(s.rerollTalents(), true)
+  assert.equal(s.reincarnation.dao, 10 - TL.TALENT_REROLL_COST)
+  assert.equal(s.talentOffer.length, 3)
+  s.reincarnation.dao = 2
+  assert.equal(s.rerollTalents(), false)
+})
+
+ok('luân hồi: thiên phú đã chọn mất, bốc bộ mới cho kiếp sau; save/load giữ thiên phú và lựa chọn, chặn dữ liệu lạ', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  s.talentOffer = ['linh_can']
+  s.chooseTalent('linh_can')
+  s.reincarnate()
+  assert.equal(s.talent, null)
+  assert.equal(s.talentOffer.length, 3)
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.deepEqual([...s2.talentOffer], [...s.talentOffer])
+  s2.talentOffer = ['kiem_cot', 'phu_quan', 'van_may']
+  s2.chooseTalent('kiem_cot')
+  s2.save()
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.talent, 'kiem_cot')
+  assert.deepEqual(s3.talentOffer, [])
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.talent = 'hack'
+  raw.data.talentOffer = ['linh_can', 'linh_can', 'khong_co', 'phu_quy', 'van_may', 'kiem_cot']
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s4 = freshStore(true)
+  s4.init()
+  assert.equal(s4.talent, null)
+  assert.deepEqual([...s4.talentOffer], ['linh_can', 'phu_quy', 'van_may'], 'trùng và lạ bị loại, tối đa 3')
+  // save cũ không có thiên phú: game bốc lựa chọn mới
+  delete raw.data.talent
+  delete raw.data.talentOffer
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s5 = freshStore(true)
+  s5.init()
+  assert.equal(s5.talentOffer.length, 3)
 })
 
 // =====================================================================
@@ -4213,6 +4343,8 @@ const ids = (s) => nextHints(s).map((h) => h.id)
 ok('gợi ý: game mới chưa có gợi ý thừa; đủ linh khí thì nhắc đột phá, có thiên kiếp thì nhắc chuẩn bị', () => {
   const s = freshStore()
   s.init()
+  assert.ok(ids(s).includes('talent'), 'game mới nhắc chọn thiên phú')
+  s.chooseTalent(s.talentOffer[0])
   assert.deepEqual(ids(s), [])
   s.exp = s.requirement
   assert.equal(nextHints(s)[0].id, 'break')

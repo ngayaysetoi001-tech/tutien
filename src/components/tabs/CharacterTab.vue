@@ -9,6 +9,7 @@ import { useUiStore } from '../../stores/uiStore.js'
 import { SKILLS } from '../../game/skills.js'
 import { PATHS, PATH_IDS, PATH_MIN_REALM } from '../../game/paths.js'
 import { CHALLENGES } from '../../game/challenges.js'
+import { GRADE_COLORS, GRADE_NAMES, TALENTS, TALENT_REROLL_COST } from '../../game/talents.js'
 import { STREAK_DAYS, nextRewardDay } from '../../game/daily.js'
 import { QUEST_TEMPLATES } from '../../game/quests.js'
 import { REALMS, STAGES } from '../../game/constants.js'
@@ -87,6 +88,30 @@ const statRows = computed(() => [
         <div class="text-xs" :class="game.challengeDone ? 'text-jade-300' : 'text-slate-400'">{{ game.challengeDone ? 'Đã hoàn thành' : `Mục tiêu: ${STAGES_TEXT(CHALLENGES[game.challenge].goalStage)}` }}</div>
       </div>
       <p class="text-[11px] text-slate-400">{{ CHALLENGES[game.challenge].desc }}</p>
+    </div>
+
+    <!-- Thiên Phú của kiếp này -->
+    <div v-if="game.talent || game.talentOffer.length" class="card space-y-1.5">
+      <div class="flex items-center justify-between">
+        <div class="title-rule !m-0 flex-1">Thiên Phú</div>
+        <div v-if="game.talent" class="ml-2 text-xs font-bold" :style="{ color: GRADE_COLORS[TALENTS[game.talent].grade] }">{{ TALENTS[game.talent].name }}</div>
+      </div>
+      <p v-if="game.talent" class="text-[11px] text-slate-300">{{ TALENTS[game.talent].text }}. Kiếp sau bốc lại.</p>
+      <template v-else>
+        <p class="text-[11px] text-jade-300">Chọn một thiên phú cho kiếp này (kiếp sau bốc lại).</p>
+        <div v-for="id in game.talentOffer" :key="id" class="rounded border border-ink-600 bg-ink-900 p-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold" :style="{ color: GRADE_COLORS[TALENTS[id].grade] }">
+              {{ TALENTS[id].name }} <span class="text-[10px] font-normal text-slate-500">{{ GRADE_NAMES[TALENTS[id].grade] }}</span>
+            </span>
+            <button class="btn-gold !px-3 !py-0.5 text-xs" @click="game.chooseTalent(id)">Chọn</button>
+          </div>
+          <p class="mt-0.5 text-[11px] text-slate-300">{{ TALENTS[id].text }}</p>
+        </div>
+        <button class="btn-ghost w-full py-1 text-xs" :disabled="game.reincarnation.dao < TALENT_REROLL_COST" @click="game.rerollTalents()">
+          Bốc lại ({{ TALENT_REROLL_COST }} Đạo Vận)
+        </button>
+      </template>
     </div>
 
     <!-- Đạo Lộ: chọn một lần từ Trúc Cơ -->
