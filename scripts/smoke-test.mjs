@@ -353,7 +353,8 @@ const { elementMult } = await import('../src/game/elements.js')
 const SK = await import('../src/game/skills.js')
 const EQ = await import('../src/game/equipment.js')
 const { on } = await import('../src/game/events.js')
-const { ACHIEVEMENTS } = await import('../src/game/achievements.js')
+const { ACHIEVEMENTS, achievementReward } = await import('../src/game/achievements.js')
+const { ITEMS: ALL_ITEMS, MONSTERS: ALL_MONSTERS } = await import('../src/game/data.js')
 const { RANDOM_EVENTS } = await import('../src/game/randomEvents.js')
 const { serialize } = await import('../src/services/saveService.js')
 
@@ -553,6 +554,26 @@ ok('thành tựu: chưa đủ thì không nhận, đủ thì nhận thưởng t�
   assert.equal(s.achTier.kills, 2)
   assert.equal(s.claimAchievement('kills'), false) // mốc 3 = 200 chưa đủ
   for (const a of ACHIEVEMENTS) assert.ok(a.targets.every((t, i) => i === 0 || t > a.targets[i - 1]))
+})
+
+ok('thành tựu: mọi khoá thống kê đều ra số, thưởng hợp lệ; kỳ ngộ mới dùng đúng vật phẩm và quái có thật', () => {
+  const s = freshStore()
+  s.init()
+  for (const a of ACHIEVEMENTS) {
+    assert.ok(Number.isFinite(s.achievementValue(a.key)), 'khoá thống kê lỗi: ' + a.key)
+    a.targets.forEach((_, tier) => assert.ok(achievementReward(a, tier).length >= 1))
+  }
+  s.stats.playSeconds = 3700
+  assert.equal(s.achievementValue('playHours'), 1)
+  const fxOf = (list) => list.flatMap((o) => o.effects)
+  for (const ev of RANDOM_EVENTS) {
+    assert.equal(new Set(RANDOM_EVENTS.filter((e) => e.id === ev.id)).size, 1, 'trùng id kỳ ngộ: ' + ev.id)
+    for (const c of ev.choices) {
+      const all = c.fight ? [c.win, c.lose] : c.outcomes
+      if (c.fight) assert.ok(ALL_MONSTERS[c.fight.monster], 'quái không tồn tại: ' + c.fight.monster)
+      for (const fx of fxOf(all)) if (fx.type === 'item') assert.ok(ALL_ITEMS[fx.id], 'vật phẩm không tồn tại: ' + fx.id)
+    }
+  }
 })
 
 ok('save/load giữ công pháp, trang bị đang mặc, thành tựu, hệ ngũ hành', () => {

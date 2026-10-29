@@ -140,6 +140,148 @@ export const RANDOM_EVENTS = [
       { label: 'Buông bỏ chấp niệm', outcomes: [{ ...nothing, text: 'Ảo cảnh tan biến, lòng ngươi thanh tịnh.' }] },
     ],
   },
+  {
+    id: 'thuong_nhan', title: 'Thương Nhân Bí Ẩn', minStage: 3, weight: 2, safe: 0,
+    text: 'Một thương nhân che mặt dựng quầy bên đường, bày ra vài món đồ toả linh quang.',
+    choices: [
+      {
+        label: 'Mua thảo dược (60 linh thạch)',
+        outcomes: [
+          { p: 0.75, text: 'Hàng thật giá thật, ngươi mua được nhiều thảo dược quý.', effects: [{ type: 'stones', base: -60 }, { type: 'item', id: 'tu_van_thao', count: 3 }, { type: 'item', id: 'huyet_sam', count: 3 }] },
+          { p: 0.25, text: 'Hắn lừa ngươi bằng cỏ dại nhuộm màu.', effects: [{ type: 'stones', base: -60 }, { type: 'item', id: 'linh_thao', count: 2 }] },
+        ],
+      },
+      { label: 'Xem hàng rồi đi', outcomes: [{ ...nothing, text: 'Ngươi ngắm nghía một lúc rồi rời đi.' }] },
+    ],
+  },
+  {
+    id: 'thac_nuoc', title: 'Thác Nước Linh Tuyền', minStage: 2, weight: 2, safe: 1,
+    text: 'Sau trận mưa, một thác nước đổ xuống từ vách núi, hơi nước phảng phất linh khí.',
+    choices: [
+      {
+        label: 'Ngồi thiền dưới thác',
+        outcomes: [
+          { p: 0.6, text: 'Dòng nước gột rửa tạp niệm, linh khí vận chuyển thông suốt.', effects: [{ type: 'exp', seconds: 1500 }] },
+          { p: 0.25, text: 'Nước lạnh thấu xương, ngươi vẫn cắn răng chịu đựng, thân thể rắn rỏi hơn.', effects: [{ type: 'stat', stat: 'hp', amount: 20 }] },
+          { p: 0.15, text: 'Ngươi nhiễm lạnh, phải vận công xua hàn.', effects: [{ type: 'expLoss', ratio: 0.04 }] },
+        ],
+      },
+      { label: 'Uống nước rồi đi tiếp', outcomes: [{ p: 1, text: 'Ngươi uống vài ngụm, thấy tinh thần sảng khoái.', effects: [{ type: 'exp', seconds: 200 }] }] },
+    ],
+  },
+  {
+    id: 'co_kiem', title: 'Cổ Kiếm Cắm Đá', minStage: 6, weight: 1, safe: 1,
+    text: 'Một thanh cổ kiếm gỉ sét cắm giữa tảng đá, kiếm khí vẫn còn lạnh buốt.',
+    choices: [
+      {
+        label: 'Rút kiếm',
+        outcomes: [
+          { p: 0.35, text: 'Kiếm ý tràn vào thức hải, ngươi ngộ ra một đường kiếm.', effects: [{ type: 'stat', stat: 'atk', amount: 10 }, { type: 'item', id: 'kiem_quyet', count: 1 }] },
+          { p: 0.4, text: 'Thanh kiếm vỡ vụn, chỉ để lại một ít tinh thiết.', effects: [{ type: 'item', id: 'huyen_thiet', count: 2 }] },
+          { p: 0.25, text: 'Kiếm khí phản phệ, ngươi bị chấn thương.', effects: [{ type: 'expLoss', ratio: 0.1 }] },
+        ],
+      },
+      { label: 'Cúi bái rồi rời đi', outcomes: [{ p: 1, text: 'Ngươi cúi chào vị tiền nhân vô danh, lòng cảm thấy thanh thản.', effects: [{ type: 'exp', seconds: 300 }] }] },
+    ],
+  },
+  {
+    id: 'ta_tu', title: 'Tà Tu Chặn Đường', minStage: 5, weight: 2, safe: 1,
+    text: 'Một tà tu cười gằn chặn lối: "Giao túi trữ vật ra, ta tha cho ngươi toàn thây!"',
+    choices: [
+      {
+        label: 'Nghênh chiến',
+        fight: { monster: 'huyet_lang', floor: 5 },
+        win: { text: 'Ngươi đánh bại tà tu, lục soát được không ít của cải.', effects: [{ type: 'stones', base: 80 }, { type: 'item', id: 'tu_van_thao', count: 2 }, { type: 'exp', seconds: 500 }] },
+        lose: { text: 'Tà tu quá mạnh, ngươi phải bỏ lại linh thạch để thoát thân.', effects: [{ type: 'stones', base: -40 }, { type: 'expLoss', ratio: 0.05 }] },
+      },
+      { label: 'Nộp tiền mua mạng (35 linh thạch)', outcomes: [{ p: 1, text: 'Ngươi nộp tiền và nhanh chóng rút lui.', effects: [{ type: 'stones', base: -35 }] }] },
+    ],
+  },
+  {
+    id: 'bi_canh_nho', title: 'Bí Cảnh Nhỏ Mở Ra', minStage: 9, weight: 2, safe: 1,
+    text: 'Không gian nứt ra một khe hẹp, lộ ra một tiểu bí cảnh chỉ tồn tại trong chốc lát.',
+    choices: [
+      {
+        label: 'Xông vào đoạt bảo',
+        outcomes: [
+          { p: 0.45, text: 'Ngươi thu được linh dược trăm năm.', effects: [{ type: 'item', id: 'bang_lien', count: 2 }, { type: 'item', id: 'tu_van_thao', count: 3 }] },
+          { p: 0.25, text: 'Ngươi tìm được một đám tinh kim hiếm có.', effects: [{ type: 'item', id: 'tinh_kim', count: 1 }, { type: 'stones', base: 120 }] },
+          { p: 0.3, text: 'Khe nứt khép lại quá nhanh, ngươi suýt bị nghiền nát.', effects: [{ type: 'expLoss', ratio: 0.12 }] },
+        ],
+      },
+      { label: 'Quan sát từ xa', outcomes: [{ p: 1, text: 'Ngươi nhặt được ít linh khí rò rỉ ra ngoài.', effects: [{ type: 'exp', seconds: 600 }] }] },
+    ],
+  },
+  {
+    id: 'lao_dao', title: 'Lão Đạo Chỉ Điểm', minStage: 9, weight: 1, safe: 1,
+    text: 'Một lão đạo râu tóc bạc phơ ngồi câu cá bên suối, mỉm cười nhìn ngươi như đã quen từ lâu.',
+    choices: [
+      {
+        label: 'Thỉnh giáo đạo lý',
+        outcomes: [
+          { p: 0.5, text: 'Lão đạo chỉ vài câu, ngươi ngộ ra điều cốt lõi của tu hành.', effects: [{ type: 'expBonus', amount: 0.01 }, { type: 'exp', seconds: 600 }] },
+          { p: 0.3, text: 'Lão đạo tặng ngươi hai quyển bí kíp cũ.', effects: [{ type: 'item', id: 'ho_the_quyet', count: 1 }, { type: 'item', id: 'than_hanh_quyet', count: 1 }] },
+          { p: 0.2, text: 'Lão đạo chỉ cười: "Duyên chưa đến."', effects: [] },
+        ],
+      },
+      { label: 'Ngồi câu cá cùng lão', outcomes: [{ p: 1, text: 'Ngươi ngồi đến hoàng hôn, lòng thư thái lạ thường.', effects: [{ type: 'exp', seconds: 400 }] }] },
+    ],
+  },
+  {
+    id: 'hoa_son', title: 'Hỏa Sơn Phun Trào', minStage: 12, weight: 1, safe: 1,
+    text: 'Địa hỏa dưới lòng đất bùng lên, dung nham cuộn trào xung quanh, linh khí hỏa hệ nồng đậm lạ thường.',
+    choices: [
+      {
+        label: 'Lợi dụng địa hỏa luyện thể',
+        outcomes: [
+          { p: 0.5, text: 'Ngươi tôi luyện thân thể trong lửa, nhục thân cứng cáp hơn.', effects: [{ type: 'stat', stat: 'def', amount: 8 }, { type: 'stat', stat: 'hp', amount: 40 }] },
+          { p: 0.2, text: 'Ngươi nhặt được tinh kim còn nóng hổi trong dung nham.', effects: [{ type: 'item', id: 'tinh_kim', count: 2 }] },
+          { p: 0.3, text: 'Nhiệt độ quá cao khiến ngươi bị bỏng nặng.', effects: [{ type: 'expLoss', ratio: 0.12 }] },
+        ],
+      },
+      { label: 'Lùi ra xa', outcomes: [{ p: 1, text: 'Ngươi an toàn rời đi.', effects: [] }] },
+    ],
+  },
+  {
+    id: 'am_ma', title: 'Ma Âm Quấy Nhiễu', minStage: 12, weight: 1, safe: 1,
+    text: 'Tiếng sáo ma quái vang lên từ nơi hoang vắng, khiến tâm thần ngươi rung động.',
+    choices: [
+      {
+        label: 'Lần theo tiếng sáo',
+        fight: { monster: 'u_hon', floor: 5 },
+        win: { text: 'Ngươi phá tan oán hồn, thu được ít linh vật nó giấu.', effects: [{ type: 'item', id: 'thien_nien_chi', count: 1 }, { type: 'stones', base: 120 }] },
+        lose: { text: 'Ma âm xuyên thấu thức hải, ngươi phải bỏ chạy.', effects: [{ type: 'expLoss', ratio: 0.12 }] },
+      },
+      { label: 'Bịt tai tĩnh tâm', outcomes: [{ p: 1, text: 'Ngươi giữ vững tâm thần, tiếng sáo từ từ lắng xuống.', effects: [{ type: 'exp', seconds: 200 }] }] },
+    ],
+  },
+  {
+    id: 'thien_loi', title: 'Thiên Lôi Giáng Xuống', minStage: 15, weight: 1, safe: 1,
+    text: 'Mây đen đột ngột kéo đến, sấm chớp rền vang. Một đạo thiên lôi nhỏ nhắm vào ngươi.',
+    choices: [
+      {
+        label: 'Lấy thân đón lôi',
+        outcomes: [
+          { p: 0.55, text: 'Ngươi đón trọn lôi điện, kinh mạch được tẩy luyện.', effects: [{ type: 'stat', stat: 'hp', amount: 80 }, { type: 'exp', seconds: 900 }] },
+          { p: 0.45, text: 'Lôi điện quá mạnh, ngươi bị thương nặng.', effects: [{ type: 'expLoss', ratio: 0.15 }] },
+        ],
+      },
+      { label: 'Tìm chỗ tránh', outcomes: [{ p: 1, text: 'Ngươi tránh được, nhưng bỏ lỡ cơ duyên.', effects: [] }] },
+    ],
+  },
+  {
+    id: 'kho_bau', title: 'Kho Báu Thượng Cổ', minStage: 18, weight: 1, safe: 1,
+    text: 'Một cổng đá thượng cổ hiện ra giữa hư không, bên trong ánh lên bảo quang.',
+    choices: [
+      {
+        label: 'Phá cấm chế vào trong',
+        fight: { monster: 'xuong_giap', floor: 5 },
+        win: { text: 'Ngươi hạ gục hộ vệ và mang về nhiều bảo vật hiếm.', effects: [{ type: 'item', id: 'hoa_than_qua', count: 2 }, { type: 'item', id: 'hu_khong_thach', count: 2 }, { type: 'stones', base: 200 }] },
+        lose: { text: 'Cấm chế quá mạnh, ngươi trọng thương và mất ít linh thạch.', effects: [{ type: 'stones', base: -50 }, { type: 'expLoss', ratio: 0.1 }] },
+      },
+      { label: 'Ghi nhớ vị trí, quay lại sau', outcomes: [{ p: 1, text: 'Ngươi nhặt vài mảnh vụn bên ngoài cổng.', effects: [{ type: 'item', id: 'hu_khong_thach', count: 1 }] }] },
+    ],
+  },
 ]
 
 export const eventById = (id) => RANDOM_EVENTS.find((e) => e.id === id)

@@ -754,6 +754,10 @@ export const useGameStore = defineStore('game', {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
       if (key === 'clears') return Object.values(this.dungeons).reduce((n, d) => n + d.clears, 0)
       if (key === 'skills') return Object.keys(this.skills.owned).length
+      if (key === 'playHours') return Math.floor(this.stats.playSeconds / 3600)
+      if (key === 'pillsUsed') return Object.values(this.usage).reduce((n, v) => n + v, 0)
+      if (key === 'discipleCount') return this.disciples.length
+      if (key === 'gearCount') return this.gear.bag.length
       return this.stats[key] ?? 0
     },
 

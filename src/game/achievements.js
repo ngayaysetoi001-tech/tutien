@@ -18,6 +18,11 @@ export const ACHIEVEMENTS = [
   { id: 'reborn', name: 'Luân Hồi', desc: 'Luân hồi chuyển thế', key: 'reincarnations', targets: [1, 3, 10], stat: 'exp' },
   { id: 'harvest', name: 'Nông Phu Tu Tiên', desc: 'Thu hoạch Linh Điền', key: 'harvests', targets: [5, 30, 100], stat: 'hp' },
   { id: 'quest', name: 'Cần Mẫn Việc Tông', desc: 'Hoàn thành nhiệm vụ', key: 'questsDone', targets: [5, 25, 100, 300], stat: 'atk' },
+  { id: 'failures', name: 'Bách Chiết Bất Hồi', desc: 'Đột phá thất bại (vẫn không bỏ cuộc)', key: 'failures', targets: [3, 15, 50], stat: 'def' },
+  { id: 'playtime', name: 'Kiên Trì Đạo Tâm', desc: 'Giờ tu luyện tích luỹ', key: 'playHours', targets: [1, 10, 50, 200], stat: 'exp' },
+  { id: 'pills', name: 'Nghiện Đan', desc: 'Dùng đan dược và tàn quyển', key: 'pillsUsed', targets: [5, 30, 100, 300], stat: 'hp' },
+  { id: 'disciples', name: 'Đệ Tử Đầy Nhà', desc: 'Số đệ tử đang có', key: 'discipleCount', targets: [1, 3, 6], stat: 'atk' },
+  { id: 'gear', name: 'Kho Pháp Khí', desc: 'Pháp khí trong hành trang', key: 'gearCount', targets: [3, 10, 25], stat: 'def' },
   { id: 'clicks', name: 'Cần Tu', desc: 'Bấm Tụ Khí', key: 'clicks', targets: [100, 1000, 5000], stat: 'exp' },
 ]
 

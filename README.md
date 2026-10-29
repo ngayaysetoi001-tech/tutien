@@ -148,3 +148,13 @@ Chơi thử như người chơi mới trên khung điện thoại 375px và ch�
 - Chỉ **Nhân Vật** (canvas tu luyện) và **Bí Cảnh** (canvas chiến đấu) có cảnh PixiJS ở trên; các màn khác chiếm toàn bộ chiều cao.
 - Thanh trên (`TopBar`) luôn hiện: cảnh giới, linh thạch, Đạo Vận, tiến độ tu vi, nút Nhật ký; khi đủ linh khí ở màn khác có nút "Đột Phá!" đưa về màn Nhân Vật.
 - Một thể hiện Pixi duy nhất, ẩn bằng CSS khi ở màn khác và vẽ 4 khung/giây; logic game vẫn chạy.
+
+## Kỳ ngộ và thành tựu mở rộng (đã có)
+
+- **18 kỳ ngộ** (thêm 10): Thương Nhân Bí Ẩn, Thác Nước Linh Tuyền, Cổ Kiếm Cắm Đá, Tà Tu Chặn Đường, Bí Cảnh Nhỏ Mở Ra, Lão Đạo Chỉ Điểm, Hỏa Sơn Phun Trào, Ma Âm Quấy Nhiễu, Thiên Lôi Giáng Xuống, Kho Báu Thượng Cổ. Mở dần theo cảnh giới, từ Luyện Khí đến Hóa Thần.
+- **19 thành tựu** (thêm 5): Bách Chiết Bất Hồi, Kiên Trì Đạo Tâm, Nghiện Đan, Đệ Tử Đầy Nhà, Kho Pháp Khí. Tính từ dữ liệu có sẵn nên không cần đổi định dạng save.
+
+## PWA và triển khai
+
+- Cài lên màn hình chính, chạy offline (`public/manifest.webmanifest`, `public/sw.js`, `public/icons/`).
+- Đẩy lên nhánh `main` thì GitHub Actions (`.github/workflows/deploy.yml`) tự build và đăng lên GitHub Pages.
