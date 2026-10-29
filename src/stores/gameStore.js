@@ -21,8 +21,9 @@ import * as F from '../game/formulas.js'
 import { emit } from '../game/events.js'
 import { fmt } from '../game/format.js'
 import { ITEMS, MONSTERS, RECIPES, dungeonById, DUNGEONS, itemName } from '../game/data.js'
-import { ELEMENT_IDS } from '../game/elements.js'
+import { ELEMENT_IDS, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
+import * as AR from '../game/arts.js'
 import * as EQ from '../game/equipment.js'
 import { enemyStats, simulateFight } from '../game/battle.js'
 import * as C from '../game/campaign.js'
@@ -88,7 +89,8 @@ function createPlayerState(minRoot = 0) {
     bonus: { hp: 0, atk: 0, def: 0, speed: 0, exp: 0, success: 0 },
     inventory: { herbs: {}, ores: {}, scrolls: {}, pills: {} },
     element: ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)], // hệ ngũ hành chủ đạo
-    skills: { owned: {}, slots: [null, null, null] }, // owned: { id: cấp }, slots: id công pháp đã trang bị
+    arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
+    skills: { owned: {}, slots: [null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
     gear: { bag: [], equipped: { weapon: null, armor: null, trinket: null } }, // equipped lưu uid
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
@@ -143,13 +145,13 @@ export const useGameStore = defineStore('game', {
         arrayLevel: this.arrayLevel,
         rootMult: this.spiritRoot.mult,
         stageIdx: this.stageIdx,
-        expBonus: this.bonus.exp + this.gearStats.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx),
+        expBonus: this.bonus.exp + this.gearStats.exp + this.artBonus.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx, 1 + this.artBonus.income),
       }).mul(1 + 0.1 * (this.reincarnation.upgrades.tu_chat ?? 0)) // Tu Chất
         .mul(1 + this.sectPerk.exp) // đặc quyền tông môn
     },
     /** Thưởng Phúc Duyên cho tỉ lệ rơi đồ. */
     lootLuck() {
-      return 0.1 * (this.reincarnation.upgrades.phuc_duyen ?? 0)
+      return 0.1 * (this.reincarnation.upgrades.phuc_duyen ?? 0) + this.artBonus.luck
     },
     /** Giờ offline tối đa (8 giờ + Bế Quan Dài). */
     offlineCap() {
@@ -183,7 +185,7 @@ export const useGameStore = defineStore('game', {
       return new Decimal(1.45).pow(this.stageIdx).mul(REFRESH_COST_BASE)
     },
     daoPreview() {
-      return daoGain(this.stageIdx)
+      return this.daoWithArts(daoGain(this.stageIdx))
     },
     canReincarnate() {
       return this.stageIdx >= MIN_STAGE && !this.tribulation.active
@@ -201,11 +203,19 @@ export const useGameStore = defineStore('game', {
     skillSlots() {
       return SK.slotCount(this.realmIdx)
     },
+    /** Số ô công pháp (bị động) đã mở. */
+    artSlots() {
+      return AR.artSlotCount(this.realmIdx)
+    },
+    /** Tổng bị động từ công pháp đang trang bị (đã tính thưởng cùng hệ với tông môn). */
+    artBonus() {
+      return AR.totalArtBonus(this.arts.slots.slice(0, this.artSlots), this.arts.owned, this.sectDef?.element ?? null)
+    },
     /** Số thành tựu đang có thể nhận thưởng (hiện chấm đỏ ở tab). */
     claimableCount() {
       return ACHIEVEMENTS.filter((a) => this.achievementClaimable(a)).length
     },
-    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best, s.stageIdx)),
+    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best, s.stageIdx, 1 + s.artBonus.income)).mul(1 + s.artBonus.stones),
     /** Tiến độ tu vi 0..1 */
     progress() {
       return Math.min(1, this.exp.div(this.requirement).toNumber())
@@ -222,11 +232,12 @@ export const useGameStore = defineStore('game', {
       })
       const k = 1 + 0.05 * (this.reincarnation.upgrades.than_the ?? 0) // Thân Thể
       const p = this.sectPerk
+      const a = this.artBonus
       return {
-        hp: Math.round(base.hp * k * (1 + p.hp)),
-        atk: Math.round(base.atk * k * (1 + p.atk)),
-        def: Math.round(base.def * k * (1 + p.def)),
-        speed: base.speed,
+        hp: Math.round(base.hp * k * (1 + p.hp) * (1 + a.hp)),
+        atk: Math.round(base.atk * k * (1 + p.atk) * (1 + a.atk)),
+        def: Math.round(base.def * k * (1 + p.def) * (1 + a.def)),
+        speed: Math.round(base.speed * (1 + a.speed)),
       }
     },
     /** Lần đột phá kế tiếp có phải độ kiếp không (cấu hình hoặc null) */
@@ -596,17 +607,17 @@ export const useGameStore = defineStore('game', {
     },
 
     // ------------------------------------------------------------
-    // Công pháp
+    // Võ kỹ
     // ------------------------------------------------------------
-    /** Học công pháp mới bằng tàn quyển; tự trang bị vào ô trống đầu tiên đã mở. */
+    /** Học võ kỹ mới bằng tàn quyển; tự trang bị vào ô trống đầu tiên đã mở. */
     learnSkill(id) {
       const frag = SK.fragmentId(id)
       if (!SK.SKILLS[id] || this.skills.owned[id] || this.itemCount(frag) < SK.LEARN_COST) return false
       this.removeItem(frag, SK.LEARN_COST)
       this.skills.owned[id] = 1
       const free = this.skills.slots.findIndex((x, i) => i < this.skillSlots && !x)
-      if (free >= 0) this.skills.slots[free] = id
-      this.addLog(`Lĩnh ngộ công pháp ${SK.SKILLS[id].name}!`, 'good')
+      if (free >= 0 && SK.canEquip(id, this.realmIdx)) this.skills.slots[free] = id
+      this.addLog(`Lĩnh ngộ võ kỹ ${SK.SKILLS[id].name}!`, 'good')
       return true
     },
 
@@ -622,7 +633,7 @@ export const useGameStore = defineStore('game', {
     },
 
     equipSkill(id, slot) {
-      if (!this.skills.owned[id] || slot < 0 || slot >= this.skillSlots) return false
+      if (!this.skills.owned[id] || slot < 0 || slot >= this.skillSlots || !SK.canEquip(id, this.realmIdx)) return false
       const prev = this.skills.slots.indexOf(id)
       if (prev >= 0) this.skills.slots[prev] = null
       this.skills.slots[slot] = id
@@ -631,6 +642,54 @@ export const useGameStore = defineStore('game', {
 
     unequipSkill(slot) {
       this.skills.slots[slot] = null
+    },
+
+    // ------------------------------------------------------------
+    // Công pháp (bị động)
+    // ------------------------------------------------------------
+    /** Học công pháp mới bằng tàn quyển; tự trang bị vào ô trống đầu tiên đã mở. */
+    learnArt(id) {
+      const frag = AR.artFragmentId(id)
+      if (!AR.ARTS[id] || this.arts.owned[id] || this.itemCount(frag) < AR.ART_LEARN_COST) return false
+      this.removeItem(frag, AR.ART_LEARN_COST)
+      this.arts.owned[id] = 1
+      const free = this.arts.slots.findIndex((x, i) => i < this.artSlots && !x)
+      if (free >= 0) this.arts.slots[free] = id
+      this.addLog(`Lĩnh ngộ công pháp ${AR.ARTS[id].name}!`, 'good')
+      return true
+    },
+
+    upgradeArt(id) {
+      const level = this.arts.owned[id]
+      if (!level || level >= AR.ART_MAX_LEVEL) return false
+      const cost = AR.artUpgradeCost(level)
+      if (this.itemCount(AR.artFragmentId(id)) < cost) return false
+      this.removeItem(AR.artFragmentId(id), cost)
+      this.arts.owned[id] = level + 1
+      this.addLog(`${AR.ARTS[id].name} lên cấp ${level + 1}.`, 'good')
+      return true
+    },
+
+    equipArt(id, slot) {
+      if (!this.arts.owned[id] || slot < 0 || slot >= this.artSlots) return false
+      const prev = this.arts.slots.indexOf(id)
+      if (prev >= 0) this.arts.slots[prev] = null
+      this.arts.slots[slot] = id
+      return true
+    },
+
+    unequipArt(slot) {
+      this.arts.slots[slot] = null
+    },
+
+    /** Ngũ Hành Quy Nhất: sát thương thêm khi hệ tấn công khắc hệ phòng thủ (1 nếu không khắc). */
+    artElementMult(attack, defend) {
+      return elementMult(attack, defend) > 1 ? 1 + this.artBonus.elem : 1
+    },
+
+    /** Đạo Vận nhận được khi luân hồi, đã cộng thưởng công pháp Luân Hồi Bí Điển. */
+    daoWithArts(base) {
+      return Math.round(base * (1 + this.artBonus.dao))
     },
 
     // ------------------------------------------------------------
@@ -748,6 +807,7 @@ export const useGameStore = defineStore('game', {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
       if (key === 'aiRecord') return this.campaign.record
       if (key === 'skills') return Object.keys(this.skills.owned).length
+      if (key === 'artLevels') return Object.values(this.arts.owned).reduce((n, v) => n + v, 0)
       if (key === 'playHours') return Math.floor(this.stats.playSeconds / 3600)
       if (key === 'pillsUsed') return Object.values(this.usage).reduce((n, v) => n + v, 0)
       if (key === 'discipleCount') return this.disciples.length
@@ -776,7 +836,7 @@ export const useGameStore = defineStore('game', {
     /** Nguyên liệu nhận được từ ải cao nhất: số lượng kỳ vọng theo `seconds`, làm tròn ngẫu nhiên. Trả về { id: n }. */
     grantCampaignItems(seconds) {
       const got = {}
-      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best, this.stageIdx)) {
+      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best, this.stageIdx, 1 + this.artBonus.income)) {
         const x = (perHour * seconds) / 3600
         const n = Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0)
         if (n > 0) {
@@ -819,7 +879,7 @@ export const useGameStore = defineStore('game', {
     reincarnate() {
       if (!this.canReincarnate) return 0
       useBattleStore().retreat(true)
-      const gain = daoGain(this.stageIdx)
+      const gain = this.daoWithArts(daoGain(this.stageIdx))
       const from = this.stage.fullName
       const rb = this.reincarnation
       rb.dao += gain

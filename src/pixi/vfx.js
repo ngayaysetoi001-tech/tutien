@@ -70,7 +70,7 @@ export class Vfx {
   // ------------------------------------------------------------------
   // Chiêu thức
   // ------------------------------------------------------------------
-  /** Thi triển công pháp: ev = { name, color, kind, element, seconds }. */
+  /** Thi triển võ kỹ: ev = { name, color, kind, element, seconds }. */
   castSkill(ev) {
     const s = this.scene
     const u = s.u

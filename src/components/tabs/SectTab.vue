@@ -22,7 +22,7 @@ const rankProgress = computed(() => {
 const perkPercent = (v) => Math.round(v * 100)
 const perkLines = computed(() => {
   const p = game.sectPerk
-  const labels = { atk: 'Công kích', hp: 'Khí huyết', def: 'Phòng ngự', exp: 'Tốc độ linh khí', skill: 'Sát thương công pháp', herb: 'Thảo dược thu hoạch' }
+  const labels = { atk: 'Công kích', hp: 'Khí huyết', def: 'Phòng ngự', exp: 'Tốc độ linh khí', skill: 'Sát thương võ kỹ', herb: 'Thảo dược thu hoạch' }
   return Object.entries(p).filter(([, v]) => v > 0).map(([k, v]) => `+${perkPercent(v)}% ${labels[k]}`)
 })
 

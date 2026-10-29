@@ -760,6 +760,348 @@ ok('nhập save hỏng: bỏ trang bị/công pháp không hợp lệ thay vì s
 })
 
 // =====================================================================
+// Võ kỹ (chủ động) và Công pháp (bị động)
+// =====================================================================
+const AR = await import('../src/game/arts.js')
+const { SHOP: SECT_SHOP } = await import('../src/game/sect.js')
+const { on: onEvent } = await import('../src/game/events.js')
+
+/** Cửa trận kiểm soát: bước vào ải, thay yêu thú bằng một mục tiêu trâu bò để đo hiệu ứng võ kỹ. */
+const arena = (opts = {}) => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = opts.stage ?? 10
+  s.settings.autoHeal = false
+  const b = useBattleStore()
+  b.start()
+  b.enemy.maxHp = 1e9
+  b.enemy.hp = 1e9
+  b.enemy.def = 0
+  b.enemy.element = opts.enemyElement ?? 'tho'
+  b.nextEnemy = 1e9 // địch đứng yên nếu không bị tác động
+  b.nextPlayer = 1e9
+  return { s, b }
+}
+const learn = (s, id) => { s.skills.owned[id] = 1 }
+
+ok('võ kỹ: dữ liệu hợp lệ, có mô tả, có nguồn tàn quyển (rơi ở ải hoặc cửa hàng)', () => {
+  const kinds = ['damage', 'dot', 'stun', 'execute', 'ultimate', 'heal', 'shield', 'haste', 'lifesteal', 'rage', 'reflect']
+  const dropped = new Set(ALL_DUNGEONS.flatMap((d) => d.loot.map((l) => l.item)))
+  for (const [id, sk] of Object.entries(SK.SKILLS)) {
+    assert.ok(kinds.includes(sk.kind), id + ' kind')
+    assert.ok(sk.cd > 0 && sk.power > 0 && ['kim', 'moc', 'thuy', 'hoa', 'tho'].includes(sk.element), id)
+    assert.ok(['damage', 'haste', 'heal', 'shield'].includes(SK.visualKind(sk.kind)))
+    assert.ok(SK.skillDesc(id, 3).length > 10)
+    assert.ok(ALL_ITEMS[SK.fragmentId(id)], 'thiếu tàn quyển ' + id)
+    assert.ok(dropped.has(SK.fragmentId(id)), 'không bí cảnh nào rơi ' + id)
+    assert.ok(SECT_SHOP.some((e) => e.item === SK.fragmentId(id)), 'cửa hàng tông môn thiếu ' + id)
+    if (['dot', 'stun', 'lifesteal', 'rage', 'reflect'].includes(sk.kind)) assert.ok(sk.seconds > 0, id + ' seconds')
+  }
+  assert.equal(SK.SKILLS.thien_ha.kind, 'ultimate')
+  assert.ok(Object.keys(SK.SKILLS).length >= 12)
+})
+
+ok('ô võ kỹ: 4 ô (ô 4 mở ở Hóa Thần); tuyệt kỹ cần Nguyên Anh mới trang bị', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12 // Kim Đan
+  assert.equal(s.skillSlots, 3)
+  s.stageIdx = 18 // Hóa Thần
+  assert.equal(s.skillSlots, 4)
+  assert.equal(SK.MAX_SKILL_SLOTS, 4)
+  s.stageIdx = 9 // Trúc Cơ: chưa đủ cho tuyệt kỹ
+  s.skills.owned.thien_ha = 1
+  assert.equal(SK.canEquip('thien_ha', s.realmIdx), false)
+  assert.equal(s.equipSkill('thien_ha', 0), false)
+  s.stageIdx = 15 // Nguyên Anh
+  assert.equal(s.equipSkill('thien_ha', 0), true)
+  // học tuyệt kỹ khi chưa đủ cảnh giới thì không tự trang bị
+  const s2 = freshStore()
+  s2.init()
+  s2.addItem('scrolls', SK.fragmentId('thien_ha'), SK.LEARN_COST)
+  assert.equal(s2.learnSkill('thien_ha'), true)
+  assert.ok(!s2.skills.slots.includes('thien_ha'))
+})
+
+ok('võ kỹ Độc Chú: sát thương mỗi giây đến hết hạn, không sang yêu thú kế', () => {
+  const { s, b } = arena()
+  learn(s, 'doc_chu')
+  Math.random = () => 0.5
+  b.castSkill('doc_chu', s.combat)
+  const hp0 = b.enemy.hp
+  b.clock += 3.5
+  b.processDot()
+  const lost = hp0 - b.enemy.hp
+  assert.ok(lost > 0)
+  b.clock += 20 // quá hạn: không thêm sát thương
+  b.processDot()
+  const total = hp0 - b.enemy.hp
+  assert.ok(Math.abs(total / lost - 2) < 0.01, 'đủ 6 nhịp (3 nhịp đầu + 3 nhịp sau), tỉ lệ ' + total / lost)
+  b.dotUntil = b.clock + 100
+  b.nextDot = b.clock
+  b.spawnEnemy()
+  assert.equal(b.dotUntil, 0, 'sang yêu thú mới thì hết độc')
+  Math.random = realRandom
+})
+
+ok('võ kỹ Lôi Đình Chấn: gây sát thương và làm địch choáng (mất lượt ra đòn)', () => {
+  const { s, b } = arena()
+  learn(s, 'loi_dinh')
+  b.nextEnemy = b.clock + 0.2
+  b.castSkill('loi_dinh', s.combat)
+  assert.ok(b.nextEnemy >= b.clock + SK.SKILLS.loi_dinh.seconds - 1e-9)
+  assert.ok(b.enemy.hp < 1e9)
+  // đang choáng thì readySkill không tung lại
+  s.skills.slots[0] = 'loi_dinh'
+  b.cd = {}
+  assert.equal(b.readySkill(), null)
+})
+
+ok('võ kỹ Tuyệt Sát: gấp đôi sát thương khi địch dưới 30% khí huyết', () => {
+  const { s, b } = arena()
+  learn(s, 'tuyet_sat')
+  const dmg = []
+  const off = onEvent('battle-hit', (e) => e.skill && dmg.push(e.damage))
+  useUiStoreEarly().tab = 'battle'
+  Math.random = () => 0.5
+  b.enemy.hp = b.enemy.maxHp
+  b.castSkill('tuyet_sat', s.combat)
+  b.enemy.hp = b.enemy.maxHp * 0.2
+  b.castSkill('tuyet_sat', s.combat)
+  Math.random = realRandom
+  off()
+  assert.equal(dmg.length, 2)
+  assert.ok(Math.abs(dmg[1] / dmg[0] - 2) < 0.05, 'tỉ lệ ' + dmg[1] / dmg[0])
+})
+
+ok('võ kỹ Huyết Thực, Cuồng Bạo, Phản Chấn: hút máu, tăng công, phản sát thương', () => {
+  const { s, b } = arena()
+  for (const id of ['huyet_thuc', 'bao_nhan', 'phan_chan']) learn(s, id)
+  // Cuồng Bạo
+  const base = b.atkNow(s.combat)
+  b.castSkill('bao_nhan', s.combat)
+  assert.ok(b.atkNow(s.combat) > base * 1.3)
+  b.clock += 100
+  assert.equal(b.atkNow(s.combat), base, 'hết hạn thì về bình thường')
+  // Huyết Thực
+  b.hp = 10
+  b.castSkill('huyet_thuc', s.combat)
+  Math.random = () => 0.5
+  b.basicAttack(s.combat)
+  assert.ok(b.hp > 10, 'đòn đánh hồi máu')
+  b.clock += 100
+  const h = b.hp
+  b.basicAttack(s.combat)
+  assert.equal(b.hp, h, 'hết hạn thì không hút')
+  // Phản Chấn
+  b.hp = b.maxHp
+  b.castSkill('phan_chan', s.combat)
+  const ehp = b.enemy.hp
+  b.nextEnemy = 0
+  b.enemy.atk = 50
+  b.enemyAct()
+  assert.ok(b.enemy.hp < ehp, 'địch bị phản lại sát thương')
+  Math.random = realRandom
+})
+
+ok('võ kỹ phản chấn có thể hạ gục địch; thắng thì không bị tính là thua', () => {
+  const { s, b } = arena()
+  learn(s, 'phan_chan')
+  b.castSkill('phan_chan', s.combat)
+  b.enemy.hp = 1
+  b.enemy.atk = 50
+  b.nextEnemy = 0
+  const kills = s.stats.kills
+  b.enemyAct()
+  assert.equal(s.stats.kills, kills + 1)
+  assert.equal(b.lastResult, 'win')
+})
+
+ok('Công pháp: dữ liệu hợp lệ, có nguồn tàn quyển (rơi từ boss, cửa hàng), mô tả', () => {
+  const stats = ['exp', 'hp', 'atk', 'def', 'speed', 'stones', 'income', 'luck', 'elem', 'dao']
+  for (const [id, art] of Object.entries(AR.ARTS)) {
+    assert.ok(stats.includes(art.stat) && art.per > 0 && art.minAi >= 1, id)
+    assert.ok(['kim', 'moc', 'thuy', 'hoa', 'tho'].includes(art.element))
+    assert.ok(ALL_ITEMS[AR.artFragmentId(id)], 'thiếu tàn quyển ' + id)
+    assert.ok(SECT_SHOP.some((e) => e.item === AR.artFragmentId(id)), 'cửa hàng thiếu ' + id)
+    assert.ok(AR.artDesc(id, 5).startsWith('+'))
+  }
+  // một nhóm công pháp dùng được ngay từ ải đầu
+  assert.ok(Object.values(AR.ARTS).filter((a) => a.minAi === 1).length >= 4)
+  // mỗi chỉ số bị động đều có người dùng
+  assert.deepEqual(new Set(Object.values(AR.ARTS).map((a) => a.stat)), new Set(stats))
+  // trần: không công pháp đơn lẻ vượt +60% (kể cả cùng hệ tông môn)
+  for (const id of Object.keys(AR.ARTS)) assert.ok(AR.artValue(id, AR.ART_MAX_LEVEL, AR.ARTS[id].element) <= 0.8)
+})
+
+ok('công pháp: học, thăng cấp, trang bị theo ô mở theo cảnh giới, tháo, không trùng', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.artSlots, 2)
+  s.stageIdx = 9
+  assert.equal(s.artSlots, 3)
+  s.stageIdx = 15
+  assert.equal(s.artSlots, 5)
+  s.stageIdx = 26
+  assert.equal(s.artSlots, AR.MAX_ART_SLOTS)
+  s.stageIdx = 0
+  assert.equal(s.learnArt('thanh_tam'), false, 'chưa đủ tàn quyển')
+  s.addItem('scrolls', AR.artFragmentId('thanh_tam'), AR.ART_LEARN_COST + AR.artUpgradeCost(1))
+  assert.equal(s.learnArt('thanh_tam'), true)
+  assert.equal(s.arts.slots[0], 'thanh_tam', 'tự trang bị vào ô trống')
+  assert.equal(s.learnArt('thanh_tam'), false, 'đã học rồi')
+  assert.equal(s.upgradeArt('thanh_tam'), true)
+  assert.equal(s.arts.owned.thanh_tam, 2)
+  assert.equal(s.upgradeArt('thanh_tam'), false, 'hết tàn quyển')
+  assert.equal(s.equipArt('thanh_tam', 4), false, 'ô 5 chưa mở')
+  assert.equal(s.equipArt('thanh_tam', 1), true)
+  assert.equal(s.arts.slots[0], null)
+  assert.equal(s.arts.slots[1], 'thanh_tam')
+  s.unequipArt(1)
+  assert.equal(s.arts.slots[1], null)
+  s.arts.owned.thanh_tam = AR.ART_MAX_LEVEL
+  s.addItem('scrolls', AR.artFragmentId('thanh_tam'), 50)
+  assert.equal(s.upgradeArt('thanh_tam'), false, 'đã tối đa')
+})
+
+ok('công pháp bị động: cộng vào khí huyết, công kích, phòng ngự, Thân pháp, linh khí, linh thạch, thu nhập ải, rơi đồ, khắc hệ, Đạo Vận', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 20
+  s.campaign.best = 30
+  const base = { combat: s.combat, exp: s.expRate, stones: s.stonesRate, luck: s.lootLuck, dao: s.daoPreview }
+  const own = (id, lvl = 10) => { s.arts.owned[id] = lvl }
+  const at = (...ids) => { s.arts.slots = [...ids, ...Array(5 - ids.length).fill(null)] }
+  own('cuong_the'); own('pha_quan'); own('kim_cang'); own('truy_phong')
+  at('cuong_the', 'pha_quan', 'kim_cang', 'truy_phong')
+  const c = s.combat
+  assert.ok(c.hp > base.combat.hp * 1.3 && c.atk > base.combat.atk * 1.3 && c.def > base.combat.def * 1.3 && c.speed > base.combat.speed)
+  own('thanh_tam'); at('thanh_tam')
+  assert.ok(s.expRate.gt(base.exp.mul(1.2)))
+  own('tu_bao'); at('tu_bao')
+  assert.ok(s.stonesRate.gt(base.stones.mul(1.4)))
+  own('ho_phap'); at('ho_phap')
+  assert.ok(s.stonesRate.gt(base.stones) && s.expRate.gt(base.exp))
+  own('thien_nhan'); at('thien_nhan')
+  assert.ok(s.lootLuck > base.luck + 0.3)
+  own('luan_hoi'); at('luan_hoi')
+  assert.ok(s.daoPreview > base.dao)
+  own('ngu_hanh'); at('ngu_hanh')
+  assert.ok(s.artElementMult('kim', 'moc') > 1.2, 'khắc hệ thì cộng thêm')
+  assert.equal(s.artElementMult('moc', 'kim'), 1, 'không khắc thì không cộng')
+  // công pháp chưa trang bị thì không có tác dụng; ô chưa mở không tính
+  at()
+  assert.ok(s.combat.hp === base.combat.hp)
+  s.stageIdx = 0
+  at('cuong_the', 'pha_quan', 'kim_cang', 'truy_phong', 'thanh_tam') // chỉ 2 ô mở
+  assert.ok(s.artBonus.hp > 0 && s.artBonus.atk > 0 && s.artBonus.def === 0 && s.artBonus.exp === 0)
+})
+
+ok('công pháp cùng hệ ngũ hành với tông môn được +50%', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 4
+  s.arts.owned.cuong_the = 4 // hệ Mộc
+  s.arts.slots[0] = 'cuong_the'
+  const plain = s.artBonus.hp
+  s.joinSect('van_moc') // Vạn Mộc Cốc: hệ Mộc
+  assert.ok(Math.abs(s.artBonus.hp - plain * 1.5) < 1e-9)
+  s.joinSect('hau_tho') // đổi sang hệ Thổ: hết thưởng
+  assert.ok(Math.abs(s.artBonus.hp - plain) < 1e-9)
+})
+
+ok('Công Pháp Tàn Quyển rơi từ Tiểu Boss trở lên theo ải, ải thường không rơi; luck tăng tỉ lệ', () => {
+  assert.deepEqual(AR.rollArtDrops(3, 'normal', () => 0), [])
+  assert.equal(AR.rollArtDrops(5, 'mini', () => 0.99).length, 0)
+  const mini = AR.rollArtDrops(5, 'mini', () => 0)
+  assert.equal(mini.length, 1)
+  assert.ok(mini[0].id.startsWith('cp_') && mini[0].count >= 1)
+  assert.ok(AR.rollArtDrops(10, 'big', () => 0.99).length === 1, 'Đại Boss luôn rơi')
+  assert.ok(AR.rollArtDrops(100, 'lord', () => 0.5)[0].count >= 3)
+  // chỉ rơi công pháp đã mở theo số ải
+  for (let i = 0; i < 100; i++) {
+    const [d] = AR.rollArtDrops(5, 'big', Math.random)
+    assert.ok(AR.ARTS[d.id.slice(3)].minAi <= 5, 'rơi công pháp chưa mở: ' + d.id)
+  }
+  // may mắn tăng tỉ lệ: rng=0.6 > 0.5 không rơi, nhưng với luck 0.5 thì rơi
+  assert.equal(AR.rollArtDrops(5, 'mini', () => 0.6).length, 0)
+  assert.equal(AR.rollArtDrops(5, 'mini', () => 0.6, 0.5).length, 1)
+})
+
+ok('Công Pháp Tàn Quyển rơi thật khi hạ boss trong trận', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  s.campaign.best = 4 // ải kế tiếp là ải 5 (Tiểu Boss)
+  const b = useBattleStore()
+  b.start()
+  const before = Object.keys(ALL_ITEMS).filter((id) => id.startsWith('cp_')).reduce((n, id) => n + s.itemCount(id), 0)
+  Math.random = () => 0.01 // luôn rơi
+  b.enemy.hp = 0
+  b.onKill()
+  Math.random = realRandom
+  const after = Object.keys(ALL_ITEMS).filter((id) => id.startsWith('cp_')).reduce((n, id) => n + s.itemCount(id), 0)
+  assert.ok(after > before, 'boss rơi công pháp tàn quyển')
+})
+
+ok('save/load giữ công pháp (cấp, ô); loại công pháp lạ, ô trùng, cấp vượt trần, ô chưa học', () => {
+  const s = freshStore()
+  s.init()
+  s.arts.owned = { thanh_tam: 4, pha_quan: 2 }
+  s.arts.slots = ['pha_quan', 'thanh_tam', null, null, null]
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.deepEqual({ ...s2.arts.owned }, { thanh_tam: 4, pha_quan: 2 })
+  assert.deepEqual([...s2.arts.slots], ['pha_quan', 'thanh_tam', null, null, null])
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.arts = { owned: { thanh_tam: 99, khong_co: 3, pha_quan: -5 }, slots: ['thanh_tam', 'thanh_tam', 'khong_co', 'kim_cang', 'pha_quan', 'x'] }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.arts.owned.thanh_tam, AR.ART_MAX_LEVEL)
+  assert.equal(s3.arts.owned.pha_quan, 1)
+  assert.ok(!('khong_co' in s3.arts.owned))
+  assert.equal(s3.arts.slots.length, AR.MAX_ART_SLOTS)
+  assert.deepEqual([...s3.arts.slots], ['thanh_tam', null, null, null, 'pha_quan'])
+  // save cũ không có công pháp và chỉ 3 ô võ kỹ vẫn tải được
+  delete raw.data.arts
+  raw.data.skills = { owned: { ngu_kiem: 2 }, slots: ['ngu_kiem', null, null] }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s4 = freshStore(true)
+  s4.init()
+  assert.deepEqual({ ...s4.arts.owned }, {})
+  assert.equal(s4.skills.slots.length, 4)
+  assert.equal(s4.skills.slots[0], 'ngu_kiem')
+})
+
+ok('luân hồi giữ võ kỹ và công pháp; công pháp Luân Hồi Bí Điển tăng Đạo Vận nhận được', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 15
+  s.skills.owned.ngu_kiem = 3
+  s.arts.owned = { luan_hoi: 5, pha_quan: 2 }
+  s.arts.slots = ['luan_hoi', 'pha_quan', null, null, null]
+  const plain = daoBase()
+  assert.ok(s.daoPreview > plain, 'xem trước đã cộng thưởng')
+  const gain = s.reincarnate()
+  assert.equal(gain, s.reincarnation.dao)
+  assert.ok(gain > plain)
+  assert.equal(s.skills.owned.ngu_kiem, 3)
+  assert.equal(s.arts.owned.luan_hoi, 5)
+})
+function daoBase() { return Math.round(3 * Math.pow(1.4, 15 - 9)) }
+
+ok('thành tựu công pháp: tính theo tổng cấp công pháp', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.achievementValue('artLevels'), 0)
+  s.arts.owned = { thanh_tam: 2, pha_quan: 3 }
+  assert.equal(s.achievementValue('artLevels'), 5)
+  assert.ok(ACHIEVEMENTS.some((a) => a.key === 'artLevels'))
+})
+
+// =====================================================================
 // Giai đoạn 3: cảnh giới mới, luân hồi, Linh Điền, khoáng mạch, farm offline
 // =====================================================================
 const RB = await import('../src/game/reincarnation.js')
@@ -1864,6 +2206,16 @@ ok('gợi ý: Vượt Ải, Tụ Linh Trận, luyện đan, Linh Điền biến 
   assert.ok(!ids(s).includes('craft'))
   s.plant(0, 'linh_thao')
   assert.ok(!ids(s).includes('garden'))
+})
+
+ok('gợi ý: đủ tàn quyển công pháp thì nhắc học', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 2
+  s.addItem('scrolls', AR.artFragmentId('thanh_tam'), AR.ART_LEARN_COST)
+  assert.ok(ids(s).includes('art'))
+  s.learnArt('thanh_tam')
+  assert.ok(!ids(s).includes('art'))
 })
 
 ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang bị, đệ tử, luân hồi', () => {

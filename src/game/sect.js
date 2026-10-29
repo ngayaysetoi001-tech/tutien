@@ -3,6 +3,7 @@
 // Cống Hiến kiếm từ nhiệm vụ và hạ boss. Giữ nguyên khi luân hồi.
 // =====================================================================
 import { SKILLS, fragmentId } from './skills.js'
+import { ARTS, artFragmentId } from './arts.js'
 
 /** Mỗi tông môn một hệ ngũ hành và một đặc quyền (perk). Đặc quyền tăng 25% mỗi cấp bậc. */
 export const SECTS = [
@@ -12,7 +13,7 @@ export const SECTS = [
     desc: 'Thảo mộc sinh sôi, tinh thông dược đạo.' },
   { id: 'nguyet_thuy', name: 'Nguyệt Thủy Các', element: 'thuy', perk: { exp: 0.1 }, perkText: '+10% tốc độ linh khí',
     desc: 'Tâm tĩnh như nước, khí thuần như trăng.' },
-  { id: 'xich_viem', name: 'Xích Viêm Môn', element: 'hoa', perk: { skill: 0.15 }, perkText: '+15% sát thương công pháp',
+  { id: 'xich_viem', name: 'Xích Viêm Môn', element: 'hoa', perk: { skill: 0.15 }, perkText: '+15% sát thương võ kỹ',
     desc: 'Liệt hỏa thiêu đốt, thần thông bá đạo.' },
   { id: 'hau_tho', name: 'Hậu Thổ Sơn', element: 'tho', perk: { hp: 0.1, def: 0.1 }, perkText: '+10% khí huyết và phòng ngự',
     desc: 'Vững như núi lớn, thân thể cường tráng.' },
@@ -61,6 +62,8 @@ export const SHOP = [
   { id: 'hon_don', item: 'hon_don_tinh', count: 1, cost: 600, rank: 3 },
   { id: 'ngo_dao', item: 'ngo_dao_dan', count: 1, cost: 3500, rank: 4 },
   { id: 'thien_pha', item: 'thien_pha_dan', count: 1, cost: 4000, rank: 4 },
-  // Tàn quyển công pháp: mỗi loại 40 Cống Hiến, từ Nội Môn
+  // Tàn quyển võ kỹ: mỗi loại 40 Cống Hiến, từ Nội Môn
   ...Object.keys(SKILLS).map((id) => ({ id: 'qk_' + id, item: fragmentId(id), count: 1, cost: 40, rank: 1 })),
+  // Công Pháp Tàn Quyển: mỗi loại 60 Cống Hiến, từ Chân Truyền
+  ...Object.keys(ARTS).map((id) => ({ id: 'cp_' + id, item: artFragmentId(id), count: 1, cost: 60, rank: 2 })),
 ]

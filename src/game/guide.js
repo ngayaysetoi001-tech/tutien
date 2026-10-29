@@ -6,6 +6,7 @@
 // =====================================================================
 import { RECIPES } from './data.js'
 import { SKILLS, fragmentId, LEARN_COST } from './skills.js'
+import { ARTS, ART_LEARN_COST, artFragmentId } from './arts.js'
 import { plotCount, seedCost } from './garden.js'
 import { recruitCost } from './disciples.js'
 import { SLOT_IDS } from './equipment.js'
@@ -48,7 +49,9 @@ export function nextHints(g) {
   // 4. Mở rộng hệ thống khi đủ điều kiện
   if (!g.sect.id && maxStage >= 4) add('sect', 'Gia nhập một tông môn để nhận đặc quyền và Cống Hiến.', 'sect')
   const learnable = Object.keys(SKILLS).find((id) => !g.skills.owned[id] && g.itemCount(fragmentId(id)) >= LEARN_COST)
-  if (learnable) add('skill', 'Đủ tàn quyển để học một công pháp mới.', 'skills')
+  if (learnable) add('skill', 'Đủ tàn quyển để học một võ kỹ mới.', 'skills')
+  const learnableArt = Object.keys(ARTS).find((id) => !g.arts.owned[id] && g.itemCount(artFragmentId(id)) >= ART_LEARN_COST)
+  if (learnableArt) add('art', 'Đủ tàn quyển để học một công pháp bị động mới.', 'skills')
   const emptySlot = SLOT_IDS.some((slot) => !g.gear.equipped[slot] && g.gear.bag.some((it) => it.slot === slot))
   if (emptySlot) add('gear', 'Túi có trang bị chưa mặc.', 'gear')
   if (g.sect.id && g.disciples.length === 0 && g.spiritStones.gte(recruitCost(g.stageIdx, 0))) {

@@ -4,7 +4,7 @@
 //
 // Mất khi luân hồi : cảnh giới, linh khí, linh thạch, Tụ Linh Trận, đan/chỉ số vĩnh viễn,
 //                    túi vật phẩm, tiến độ bí cảnh, Linh Điền; căn cốt và hệ ngũ hành đổi mới.
-// Giữ lại          : công pháp, trang bị, cấp Luyện Đan, thành tựu, thống kê, Đạo Vận và cường hoá.
+// Giữ lại          : võ kỹ, công pháp, trang bị, cấp Luyện Đan, thành tựu, thống kê, Đạo Vận và cường hoá.
 // =====================================================================
 
 export const MIN_STAGE = 9 // cần tối thiểu Trúc Cơ Sơ Kỳ

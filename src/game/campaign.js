@@ -137,19 +137,19 @@ export const INCOME_AI_PER_STAGE = 8 // nhờ vậy kiếp mới có trang bị 
 export const incomeAi = (best, stageIdx = Infinity) => Math.min(best, INCOME_AI_BASE + INCOME_AI_PER_STAGE * stageIdx)
 
 /** Hệ số cộng vào tốc độ linh khí (phân số, cộng chung với các thưởng % khác). */
-export const campaignExpBonus = (best, stageIdx = Infinity) => AI_EXP_PER_CLEAR * incomeAi(best, stageIdx)
+export const campaignExpBonus = (best, stageIdx = Infinity, mult = 1) => AI_EXP_PER_CLEAR * incomeAi(best, stageIdx) * mult
 
 /** Linh thạch/giây cộng thêm (Decimal). */
-export const campaignStonesPerSecond = (best, stageIdx = Infinity) => {
+export const campaignStonesPerSecond = (best, stageIdx = Infinity, mult = 1) => {
   const n = incomeAi(best, stageIdx)
-  return n <= 0 ? new Decimal(0) : new Decimal(1.45).pow(equivStage(n)).mul(AI_STONE_PER_CLEAR * n)
+  return n <= 0 ? new Decimal(0) : new Decimal(1.45).pow(equivStage(n)).mul(AI_STONE_PER_CLEAR * n * mult)
 }
 
 /**
  * Nguyên liệu nhận mỗi giờ theo chương hiện tại: lấy thảo dược/khoáng thạch trong bảng rơi
  * của bối cảnh ải `best`, số lượng tăng theo ải. Trả về [{ id, perHour }].
  */
-export function campaignItemsPerHour(rawBest, stageIdx = Infinity) {
+export function campaignItemsPerHour(rawBest, stageIdx = Infinity, mult = 1) {
   const best = incomeAi(rawBest, stageIdx)
   if (best <= 0) return []
   const scale = 1 + best / 25
@@ -157,7 +157,7 @@ export function campaignItemsPerHour(rawBest, stageIdx = Infinity) {
   for (const entry of themeOf(best).dungeon.loot) {
     const group = ITEMS[entry.item]?.group
     if (group !== 'herbs' && group !== 'ores') continue
-    out.push({ id: entry.item, perHour: entry.chance * ((entry.min + entry.max) / 2) * 4 * scale })
+    out.push({ id: entry.item, perHour: entry.chance * ((entry.min + entry.max) / 2) * 4 * scale * mult })
   }
   return out
 }

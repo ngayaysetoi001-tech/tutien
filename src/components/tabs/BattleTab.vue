@@ -86,7 +86,7 @@ function stepFarm(d) {
         <div v-if="game.campaign.grit > 0" class="mt-0.5 text-[11px] text-jade-300">Kiên Trì +{{ Math.round(game.campaign.grit * C.GRIT_STEP * 100) }}% chỉ số (mất khi vượt ải)</div>
       </div>
       <div v-if="stuck" class="rounded border border-gold-500/30 bg-gold-500/10 p-1.5 text-[11px] leading-snug text-gold-200">
-        Đang kẹt ở ải {{ best }}. Muốn qua ải {{ target }}: đột phá cảnh giới, mặc trang bị tốt hơn, học công pháp, dùng đan tăng chỉ số. Trong lúc đó vẫn nhận thu nhập của ải {{ best }}.
+        Đang kẹt ở ải {{ best }}. Muốn qua ải {{ target }}: đột phá cảnh giới, mặc trang bị tốt hơn, học võ kỹ và công pháp, dùng đan tăng chỉ số. Trong lúc đó vẫn nhận thu nhập của ải {{ best }}.
       </div>
       <div class="grid grid-cols-2 gap-2">
         <button class="btn-jade" :disabled="!battle.inFight || healPills < 1 || battle.hp >= battle.maxHp" @click="battle.useHealPill()">

@@ -10,6 +10,7 @@ import { DUNGEONS, ITEMS } from '../game/data.js'
 import { AIS_PER_CHAPTER, GRIT_MAX } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
+import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
 import { BAG_LIMIT, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
 import { ACHIEVEMENTS } from '../game/achievements.js'
 import { PERKS } from '../game/reincarnation.js'
@@ -43,6 +44,7 @@ export function serialize(state, now = Date.now()) {
       campaign: { ...state.campaign },
       element: state.element,
       skills: JSON.parse(JSON.stringify(state.skills)),
+      arts: JSON.parse(JSON.stringify(state.arts)),
       gear: JSON.parse(JSON.stringify(state.gear)),
       achTier: { ...state.achTier },
       reincarnation: JSON.parse(JSON.stringify(state.reincarnation)),
@@ -110,14 +112,26 @@ export function deserialize(save, defaults) {
   for (const [k, v] of Object.entries(d.usage && typeof d.usage === 'object' ? d.usage : {})) {
     if (ITEMS[k]) usage[k] = Math.floor(num(v, 0))
   }
-  // Công pháp: chỉ giữ công pháp tồn tại, cấp hợp lệ; ô trang bị phải là công pháp đã học
+  // Võ kỹ: chỉ giữ võ kỹ tồn tại, cấp hợp lệ; ô trang bị phải là võ kỹ đã học (save cũ có 3 ô, nay 4)
   const owned = {}
   for (const [k, v] of Object.entries(d.skills?.owned && typeof d.skills.owned === 'object' ? d.skills.owned : {})) {
     if (SKILLS[k]) owned[k] = Math.floor(num(v, 1, 1, SKILL_MAX_LEVEL))
   }
-  const slots = [0, 1, 2].map((i) => {
+  const slots = [0, 1, 2, 3].map((i) => {
     const id = d.skills?.slots?.[i]
     return owned[id] ? id : null
+  })
+  // Công pháp (bị động): giữ công pháp tồn tại, cấp hợp lệ; ô trang bị phải là công pháp đã học, không trùng
+  const artsOwned = {}
+  for (const [k, v] of Object.entries(d.arts?.owned && typeof d.arts.owned === 'object' ? d.arts.owned : {})) {
+    if (ARTS[k]) artsOwned[k] = Math.floor(num(v, 1, 1, ART_MAX_LEVEL))
+  }
+  const artSeen = new Set()
+  const artSlots = Array.from({ length: MAX_ART_SLOTS }, (_, i) => {
+    const id = d.arts?.slots?.[i]
+    if (!artsOwned[id] || artSeen.has(id)) return null
+    artSeen.add(id)
+    return id
   })
   // Trang bị: kiểm tra từng món, bỏ món hỏng; ô mặc phải trỏ tới món có thật đúng ô
   const bag = []
@@ -208,6 +222,7 @@ export function deserialize(save, defaults) {
     mineAt: num(d.mineAt, Date.now(), 0, Date.now()),
     element: ELEMENTS[d.element] ? d.element : defaults.element,
     skills: { owned, slots },
+    arts: { owned: artsOwned, slots: artSlots },
     gear: { bag, equipped },
     achTier,
     name: typeof d.name === 'string' && d.name.trim() ? d.name.slice(0, 24) : defaults.name,

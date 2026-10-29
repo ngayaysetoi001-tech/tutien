@@ -14,6 +14,7 @@ import { fmt } from '../game/format.js'
 import { itemName, MONSTERS } from '../game/data.js'
 import * as B from '../game/battle.js'
 import * as C from '../game/campaign.js'
+import { rollArtDrops } from '../game/arts.js'
 import { ELEMENTS, elementEdge, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as EQ from '../game/equipment.js'
@@ -53,6 +54,15 @@ export const useBattleStore = defineStore('battle', {
     hasteAmt: 0,
     slowUntil: 0,
     slowAmt: 0,
+    dotUntil: 0, // Độc/sát thương theo thời gian lên địch hiện tại
+    dotDmg: 0, // sát thương mỗi giây (đã tính công kích lúc tung chiêu)
+    nextDot: 0,
+    lifestealUntil: 0,
+    lifestealAmt: 0,
+    rageUntil: 0,
+    rageAmt: 0,
+    reflectUntil: 0,
+    reflectAmt: 0,
   }),
 
   getters: {
@@ -95,6 +105,7 @@ export const useBattleStore = defineStore('battle', {
       this.lastResult = ''
       this.cd = {}
       this.shield = this.shieldUntil = this.hasteUntil = this.slowUntil = 0
+      this.dotUntil = this.lifestealUntil = this.rageUntil = this.reflectUntil = 0
       emit('battle-start', { dungeonId: this.dungeon.id })
       this.spawnEnemy()
       return true
@@ -131,7 +142,8 @@ export const useBattleStore = defineStore('battle', {
       this.phase = 'fighting'
       this.nextPlayer = this.clock + 0.5
       this.nextEnemy = this.clock + B.actionInterval(stats.speed) * 0.8
-      this.slowUntil = 0 // làm chậm không kéo sang yêu thú mới
+      this.slowUntil = 0 // làm chậm và độc không kéo sang yêu thú mới
+      this.dotUntil = 0
       fx('battle-enemy-spawn', { name: tmpl.name, kind: tmpl.kind, color: tmpl.color, boss })
       if (n % C.AIS_PER_CHAPTER === 1 && n > game.campaign.best) {
         game.addLog(`Bước vào ${C.chapterName(n)}, chương ${C.chapterOf(n)}.`, 'event')
@@ -171,6 +183,7 @@ export const useBattleStore = defineStore('battle', {
       if (game.settings.autoHeal && this.hp / this.maxHp < AUTO_HEAL_BELOW) this.useHealPill(true)
 
       this.clock += dt
+      this.processDot()
       let guard = 0 // chặn vòng lặp vô hạn khi tick quá lớn
       while (this.phase === 'fighting' && guard++ < 50) {
         if (Math.min(this.nextPlayer, this.nextEnemy) > this.clock) break
@@ -185,10 +198,16 @@ export const useBattleStore = defineStore('battle', {
       for (let i = 0; i < game.skillSlots; i++) {
         const id = game.skills.slots[i]
         if (!id || (this.cd[id] ?? 0) > this.clock) continue
+        if (!SK.canEquip(id, game.realmIdx)) continue // tuyệt kỹ chưa đủ cảnh giới (ví dụ sau luân hồi)
         const kind = SK.SKILLS[id].kind
         if (kind === 'heal' && this.hp / this.maxHp > 0.8) continue
         if (kind === 'shield' && this.clock < this.shieldUntil) continue
         if (kind === 'haste' && this.clock < this.hasteUntil) continue
+        if (kind === 'dot' && this.clock < this.dotUntil) continue
+        if (kind === 'lifesteal' && this.clock < this.lifestealUntil) continue
+        if (kind === 'rage' && this.clock < this.rageUntil) continue
+        if (kind === 'reflect' && this.clock < this.reflectUntil) continue
+        if (kind === 'stun' && this.nextEnemy > this.clock + 0.5) continue // địch đang bị choáng thì chưa tung
         return id
       }
       return null
@@ -205,29 +224,71 @@ export const useBattleStore = defineStore('battle', {
       if (this.enemy && this.enemy.hp <= 0) this.onKill()
     },
 
+    /** Công kích đang có: nhân thêm khi Cuồng Bạo còn hiệu lực. */
+    atkNow(stats) {
+      return stats.atk * (this.clock < this.rageUntil ? 1 + this.rageAmt : 1)
+    },
+
+    /** Hút máu: đòn đánh hồi khí huyết theo sát thương gây ra nếu Huyết Thực còn hiệu lực. */
+    lifestealFrom(damage) {
+      if (this.clock >= this.lifestealUntil) return
+      const heal = Math.round(damage * this.lifestealAmt)
+      if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal)
+    },
+
+    /** Độc: mỗi giây gây sát thương cho đến khi hết hiệu lực hoặc địch chết. */
+    processDot() {
+      while (this.enemy && this.nextDot <= this.clock && this.nextDot <= this.dotUntil + 1e-9) {
+        const game = useGameStore()
+        const mult = elementMult(game.element, this.enemy.element)
+        const damage = Math.max(1, Math.round(this.dotDmg * (100 / (100 + this.enemy.def)) * mult))
+        this.enemy.hp = Math.max(0, this.enemy.hp - damage)
+        this.nextDot += 1
+        this.lifestealFrom(damage)
+        fx('battle-hit', { target: 'enemy', damage, crit: false, skill: true, color: ELEMENTS[game.element]?.color, edge: elementEdge(game.element, this.enemy.element) })
+        if (this.enemy.hp <= 0) {
+          this.onKill()
+          return
+        }
+      }
+    },
+
     basicAttack(stats) {
       const game = useGameStore()
-      const mult = elementMult(game.element, this.enemy.element)
-      const { damage, crit } = B.rollHit(stats.atk, this.enemy.def, Math.random, B.CRIT_CHANCE, mult)
+      const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
+      const { damage, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE, mult)
       this.enemy.hp = Math.max(0, this.enemy.hp - damage)
+      this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
     },
 
     castSkill(id, stats) {
+      const game = useGameStore()
       const skill = SK.SKILLS[id]
-      const level = useGameStore().skills.owned[id]
-      const power = skill.power * SK.skillLevelMult(level) * (skill.kind === 'damage' ? 1 + useGameStore().sectPerk.skill : 1)
+      const level = game.skills.owned[id]
+      const lv = SK.skillLevelMult(level)
+      const attack = ['damage', 'stun', 'execute', 'ultimate'].includes(skill.kind)
+      const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1)
       this.cd[id] = this.clock + SK.skillCooldown(id, level)
-      fx('battle-skill', { name: skill.name, color: ELEMENTS[skill.element].color, kind: skill.kind, element: skill.element, seconds: skill.seconds })
-      if (skill.kind === 'damage') {
-        const mult = elementMult(skill.element, this.enemy.element)
-        const { damage, crit } = B.rollHit(stats.atk * power, this.enemy.def, Math.random, B.CRIT_CHANCE, mult)
+      fx('battle-skill', { name: skill.name, color: ELEMENTS[skill.element].color, kind: SK.visualKind(skill.kind), element: skill.element, seconds: skill.seconds })
+      if (attack) {
+        let pw = power
+        // Tuyệt Sát: gấp bội khi địch sắp gục
+        if (skill.kind === 'execute' && this.enemy.hp / this.enemy.maxHp < skill.threshold) pw *= 1 + skill.bonus
+        const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
+        const { damage, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE, mult)
         this.enemy.hp = Math.max(0, this.enemy.hp - damage)
+        this.lifestealFrom(damage)
         if (skill.slow) {
           this.slowUntil = this.clock + skill.seconds
           this.slowAmt = skill.slow
         }
+        if (skill.kind === 'stun') this.nextEnemy = Math.max(this.nextEnemy, this.clock + skill.seconds) // choáng: mất lượt ra đòn
         fx('battle-hit', { target: 'enemy', damage, crit, skill: true, color: ELEMENTS[skill.element].color, edge: elementEdge(skill.element, this.enemy.element) })
+      } else if (skill.kind === 'dot') {
+        this.dotUntil = this.clock + skill.seconds
+        this.dotDmg = this.atkNow(stats) * power
+        this.nextDot = this.clock + 1
       } else if (skill.kind === 'heal') {
         const amount = Math.round(this.maxHp * power)
         this.hp = Math.min(this.maxHp, this.hp + amount)
@@ -235,6 +296,15 @@ export const useBattleStore = defineStore('battle', {
       } else if (skill.kind === 'shield') {
         this.shield = Math.round(this.maxHp * power)
         this.shieldUntil = this.clock + skill.seconds
+      } else if (skill.kind === 'lifesteal') {
+        this.lifestealAmt = power
+        this.lifestealUntil = this.clock + skill.seconds
+      } else if (skill.kind === 'rage') {
+        this.rageAmt = power
+        this.rageUntil = this.clock + skill.seconds
+      } else if (skill.kind === 'reflect') {
+        this.reflectAmt = power
+        this.reflectUntil = this.clock + skill.seconds
       } else {
         this.hasteAmt = power
         this.hasteUntil = this.clock + skill.seconds
@@ -254,6 +324,16 @@ export const useBattleStore = defineStore('battle', {
       const slow = this.clock < this.slowUntil ? 1 - this.slowAmt : 1
       this.nextEnemy += B.actionInterval(this.enemy.speed * slow)
       fx('battle-hit', { target: 'player', damage, crit: false, edge: elementEdge(this.enemy.element, game.element) })
+      // Phản Chấn: trả lại một phần sát thương nhận vào
+      if (damage > 0 && this.clock < this.reflectUntil) {
+        const back = Math.max(1, Math.round(damage * this.reflectAmt))
+        this.enemy.hp = Math.max(0, this.enemy.hp - back)
+        fx('battle-hit', { target: 'enemy', damage: back, crit: false, skill: true, color: ELEMENTS.tho.color, edge: 'none' })
+        if (this.enemy.hp <= 0 && this.hp > 0) {
+          this.onKill()
+          return
+        }
+      }
       if (this.hp <= 0) this.onDeath()
     },
 
@@ -263,8 +343,8 @@ export const useBattleStore = defineStore('battle', {
       const n = this.ai
       const kind = this.enemy.tier
       const tmpl = MONSTERS[this.enemy.id]
-      const stones = C.aiStoneReward(n, kind, game.stageIdx)
-      const loot = C.rollAiLoot(n, kind, Math.random, game.lootLuck)
+      const stones = C.aiStoneReward(n, kind, game.stageIdx).mul(1 + game.artBonus.stones)
+      const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck)]
 
       game.spiritStones = game.spiritStones.add(stones)
       game.gainExp(game.expRate.mul(C.aiExpSeconds(n, kind, game.stageIdx)))
