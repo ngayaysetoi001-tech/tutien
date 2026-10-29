@@ -117,7 +117,7 @@ function createPlayerState(minRoot = 0) {
     dwelling: emptyDwelling(), // cấp các công trình Động Phủ (giữ khi luân hồi)
     expeditions: [], // thám hiểm đang đi: { id, uids, since (ms), seconds }
     pets: { owned: {}, active: [null, null] }, // Linh thú. owned: { id: cấp }, active: id linh thú ra trận
-    arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
+    arts: { owned: {} }, // Công pháp (bị động, học xong là cộng ngay). owned: { id: cấp }
     skills: { owned: {}, slots: [null, null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
     gear: { bag: [], equipped: { weapon: null, armor: null, trinket: null } }, // equipped lưu uid
     achTier: {}, // { id thành tựu: số mốc đã nhận }
@@ -313,14 +313,10 @@ export const useGameStore = defineStore('game', {
       for (const [k, v] of Object.entries(talentPerk(this.talent))) out[k] += v
       return out
     },
-    /** Số ô công pháp (bị động) đã mở. */
-    artSlots() {
-      return AR.artSlotCount(this.realmIdx)
-    },
-    /** Tổng bị động từ công pháp đang trang bị (đã tính thưởng cùng hệ với tông môn). */
+    /** Tổng bị động từ mọi công pháp đã học (đã tính thưởng cùng hệ với tông môn). */
     artBonus() {
       if (this.challenge === 'doc_hanh') return { exp: 0, hp: 0, atk: 0, def: 0, speed: 0, stones: 0, income: 0, luck: 0, elem: 0, dao: 0 } // Độc Hành
-      const t = AR.totalArtBonus(this.arts.slots.slice(0, this.artSlots), this.arts.owned, this.sectDef?.element ?? null)
+      const t = AR.totalArtBonus(this.arts.owned, this.sectDef?.element ?? null)
       const k = 1 + this.pathPerk.arts + 0.05 * (this.reincarnation.upgrades.cong_phap ?? 0) + this.extraPerk.arts // Trận Pháp Sư, cường hoá Pháp Duyên
       if (k !== 1) for (const key of Object.keys(t)) t[key] *= k
       return t
@@ -946,14 +942,12 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     // Công pháp (bị động)
     // ------------------------------------------------------------
-    /** Học công pháp mới bằng tàn quyển; tự trang bị vào ô trống đầu tiên đã mở. */
+    /** Học công pháp mới bằng tàn quyển; cộng chỉ số ngay. */
     learnArt(id) {
       const frag = AR.artFragmentId(id)
       if (!AR.ARTS[id] || this.arts.owned[id] || this.itemCount(frag) < AR.ART_LEARN_COST) return false
       this.removeItem(frag, AR.ART_LEARN_COST)
       this.arts.owned[id] = 1
-      const free = this.arts.slots.findIndex((x, i) => i < this.artSlots && !x)
-      if (free >= 0) this.arts.slots[free] = id
       this.addLog(`Lĩnh ngộ công pháp ${AR.ARTS[id].name}!`, 'good')
       return true
     },
@@ -967,18 +961,6 @@ export const useGameStore = defineStore('game', {
       this.arts.owned[id] = level + 1
       this.addLog(`${AR.ARTS[id].name} lên cấp ${level + 1}.`, 'good')
       return true
-    },
-
-    equipArt(id, slot) {
-      if (!this.arts.owned[id] || slot < 0 || slot >= this.artSlots) return false
-      const prev = this.arts.slots.indexOf(id)
-      if (prev >= 0) this.arts.slots[prev] = null
-      this.arts.slots[slot] = id
-      return true
-    },
-
-    unequipArt(slot) {
-      this.arts.slots[slot] = null
     },
 
     /** Ngũ Hành Quy Nhất: sát thương thêm khi hệ tấn công khắc hệ phòng thủ (1 nếu không khắc). */

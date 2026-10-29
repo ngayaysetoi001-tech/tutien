@@ -241,14 +241,12 @@ function createBot(s, b) {
     }
     const owned = Object.keys(s.skills.owned).filter((id) => canEquipSkill(id, s.realmIdx, s.path)).sort((x, y) => score(y) - score(x))
     for (let i = 0; i < s.skillSlots && i < owned.length; i++) if (s.skills.slots[i] !== owned[i]) s.equipSkill(owned[i], i)
-    // Học, thăng cấp, trang bị công pháp bị động (ưu tiên linh khí, công, khí huyết, thu nhập ải...)
+    // Học, thăng cấp công pháp bị động (ưu tiên linh khí, công, khí huyết, thu nhập ải...)
     const ART_ORDER = ['thanh_tam', 'ho_phap', 'pha_quan', 'cuong_the', 'kim_cang', 'tu_bao', 'truy_phong', 'thien_nhan', 'ngu_hanh', 'luan_hoi']
     for (const id of ART_ORDER) {
       s.learnArt(id)
       if (s.arts.owned[id]) while (s.upgradeArt(id));
     }
-    const ownedArts = ART_ORDER.filter((id) => s.arts.owned[id])
-    for (let i = 0; i < s.artSlots && i < ownedArts.length; i++) if (s.arts.slots[i] !== ownedArts[i]) s.equipArt(ownedArts[i], i)
 
     // Tụ Linh Trận: chi tối đa nửa số linh thạch mỗi lần
     for (let k = 0; k < 20 && s.spiritStones.gte(s.arrayCost.mul(2)); k++) s.upgradeArray()

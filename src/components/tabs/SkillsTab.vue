@@ -1,6 +1,7 @@
 <script setup>
 // SkillsTab.vue - Công Pháp: ba tab Võ Kỹ / Công Pháp / Linh Thú dùng chung một bố cục.
-//   Hàng ô đang gắn ghim ở đầu; kho là danh sách gọn (icon, tên, 1 dòng hiệu quả, nút Gắn/Học/Nâng ngay trên hàng),
+//   Võ Kỹ / Linh Thú: hàng ô đang gắn ghim ở đầu; Công Pháp là bị động (học xong cộng chỉ số ngay, không có ô) nên ghim tổng cộng thêm.
+//    kho là danh sách gọn (icon, tên, 1 dòng hiệu quả, nút Gắn/Học/Nâng ngay trên hàng),
 //   gom nhóm: có thể học/nâng, đang dùng, đã học, chưa học, chưa mở (thu gọn). Bấm hàng để xem chi tiết.
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
@@ -8,7 +9,7 @@ import { ELEMENTS, ELEMENT_IDS } from '../../game/elements.js'
 import { LEARN_COST, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, upgradeCost } from '../../game/skills.js'
 import { PATHS } from '../../game/paths.js'
 import {
-  ARTS, ART_LEARN_COST, ART_MAX_LEVEL, MAX_ART_SLOTS, artDesc, artFragmentId, artUpgradeCost,
+  ARTS, ART_LEARN_COST, ART_MAX_LEVEL, artDesc, artFragmentId, artUpgradeCost,
 } from '../../game/arts.js'
 import { REALMS } from '../../game/constants.js'
 import { MAX_PET_SLOTS, PETS, PET_LEARN_COST, PET_MAX_LEVEL, petDesc, petFragmentId, petUpgradeCost } from '../../game/pets.js'
@@ -44,19 +45,16 @@ const KINDS = {
     words: { equip: 'Gắn', unequip: 'Tháo', up: 'Nâng', learn: 'Học' },
   },
   arts: {
-    label: 'Công Pháp', icon: 'arts', slotTitle: 'Ô công pháp', defs: ARTS, glyph: ART_GLYPH, fragLabel: 'Tàn quyển', learnCost: ART_LEARN_COST, maxLevel: ART_MAX_LEVEL,
-    owned: () => game.arts.owned, slots: () => game.arts.slots, slotCount: () => game.artSlots, maxSlots: MAX_ART_SLOTS,
+    label: 'Công Pháp', icon: 'arts', passive: true, defs: ARTS, glyph: ART_GLYPH, fragLabel: 'Tàn quyển', learnCost: ART_LEARN_COST, maxLevel: ART_MAX_LEVEL,
+    owned: () => game.arts.owned, slots: () => [],
     frags: (id) => game.itemCount(artFragmentId(id)),
     upCost: artUpgradeCost,
     desc: (id, lv) => artDesc(id, lv, game.sectDef?.element ?? null),
     locked: (id) => game.campaign.record < ARTS[id].minAi,
     lockText: (id) => `Ải ${ARTS[id].minAi}`,
-    slotHint: (i) => REALMS[Math.max(0, i - 1)].name,
     learn: (id) => game.learnArt(id),
-    equip: (id) => game.equipArt(id, freeSlot(game.arts.slots, game.artSlots)),
-    unequip: (i) => game.unequipArt(i),
     upgrade: (id) => game.upgradeArt(id),
-    words: { equip: 'Gắn', unequip: 'Tháo', up: 'Nâng', learn: 'Học' },
+    words: { up: 'Nâng', learn: 'Học' },
   },
   pets: {
     label: 'Linh Thú', icon: 'paw', slotTitle: 'Linh thú ra trận', defs: PETS, glyph: PET_GLYPH, fragLabel: 'Phách', learnCost: PET_LEARN_COST, maxLevel: PET_MAX_LEVEL,
@@ -150,12 +148,17 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
       </button>
     </div>
 
+    <!-- Công Pháp (bị động): tổng cộng đang có, ghim ở đầu -->
+    <div v-if="k.passive" class="sticky top-0 z-10 -mx-0.5 rounded-lg border border-ink-600 bg-ink-900 px-2.5 py-2">
+      <div class="text-xs font-bold text-gold-300">Đang cộng cho nhân vật</div>
+      <div class="mt-0.5 text-sm text-jade-300">{{ bonusLines.length ? bonusLines.join(' · ') : 'Học công pháp để cộng chỉ số, không cần gắn.' }}</div>
+    </div>
+
     <!-- Ô đang gắn: ghim ở đầu -->
-    <div class="sticky top-0 z-10 -mx-0.5 rounded-lg border border-ink-600 bg-ink-900 px-2 pb-1.5 pt-1">
+    <div v-else class="sticky top-0 z-10 -mx-0.5 rounded-lg border border-ink-600 bg-ink-900 px-2 pb-1.5 pt-1">
       <div class="mb-1 flex items-center justify-between text-xs">
         <b class="text-gold-300">{{ k.slotTitle }}</b>
-        <span v-if="sub === 'arts'" class="truncate pl-2 text-jade-300">{{ bonusLines.length ? bonusLines.join(' · ') : 'Chưa gắn công pháp nào' }}</span>
-        <span v-else-if="sub === 'pets'" class="text-slate-500">cùng hệ: +25%</span>
+        <span v-if="sub === 'pets'" class="text-slate-500">cùng hệ: +25%</span>
       </div>
       <div class="grid gap-1.5" :class="sub === 'pets' ? 'grid-cols-3' : 'grid-cols-5'">
         <ItemIcon
@@ -225,8 +228,10 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
           </div>
           <div v-if="!s.fold" class="flex shrink-0 gap-1" @click.stop>
             <template v-if="lvOf(k, id)">
-              <button v-if="slotOf(k, id) >= 0" class="btn-ghost !px-2 text-xs" @click="k.unequip(slotOf(k, id))">{{ k.words.unequip }}</button>
-              <button v-else class="btn-jade !px-2 text-xs" :disabled="k.locked(id)" @click="k.equip(id)">{{ k.words.equip }}</button>
+              <template v-if="!k.passive">
+                <button v-if="slotOf(k, id) >= 0" class="btn-ghost !px-2 text-xs" @click="k.unequip(slotOf(k, id))">{{ k.words.unequip }}</button>
+                <button v-else class="btn-jade !px-2 text-xs" :disabled="k.locked(id)" @click="k.equip(id)">{{ k.words.equip }}</button>
+              </template>
               <button class="btn-gold !px-2 text-xs" :disabled="!canUpOf(k, id)" @click="k.upgrade(id)">
                 <Icon name="up" :size="14" />{{ maxedOf(k, id) ? 'Max' : `${k.frags(id)}/${k.upCost(lvOf(k, id))}` }}
               </button>
@@ -265,8 +270,10 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
       <template #actions>
         <template v-if="sel">
           <template v-if="lvOf(k, sel)">
-            <button v-if="slotOf(k, sel) >= 0" class="btn-ghost" @click="k.unequip(slotOf(k, sel)); sel = null">{{ k.words.unequip }}</button>
-            <button v-else class="btn-jade" :disabled="k.locked(sel)" @click="k.equip(sel); sel = null">{{ k.locked(sel) ? k.lockText(sel) : k.words.equip }}</button>
+            <template v-if="!k.passive">
+              <button v-if="slotOf(k, sel) >= 0" class="btn-ghost" @click="k.unequip(slotOf(k, sel)); sel = null">{{ k.words.unequip }}</button>
+              <button v-else class="btn-jade" :disabled="k.locked(sel)" @click="k.equip(sel); sel = null">{{ k.locked(sel) ? k.lockText(sel) : k.words.equip }}</button>
+            </template>
             <button class="btn-gold" :disabled="!canUpOf(k, sel)" @click="k.upgrade(sel)">
               {{ k.words.up }} <span class="text-xs opacity-90">{{ maxedOf(k, sel) ? 'tối đa' : `${k.frags(sel)}/${k.upCost(lvOf(k, sel))}` }}</span>
             </button>

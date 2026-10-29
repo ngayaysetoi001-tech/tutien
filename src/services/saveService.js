@@ -10,7 +10,7 @@ import { DUNGEONS, ITEMS, RECIPES } from '../game/data.js'
 import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
-import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
+import { ARTS, ART_MAX_LEVEL } from '../game/arts.js'
 import { MAX_PET_SLOTS, PETS, PET_MAX_LEVEL } from '../game/pets.js'
 import { MAX_PARTY, MISSIONS } from '../game/expedition.js'
 import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL } from '../game/dwelling.js'
@@ -141,18 +141,11 @@ export function deserialize(save, defaults) {
     const id = d.skills?.slots?.[i]
     return owned[id] ? id : null
   })
-  // Công pháp (bị động): giữ công pháp tồn tại, cấp hợp lệ; ô trang bị phải là công pháp đã học, không trùng
+  // Công pháp (bị động): giữ công pháp tồn tại, cấp hợp lệ (save cũ có ô trang bị thì bỏ qua: mọi công pháp đã học đều có hiệu lực)
   const artsOwned = {}
   for (const [k, v] of Object.entries(d.arts?.owned && typeof d.arts.owned === 'object' ? d.arts.owned : {})) {
     if (ARTS[k]) artsOwned[k] = Math.floor(num(v, 1, 1, ART_MAX_LEVEL))
   }
-  const artSeen = new Set()
-  const artSlots = Array.from({ length: MAX_ART_SLOTS }, (_, i) => {
-    const id = d.arts?.slots?.[i]
-    if (!artsOwned[id] || artSeen.has(id)) return null
-    artSeen.add(id)
-    return id
-  })
   // Linh thú: giữ linh thú tồn tại, cấp hợp lệ; ô ra trận phải là linh thú đã thu phục, không trùng
   const petsOwned = {}
   for (const [k, v] of Object.entries(d.pets?.owned && typeof d.pets.owned === 'object' ? d.pets.owned : {})) {
@@ -303,7 +296,7 @@ export function deserialize(save, defaults) {
     mineAt: num(d.mineAt, Date.now(), 0, Date.now()),
     element: ELEMENTS[d.element] ? d.element : defaults.element,
     skills: { owned, slots },
-    arts: { owned: artsOwned, slots: artSlots },
+    arts: { owned: artsOwned },
     pets: { owned: petsOwned, active: petActive },
     dwelling,
     expeditions,

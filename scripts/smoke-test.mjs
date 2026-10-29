@@ -939,31 +939,21 @@ ok('Công pháp: dữ liệu hợp lệ, có nguồn tàn quyển (rơi từ bos
   for (const id of Object.keys(AR.ARTS)) assert.ok(AR.artValue(id, AR.ART_MAX_LEVEL, AR.ARTS[id].element) <= 0.8)
 })
 
-ok('công pháp: học, thăng cấp, trang bị theo ô mở theo cảnh giới, tháo, không trùng', () => {
+ok('công pháp: học xong cộng chỉ số ngay (không cần ô), thăng cấp, tối đa', () => {
   const s = freshStore()
   s.init()
-  assert.equal(s.artSlots, 2)
-  s.stageIdx = 9
-  assert.equal(s.artSlots, 3)
-  s.stageIdx = 15
-  assert.equal(s.artSlots, 5)
-  s.stageIdx = 26
-  assert.equal(s.artSlots, AR.MAX_ART_SLOTS)
-  s.stageIdx = 0
   assert.equal(s.learnArt('thanh_tam'), false, 'chưa đủ tàn quyển')
+  const base = s.artBonus.exp
   s.addItem('scrolls', AR.artFragmentId('thanh_tam'), AR.ART_LEARN_COST + AR.artUpgradeCost(1))
   assert.equal(s.learnArt('thanh_tam'), true)
-  assert.equal(s.arts.slots[0], 'thanh_tam', 'tự trang bị vào ô trống')
+  assert.ok(s.artBonus.exp > base, 'học xong là cộng ngay')
   assert.equal(s.learnArt('thanh_tam'), false, 'đã học rồi')
+  const lv1 = s.artBonus.exp
   assert.equal(s.upgradeArt('thanh_tam'), true)
   assert.equal(s.arts.owned.thanh_tam, 2)
+  assert.ok(s.artBonus.exp > lv1, 'lên cấp tăng thêm')
   assert.equal(s.upgradeArt('thanh_tam'), false, 'hết tàn quyển')
-  assert.equal(s.equipArt('thanh_tam', 4), false, 'ô 5 chưa mở')
-  assert.equal(s.equipArt('thanh_tam', 1), true)
-  assert.equal(s.arts.slots[0], null)
-  assert.equal(s.arts.slots[1], 'thanh_tam')
-  s.unequipArt(1)
-  assert.equal(s.arts.slots[1], null)
+  assert.ok(!('slots' in s.arts), 'không còn ô công pháp')
   s.arts.owned.thanh_tam = AR.ART_MAX_LEVEL
   s.addItem('scrolls', AR.artFragmentId('thanh_tam'), 50)
   assert.equal(s.upgradeArt('thanh_tam'), false, 'đã tối đa')
@@ -976,29 +966,26 @@ ok('công pháp bị động: cộng vào khí huyết, công kích, phòng ng�
   s.campaign.best = 30
   const base = { combat: s.combat, exp: s.expRate, stones: s.stonesRate, luck: s.lootLuck, dao: s.daoPreview }
   const own = (id, lvl = 10) => { s.arts.owned[id] = lvl }
-  const at = (...ids) => { s.arts.slots = [...ids, ...Array(5 - ids.length).fill(null)] }
   own('cuong_the'); own('pha_quan'); own('kim_cang'); own('truy_phong')
-  at('cuong_the', 'pha_quan', 'kim_cang', 'truy_phong')
   const c = s.combat
-  assert.ok(c.hp > base.combat.hp * 1.3 && c.atk > base.combat.atk * 1.3 && c.def > base.combat.def * 1.3 && c.speed > base.combat.speed)
-  own('thanh_tam'); at('thanh_tam')
-  assert.ok(s.expRate.gt(base.exp.mul(1.2)))
-  own('tu_bao'); at('tu_bao')
-  assert.ok(s.stonesRate.gt(base.stones.mul(1.4)))
-  own('ho_phap'); at('ho_phap')
+  assert.ok(c.hp > base.combat.hp * 1.15 && c.atk > base.combat.atk * 1.15 && c.def > base.combat.def * 1.15 && c.speed > base.combat.speed)
+  own('thanh_tam')
+  assert.ok(s.expRate.gt(base.exp.mul(1.1)))
+  own('tu_bao')
+  assert.ok(s.stonesRate.gt(base.stones.mul(1.2)))
+  own('ho_phap')
   assert.ok(s.stonesRate.gt(base.stones) && s.expRate.gt(base.exp))
-  own('thien_nhan'); at('thien_nhan')
-  assert.ok(s.lootLuck > base.luck + 0.3)
-  own('luan_hoi'); at('luan_hoi')
+  own('thien_nhan')
+  assert.ok(s.lootLuck > base.luck + 0.15)
+  own('luan_hoi')
   assert.ok(s.daoPreview > base.dao)
-  own('ngu_hanh'); at('ngu_hanh')
-  assert.ok(s.artElementMult('kim', 'moc') > 1.2, 'khắc hệ thì cộng thêm')
+  own('ngu_hanh')
+  assert.ok(s.artElementMult('kim', 'moc') > 1.1, 'khắc hệ thì cộng thêm')
   assert.equal(s.artElementMult('moc', 'kim'), 1, 'không khắc thì không cộng')
-  // công pháp chưa trang bị thì không có tác dụng; ô chưa mở không tính
-  at()
+  // chưa học thì không có tác dụng
+  s.arts.owned = {}
   assert.ok(s.combat.hp === base.combat.hp)
-  s.stageIdx = 0
-  at('cuong_the', 'pha_quan', 'kim_cang', 'truy_phong', 'thanh_tam') // chỉ 2 ô mở
+  s.arts.owned = { cuong_the: 10, pha_quan: 10 }
   assert.ok(s.artBonus.hp > 0 && s.artBonus.atk > 0 && s.artBonus.def === 0 && s.artBonus.exp === 0)
 })
 
@@ -1007,7 +994,6 @@ ok('công pháp cùng hệ ngũ hành với tông môn được +50%', () => {
   s.init()
   s.stageIdx = 4
   s.arts.owned.cuong_the = 4 // hệ Mộc
-  s.arts.slots[0] = 'cuong_the'
   const plain = s.artBonus.hp
   s.joinSect('van_moc') // Vạn Mộc Cốc: hệ Mộc
   assert.ok(Math.abs(s.artBonus.hp - plain * 1.5) < 1e-9)
@@ -1049,26 +1035,23 @@ ok('Công Pháp Tàn Quyển rơi thật khi hạ boss trong trận', () => {
   assert.ok(after > before, 'boss rơi công pháp tàn quyển')
 })
 
-ok('save/load giữ công pháp (cấp, ô); loại công pháp lạ, ô trùng, cấp vượt trần, ô chưa học', () => {
+ok('save/load giữ công pháp (cấp); loại công pháp lạ, cấp vượt trần; save cũ có ô trang bị vẫn tải được', () => {
   const s = freshStore()
   s.init()
   s.arts.owned = { thanh_tam: 4, pha_quan: 2 }
-  s.arts.slots = ['pha_quan', 'thanh_tam', null, null, null]
   s.save()
   const s2 = freshStore(true)
   s2.init()
   assert.deepEqual({ ...s2.arts.owned }, { thanh_tam: 4, pha_quan: 2 })
-  assert.deepEqual([...s2.arts.slots], ['pha_quan', 'thanh_tam', null, null, null])
   const raw = JSON.parse(mem.get(SAVE_KEY))
-  raw.data.arts = { owned: { thanh_tam: 99, khong_co: 3, pha_quan: -5 }, slots: ['thanh_tam', 'thanh_tam', 'khong_co', 'kim_cang', 'pha_quan', 'x'] }
+  raw.data.arts = { owned: { thanh_tam: 99, khong_co: 3, pha_quan: -5 }, slots: ['thanh_tam', 'thanh_tam', 'khong_co'] }
   mem.set(SAVE_KEY, JSON.stringify(raw))
   const s3 = freshStore(true)
   s3.init()
   assert.equal(s3.arts.owned.thanh_tam, AR.ART_MAX_LEVEL)
   assert.equal(s3.arts.owned.pha_quan, 1)
   assert.ok(!('khong_co' in s3.arts.owned))
-  assert.equal(s3.arts.slots.length, AR.MAX_ART_SLOTS)
-  assert.deepEqual([...s3.arts.slots], ['thanh_tam', null, null, null, 'pha_quan'])
+  assert.ok(!('slots' in s3.arts), 'bỏ ô trang bị của save cũ')
   // save cũ không có công pháp và chỉ 3 ô võ kỹ vẫn tải được
   delete raw.data.arts
   raw.data.skills = { owned: { ngu_kiem: 2 }, slots: ['ngu_kiem', null, null] }
@@ -1086,7 +1069,6 @@ ok('luân hồi giữ võ kỹ và công pháp; công pháp Luân Hồi Bí Đi�
   s.stageIdx = 15
   s.skills.owned.ngu_kiem = 3
   s.arts.owned = { luan_hoi: 5, pha_quan: 2 }
-  s.arts.slots = ['luan_hoi', 'pha_quan', null, null, null]
   const plain = daoBase()
   assert.ok(s.daoPreview > plain, 'xem trước đã cộng thưởng')
   const gain = s.reincarnate()
@@ -1310,7 +1292,6 @@ ok('Trận Pháp Sư: Tụ Linh Trận +15%, công pháp +15%, đệ tử +20%',
   assert.ok(Math.abs(s.expRate.div(base).toNumber() - 3.3 / 3) < 1e-6)
   s.path = null
   s.arts.owned.pha_quan = 5
-  s.arts.slots[0] = 'pha_quan'
   const a0 = s.artBonus.atk
   s.path = 'tran'
   assert.ok(Math.abs(s.artBonus.atk / a0 - 1.15) < 1e-9)
@@ -2045,7 +2026,6 @@ ok('cường hoá luân hồi mới: Ải Lộ, Pháp Duyên, Võ Đạo, Khai T
   // Pháp Duyên
   s.stageIdx = 12
   s.arts.owned.pha_quan = 5
-  s.arts.slots[0] = 'pha_quan'
   const a0 = s.artBonus.atk
   s.reincarnation.upgrades.cong_phap = 4
   assert.ok(Math.abs(s.artBonus.atk / a0 - 1.2) < 1e-9)
@@ -2125,7 +2105,6 @@ ok('Kiếp Thử Thách Độc Hành: không tông môn, không đệ tử, côn
   s.spiritStones = new Decimal(1e12)
   s.joinSect('van_moc')
   s.arts.owned.pha_quan = 5
-  s.arts.slots[0] = 'pha_quan'
   assert.ok(s.artBonus.atk > 0 && s.sectPerk.herb > 0)
   s.challenge = 'doc_hanh'
   assert.ok(Object.values(s.artBonus).every((v) => v === 0))
@@ -2919,7 +2898,6 @@ ok('nâng công trình: cần bậc tu vi, linh thạch, tối đa cấp 10; th�
   for (const id of ['dien_vo', 'tang_kinh', 'luyen_dan']) for (let i = 0; i < 3; i++) s.upgradeBuilding(id)
   assert.ok(s.extraPerk.atk > 0 && s.extraPerk.def > 0 && s.extraPerk.arts > 0 && s.extraPerk.double > 0)
   s.arts.owned.pha_quan = 5
-  s.arts.slots[0] = 'pha_quan'
   const a1 = s.artBonus.atk
   s.dwelling.tang_kinh = 0
   assert.ok(a1 > s.artBonus.atk, 'Tàng Kinh Các tăng hiệu quả công pháp')
@@ -3211,7 +3189,6 @@ ok('thiên phú trong game: game mới có 3 lựa chọn, chọn một lần, t
   probe('dan_dao', (t) => assert.ok(t.extraPerk.pill > 0 && t.extraPerk.double > 0))
   probe('tri_tue', (t) => {
     t.arts.owned.pha_quan = 5
-    t.arts.slots[0] = 'pha_quan'
     const a1 = t.artBonus.atk
     t.talent = null
     assert.ok(a1 > t.artBonus.atk)
@@ -4567,7 +4544,6 @@ ok('đạt Độ Kiếp Hậu Kỳ là cực hạn; save giữ bậc mới và c
   for (let i = 1; i < STORY.REALM_FLAVOR.length; i++) assert.ok(STORY.REALM_FLAVOR[i].length > 20)
   assert.equal(s3.skillSlots >= 4, true)
   assert.equal(s3.petSlots, 2)
-  assert.equal(s3.artSlots, AR.MAX_ART_SLOTS)
 })
 
 ok('trang bị rơi ở vòng ải thứ hai trở đi luôn là phẩm cấp cao nhất, vòng đầu theo bối cảnh', () => {
