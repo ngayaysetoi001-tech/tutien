@@ -349,7 +349,8 @@ const SK = await import('../src/game/skills.js')
 const EQ = await import('../src/game/equipment.js')
 const { on } = await import('../src/game/events.js')
 const { ACHIEVEMENTS, achievementReward } = await import('../src/game/achievements.js')
-const { ITEMS: ALL_ITEMS, MONSTERS: ALL_MONSTERS } = await import('../src/game/data.js')
+const { ITEMS: ALL_ITEMS, MONSTERS: ALL_MONSTERS, DUNGEONS: ALL_DUNGEONS } = await import('../src/game/data.js')
+const C = await import('../src/game/campaign.js')
 const { RANDOM_EVENTS } = await import('../src/game/randomEvents.js')
 const { serialize } = await import('../src/services/saveService.js')
 
@@ -569,6 +570,36 @@ ok('thành tựu: mọi khoá thống kê đều ra số, thưởng hợp lệ; 
       for (const fx of fxOf(all)) if (fx.type === 'item') assert.ok(ALL_ITEMS[fx.id], 'vật phẩm không tồn tại: ' + fx.id)
     }
   }
+})
+
+ok('vượt ải: loại ải, chương, bối cảnh quay vòng, độ khó và thu nhập tăng đều', () => {
+  assert.deepEqual([1, 4, 5, 9, 10, 15, 20, 100, 200].map(C.aiKind), ['normal', 'normal', 'mini', 'normal', 'big', 'mini', 'big', 'lord', 'lord'])
+  assert.equal(C.chapterOf(10), 1)
+  assert.equal(C.chapterOf(11), 2)
+  assert.equal(C.themeOf(1).dungeon.id, ALL_DUNGEONS[0].id)
+  assert.equal(C.themeOf(81).dungeon.id, ALL_DUNGEONS[0].id) // hết 8 chương thì quay vòng
+  assert.equal(C.themeOf(81).round, 1)
+  const hp = (n) => { const m = C.pickAiMonster(n, () => 0); return C.aiEnemyStats(n, m.tmpl, m.kind).hp }
+  assert.ok(hp(10) > hp(9) * 2, 'Đại Boss phải mạnh hơn hẳn ải thường liền trước')
+  assert.ok(hp(30) > hp(20) && hp(60) > hp(30) && hp(200) > hp(100))
+  // boss lớn/chúa tể dùng boss của bối cảnh, tiểu boss dùng yêu thú thường
+  assert.equal(C.pickAiMonster(10).id, C.themeOf(10).dungeon.boss)
+  assert.ok(C.themeOf(5).dungeon.monsters.includes(C.pickAiMonster(5).id))
+  // thu nhập tăng đơn điệu theo ải cao nhất
+  assert.equal(C.campaignExpBonus(0), 0)
+  assert.ok(C.campaignExpBonus(20) > C.campaignExpBonus(10))
+  assert.ok(C.campaignStonesPerSecond(0).eq(0))
+  assert.ok(C.campaignStonesPerSecond(50).gt(C.campaignStonesPerSecond(10)))
+  assert.deepEqual(C.campaignItemsPerHour(0), [])
+  for (const it of C.campaignItemsPerHour(35)) assert.ok(['herbs', 'ores'].includes(ALL_ITEMS[it.id].group) && it.perHour > 0)
+  // thưởng lần đầu chỉ có ở boss
+  assert.ok(C.firstClearStones(3).eq(0) && C.firstClearStones(5).gt(0) && C.firstClearStones(10).gt(C.firstClearStones(5)))
+  // người chơi mạnh hơn thắng nhiều hơn; tử trận ở ải quá khó
+  const weak = { hp: 100, atk: 10, def: 5, speed: 10 }
+  const strong = { hp: 400, atk: 50, def: 30, speed: 14 }
+  assert.ok(C.winChance(weak, 1, 60) > 0.6)
+  assert.ok(C.winChance(weak, 80, 60) < 0.05)
+  assert.ok(C.winChance(strong, 3, 60) >= C.winChance(weak, 3, 60))
 })
 
 ok('save/load giữ công pháp, trang bị đang mặc, thành tựu, hệ ngũ hành', () => {
