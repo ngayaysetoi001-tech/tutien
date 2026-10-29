@@ -8,6 +8,7 @@
 // Chạy:  npm run econ                       (1 hạt giống, 1 kiếp)
 //        node scripts/economy-sim.mjs --hours 60 --seeds 3 --rebirth
 // Tuỳ chọn: --hours N (trần giờ ảo mỗi kiếp), --seeds N, --rebirth (chơi thêm các kiếp sau),
+//   --goal N (bậc mục tiêu, mặc định 26), --no-pets / --no-dwell / --no-exped / --no-talent (tắt từng hệ thống để đo đóng góp),
 //   --autobreak (bật tự động đột phá bậc nhỏ), --act N (bot chỉ hành động mỗi N giây ảo: 1800 = ghé 30 phút/lần),
 //   --snap N (giây giữa hai dòng trạng thái), --no-exp-pills (không dùng Tụ Khí Đan)
 // =====================================================================
@@ -22,6 +23,8 @@ const MAX_HOURS = opt('hours', 80)
 const SEEDS = opt('seeds', 1)
 const REBIRTH = args.includes('--rebirth')
 const NO_EXP_PILLS = args.includes('--no-exp-pills') // bỏ qua Tụ Khí Đan để đo nhịp tự nhiên
+const GOAL = opt('goal', 26) // bậc mục tiêu mỗi kiếp (mặc định Hợp Thể Hậu Kỳ để so với các lần đo cũ; 32 = Độ Kiếp Hậu Kỳ)
+const OFF = (k) => args.includes('--no-' + k) // tắt từng hệ thống để đo đóng góp: --no-pets --no-dwell --no-exped --no-talent
 const PATH = args.includes('--path') ? args[args.indexOf('--path') + 1] : 'kiem' // đạo lộ bot chọn khi đạt Trúc Cơ
 
 const mem = new Map()
@@ -70,6 +73,9 @@ const { CROPS, plotCount } = await import('../src/game/garden.js')
 const { SECTS } = await import('../src/game/sect.js')
 const { JOB_IDS } = await import('../src/game/disciples.js')
 const { PERKS, perkCost } = await import('../src/game/reincarnation.js')
+const { BUILDING_IDS } = await import('../src/game/dwelling.js')
+const { PETS } = await import('../src/game/pets.js')
+const { MISSION_IDS, MISSIONS } = await import('../src/game/expedition.js')
 const { fmt } = await import('../src/game/format.js')
 const Decimal = (await import('break_infinity.js')).default
 const { on } = await import('../src/game/events.js')
@@ -189,6 +195,27 @@ function createBot(s, b) {
       s.chooseBossReward(s.bossChoice.options.indexOf(best))
     }
 
+    // Thiên phú: ưu tiên loại mạnh nhất trong 3 lựa chọn
+    if (s.talentPending && !OFF('talent')) {
+      const pref = ['thien_linh', 'chien_than', 'linh_can', 'kiem_cot', 'thien_co', 'dan_dao']
+      s.chooseTalent(pref.find((id) => s.talentOffer.includes(id)) ?? s.talentOffer[0])
+    }
+    // Công trình Động Phủ, linh thú, thám hiểm
+    if (!OFF('dwell')) for (const id of BUILDING_IDS) while (s.upgradeBuilding(id) && s.spiritStones.gt(0));
+    const petOrder = ['hoa_phuong', 'thanh_long', 'bang_ly', 'van_ho', 'kim_thiem', 'linh_hac', 'quy_giap', 'tieu_ho']
+    for (const id of OFF('pets') ? [] : petOrder) {
+      s.learnPet(id)
+      if (s.pets.owned[id]) while (s.upgradePet(id));
+    }
+    const ownedPets = petOrder.filter((id) => s.pets.owned[id])
+    for (let i = 0; i < s.petSlots && i < ownedPets.length; i++) if (s.pets.active[i] !== ownedPets[i]) s.equipPet(ownedPets[i], i)
+    for (let i = s.expeditions.length - 1; i >= 0; i--) if (s.expeditionReady(s.expeditions[i])) s.claimExpedition(i)
+    for (const mid of OFF('exped') ? [] : [...MISSION_IDS].reverse()) {
+      if (s.expeditions.length >= s.expeditionSlotCount) break
+      const idle = s.disciples.filter((d) => !d.away)
+      if (s.stageIdx >= MISSIONS[mid].minStage && idle.length >= MISSIONS[mid].need) s.startExpedition(mid, idle.slice(0, Math.max(MISSIONS[mid].need, Math.min(idle.length, 3))).map((d) => d.uid))
+    }
+
     // Đạo lộ: chọn ngay khi mở
     if (s.canChoosePath) s.choosePath(PATH)
 
@@ -271,7 +298,7 @@ function createBot(s, b) {
 }
 
 // ---------- Chạy một kiếp ----------
-function playLife(s, b, act, label, stageGoal = MAX_STAGE_IDX) {
+function playLife(s, b, act, label, stageGoal = Math.min(GOAL, MAX_STAGE_IDX)) {
   const reached = {} // stageIdx -> giờ ảo (so với đầu kiếp) khi đạt
   const startVt = vt
   const startMax = s.stageIdx

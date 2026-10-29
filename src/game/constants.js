@@ -98,7 +98,7 @@ export const INVENTORY_GROUPS = [
 // ---- Các hằng số cân bằng game (xem formulas.js) ----
 export const BALANCE = {
   baseRequirement: 100, // linh khí cần cho tầng 1
-  requirementGrowth: 2.22, // mỗi bậc cần gấp 2.22 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
+  requirementGrowth: 2.26, // mỗi bậc cần gấp 2.26 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
   postStage: 26, // từ sau bậc này (sau Hợp Thể Hậu Kỳ) dùng hệ số tăng yêu cầu nhẹ hơn để Đại Thừa / Độ Kiếp không kéo dài vô lý
   postRequirementGrowth: 1.62,
   stageExpGrowth: 1.5, // mỗi bậc tăng tốc hấp thụ ~1.5 lần

@@ -1299,15 +1299,15 @@ ok('Đan Sư: đan tăng chỉ số mạnh hơn 25%, luyện đan dễ ra gấp 
   assert.equal(t.itemCount('tu_khi_dan'), 3, 'không đạo lộ: không ra gấp đôi')
 })
 
-ok('Trận Pháp Sư: Tụ Linh Trận +20%, công pháp +15%, đệ tử +20%', () => {
+ok('Trận Pháp Sư: Tụ Linh Trận +15%, công pháp +15%, đệ tử +20%', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 12
   s.arrayLevel = 20 // trận +200% gốc
   const base = s.expRate
   s.path = 'tran'
-  // (1 + 0.1*20*1.2) / (1 + 0.1*20) = 3.4 / 3
-  assert.ok(Math.abs(s.expRate.div(base).toNumber() - 3.4 / 3) < 1e-6)
+  // (1 + 0.1*20*1.15) / (1 + 0.1*20) = 3.3 / 3
+  assert.ok(Math.abs(s.expRate.div(base).toNumber() - 3.3 / 3) < 1e-6)
   s.path = null
   s.arts.owned.pha_quan = 5
   s.arts.slots[0] = 'pha_quan'

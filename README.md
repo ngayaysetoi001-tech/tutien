@@ -179,7 +179,7 @@ Chiến đấu không còn là chọn bí cảnh mà là **chuỗi ải vô hạ
 | `AI_GROWTH` | 1.006 | mỗi ải thêm 0.6% (cộng dồn) ngoài tăng theo bậc |
 | `AI_EXP_PER_CLEAR` | 0.02 | +2% linh khí mỗi ải |
 | `INCOME_AI_BASE/PER_STAGE` | 10 / 8 | trần ải tính thu nhập theo bậc |
-| `BALANCE.requirementGrowth` | 2.22 | tăng từ 2.1 để bù thu nhập từ ải, công pháp, trang bị và các phần thưởng mốc |
+| `BALANCE.requirementGrowth` | 2.26 | tăng từ 2.1 để bù thu nhập từ ải, công pháp, trang bị và các phần thưởng mốc |
 
 Nhịp đo được: kiếp đầu 15-27 giờ ảo (người chơi trực tuyến) và 23-28 giờ (ghé 30 phút/lần); kiếp 2 còn 7-11 giờ; kiếp 3 trở đi 5-8 giờ. Mỗi bậc đầu 1-6 phút, giữa 4-40 phút, cuối 1-7 giờ. Ải cao nhất cuối kiếp 1 khoảng 150-190.
 
@@ -201,7 +201,7 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 | Thể Tu | +15% khí huyết, +15% phòng ngự, mọi đòn hút 5% sát thương | Bất Diệt Kim Thân |
 | Pháp Tu | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ (tối đa 5 ô) | Ngũ Lôi Chính Pháp |
 | Đan Sư | +25% hiệu quả đan tăng chỉ số, +10% luyện đan ra gấp đôi | Đan Hỏa Phần Thân |
-| Trận Pháp Sư | +20% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |
+| Trận Pháp Sư | +15% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |
 
 ## Đặc tính yêu thú và kỹ năng boss
 
@@ -241,3 +241,12 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Kho thời gian + Tăng tốc x4:** phần vắng mặt vượt giới hạn offline không mất mà vào kho (tối đa 24 giờ), điểm danh ngày 7 thêm 1 giờ, xong 3 nhiệm vụ ngày thêm 30 phút. Bật nút ⏩ ở thanh trên để chạy nhanh gấp 4, mỗi giây thật tiêu 3 giây trong kho; hết kho tự tắt.
 - **Chế độ thiền định** (nút hoa sen ở thanh trên): màn hình tối giản, ngừng vẽ cảnh và tắt hiệu ứng, vòng lặp chỉ tick mỗi 0.5 giây để tiết kiệm pin. Game vẫn chạy bình thường, chạm để thoát.
 - Giới hạn bộ nhớ khi để chạy lâu: danh sách trang bị rơi tối đa 50 mục, nhật ký 200 dòng, túi trang bị 40 món; có test chạy nhiều giờ giả lập.
+
+## Linh Thú, Động Phủ, thám hiểm, Thiên Phú, Đại Thừa và Độ Kiếp
+
+- **Linh Thú đồng hành** (`src/game/pets.js`, tab con "Linh Thú" ở màn Công Pháp): 8 linh thú thu phục bằng Linh Thú Phách (rơi từ boss Tiểu Boss trở lên, bán ở cửa hàng tông môn từ Trưởng Lão). Cấp 1-10, ra trận một con (hai con từ Hóa Thần). Thợ săn (Tiểu Hổ, Băng Ly, Hỏa Phụng) cắn địch theo chu kỳ, Linh Hạc hồi khí huyết, còn lại cho thưởng bị động (phòng ngự, rơi đồ, linh thạch, linh khí...). Cùng hệ ngũ hành với người chơi +25%.
+- **Công trình Động Phủ** (`src/game/dwelling.js`, tab Động Phủ): Linh Mạch, Luyện Đan Phòng, Tàng Kinh Các, Luyện Khí Phòng (rèn ra đồ hiếm hơn), Diễn Võ Trường. Cấp 1-10, cần bậc tu vi tương ứng, **giữ khi luân hồi**.
+- **Thám hiểm của đệ tử** (`src/game/expedition.js`, tab Đệ Tử): 5 nhiệm vụ từ 30 phút đến 8 giờ theo giờ thật, cử đoàn 1-5 đệ tử, thành công tuỳ sức mạnh đoàn so với độ khó (thất bại chỉ còn 25% thưởng). Thưởng linh thạch, thảo dược, quặng và tàn quyển công pháp, linh thú, võ kỹ. Đệ tử đi thì tạm bỏ việc thường. Số đoàn đi cùng lúc theo cấp bậc tông môn (1 đến 3).
+- **Thiên Phú** (`src/game/talents.js`, màn Nhân Vật): mỗi kiếp bốc 3 thiên phú (13 loại, ba độ hiếm), chọn 1; bốc lại bằng 3 Đạo Vận; kiếp sau bốc lại.
+- **Đại Thừa và Độ Kiếp:** thêm 2 đại cảnh giới (6 bậc), tổng 33 bậc, mỗi bước có thiên kiếp riêng (Hợp Thể → Đại Thừa 9 đạo, Đại Thừa → Độ Kiếp 12 đạo). Từ sau Hợp Thể hệ số tăng yêu cầu đột phá nhẹ hơn (1.62 thay vì 2.22) để các bậc cuối không kéo dài vô lý. Nhân vật có thêm vòng sáng và đốm sáng bay lên.
+- Sửa lỗi: từ vòng ải thứ hai (sau ải 80) trang bị rơi luôn là phẩm cấp cao nhất thay vì quay về phẩm cấp thấp theo bối cảnh.
