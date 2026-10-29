@@ -584,11 +584,6 @@ export class CultivatorScene {
   // ------------------------------------------------------------------
   bindEvents() {
     this.unsubs.push(
-      on('cultivate', () => {
-        this.foxHop = Math.max(this.foxHop, 0.6)
-        this.auraBoost = 1
-        this.spawnInward(14)
-      }),
       on('breakthrough-success', ({ realmChanged, stageName }) => {
         // Chờ một nhịp để watcher cập nhật realmIdx (màu hào quang mới) rồi mới phát cảnh đột phá
         this.vfx.later(0.05, () => this.vfx.breakthrough({ color: REALMS[this.realmIdx]?.color ?? 0xffffff, big: realmChanged, stageName }))

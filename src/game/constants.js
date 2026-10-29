@@ -100,7 +100,6 @@ export const BALANCE = {
   tribulationFailExpLoss: 0.5, // thiên kiếp thất bại: mất 50%
   arrayBaseCost: 10, // giá nâng Tụ Linh Trận cấp 0 -> 1
   arrayCostGrowth: 1.4,
-  clickSeconds: 2, // mỗi lần bấm Tụ Khí = 2 giây linh khí
   rewardExpCap: 0.008, // phần thưởng linh khí (kỳ ngộ, thành tựu) tối đa 0.8% yêu cầu đột phá
   pillExpCap: 0.1, // Tụ Khí Đan tối đa 10% yêu cầu đột phá
   pillExpStreak: 0.6, // mỗi viên dùng thêm trong cùng một bậc chỉ còn 60% hiệu quả viên trước

@@ -31,12 +31,6 @@ export function stonesPerSecond(stageIdx) {
   return new Decimal(0.1 * (1 + 0.3 * stageIdx))
 }
 
-/** Lượng linh khí nhận được mỗi lần bấm "Tụ Khí" (tối thiểu 1). */
-export function clickGain(expRate) {
-  const gain = expRate.mul(BALANCE.clickSeconds)
-  return gain.lt(1) ? new Decimal(1) : gain
-}
-
 /** Tỉ lệ đột phá thành công (0..1): 90% bậc đầu, giảm 3%/bậc, sàn 40%. */
 export function successRate(stageIdx, bonus = 0) {
   const base = BALANCE.baseSuccessRate - BALANCE.successDropPerStage * stageIdx

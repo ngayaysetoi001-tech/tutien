@@ -94,7 +94,7 @@ function trackExp(s) {
     const gained = s.exp.sub(before).toNumber()
     if (gained <= 0) return
     const stack = String(new Error().stack).split('\n').join(' ').slice(0, 900)
-    const src = /onKill/.test(stack) ? 'bí cảnh (hạ quái)' : /applyEffects/.test(stack) ? 'phần thưởng (kỳ ngộ/nhiệm vụ/truyện/thành tựu)' : /useItem/.test(stack) ? 'đan dược' : /cultivate/.test(stack) ? 'bấm Tụ Khí' : /farmOffline/.test(stack) ? 'farm offline' : 'thụ động (tick)'
+    const src = /onKill/.test(stack) ? 'bí cảnh (hạ quái)' : /applyEffects/.test(stack) ? 'phần thưởng (kỳ ngộ/nhiệm vụ/truyện/thành tựu)' : /useItem/.test(stack) ? 'đan dược' : /farmOffline/.test(stack) ? 'farm offline' : 'thụ động (tick)'
     expBySource[src] = (expBySource[src] ?? 0) + gained
   }
 }

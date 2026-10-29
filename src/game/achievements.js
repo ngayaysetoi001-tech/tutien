@@ -23,7 +23,6 @@ export const ACHIEVEMENTS = [
   { id: 'pills', name: 'Nghiện Đan', desc: 'Dùng đan dược và tàn quyển', key: 'pillsUsed', targets: [5, 30, 100, 300], stat: 'hp' },
   { id: 'disciples', name: 'Đệ Tử Đầy Nhà', desc: 'Số đệ tử đang có', key: 'discipleCount', targets: [1, 3, 6], stat: 'atk' },
   { id: 'gear', name: 'Kho Pháp Khí', desc: 'Pháp khí trong hành trang', key: 'gearCount', targets: [3, 10, 25], stat: 'def' },
-  { id: 'clicks', name: 'Cần Tu', desc: 'Bấm Tụ Khí', key: 'clicks', targets: [100, 1000, 5000], stat: 'exp' },
 ]
 
 /** Danh sách effects thưởng cho mốc `tier` (0-based) của một thành tựu. */

@@ -87,7 +87,6 @@ const statRows = computed(() => [
       <div class="flex justify-between"><span>Thất bại</span><b>{{ game.stats.failures }}</b></div>
       <div class="flex justify-between"><span>Thiên kiếp đã vượt</span><b>{{ game.stats.tribulations }}</b></div>
       <div class="flex justify-between"><span>Yêu thú đã hạ</span><b>{{ game.stats.kills }} ({{ game.stats.bossKills }} boss)</b></div>
-      <div class="flex justify-between"><span>Số lần Tụ Khí</span><b>{{ game.stats.clicks }}</b></div>
       <div class="flex justify-between"><span>Tổng thời gian tu luyện</span><b>{{ fmtDuration(game.stats.playSeconds) }}</b></div>
     </div>
   </div>

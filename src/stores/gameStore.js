@@ -91,7 +91,7 @@ function createPlayerState(minRoot = 0) {
     gear: { bag: [], equipped: { weapon: null, armor: null, trinket: null } }, // equipped lưu uid
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
-      breakthroughs: 0, failures: 0, tribulations: 0, clicks: 0, playSeconds: 0,
+      breakthroughs: 0, failures: 0, tribulations: 0, playSeconds: 0,
       kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0,
     },
     settings: { particles: true, autoSave: true, autoRepeat: true, autoHeal: true, lastDungeon: null, sound: true, music: true, autoBreak: false },
@@ -272,7 +272,7 @@ export const useGameStore = defineStore('game', {
       }
       if (!loaded) {
         this.addLog(`Bước vào con đường tu tiên với ${this.spiritRoot.name}. ${this.spiritRoot.desc}`, 'event')
-        this.addLog('Bấm "Tụ Khí" để hấp thụ linh khí, đầy 100% thì "Đột Phá".', 'info')
+        this.addLog('Linh khí tự tích luỹ theo thời gian, đầy 100% thì bấm "Đột Phá".', 'info')
       }
       this.refillQuests()
       this.ready = true
@@ -391,14 +391,6 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     // Hành động của người chơi
     // ------------------------------------------------------------
-    /** Nút "Tụ Khí": hấp thụ ngay một lượng linh khí. */
-    cultivate() {
-      if (this.tribulation.active || this.isFull) return
-      this.stats.clicks += 1
-      this.gainExp(F.clickGain(this.expRate))
-      emit('cultivate')
-    },
-
     /** Nút "Đột Phá": roll tỉ lệ; thành công ở đại cảnh giới sẽ kích hoạt độ kiếp. */
     breakthrough() {
       if (!this.canBreakthrough) return

@@ -17,7 +17,6 @@ export const QUEST_TEMPLATES = [
   { id: 'harvest', key: 'harvests', label: 'Thu hoạch Linh Điền', base: 3, grow: 0.08 },
   { id: 'craft', key: 'crafted', label: 'Luyện đan', base: 3, grow: 0.1 },
   { id: 'forge', key: 'forged', label: 'Rèn pháp khí', base: 1, grow: 0 },
-  { id: 'click', key: 'clicks', label: 'Tụ Khí', base: 25, grow: 0.5 },
   { id: 'break', key: 'breakthroughs', label: 'Đột phá thành công', base: 1, grow: 0 },
   { id: 'events', key: 'events', label: 'Trải qua kỳ ngộ', base: 1, grow: 0 },
 ]

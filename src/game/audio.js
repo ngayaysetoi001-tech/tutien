@@ -110,11 +110,6 @@ function noise({ dur = 0.2, gain = 0.2, filter = 'lowpass', freq = 1000, sweepTo
 // Hiệu ứng âm thanh
 // ---------------------------------------------------------------------
 export const sfx = {
-  /** Bấm Tụ Khí: chuông nhỏ. */
-  click() {
-    tone(660, { dur: 0.14, type: 'triangle', gain: 0.12, slide: 990 })
-    tone(1320, { dur: 0.25, gain: 0.05, delay: 0.03 })
-  },
   /** Đánh trúng yêu thú. */
   hit(crit = false) {
     noise({ dur: 0.09, gain: 0.25, filter: 'bandpass', freq: 900, q: 0.8 })

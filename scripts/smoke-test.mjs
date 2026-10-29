@@ -50,16 +50,11 @@ ok('init tạo game mới và ghi log', () => {
   assert.ok(g.log.length >= 1)
 })
 
-// 2. Linh khí thụ động + Tụ Khí
+// 2. Linh khí thụ động
 ok('tick cộng linh khí và linh thạch', () => {
   g.tick(10)
   assert.ok(g.exp.gt(0))
   assert.ok(g.spiritStones.gt(0))
-})
-ok('cultivate cộng linh khí', () => {
-  const before = g.exp
-  g.cultivate()
-  assert.ok(g.exp.gt(before))
 })
 ok('linh khí không vượt yêu cầu', () => {
   g.tick(1e6)

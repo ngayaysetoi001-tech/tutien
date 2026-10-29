@@ -3,7 +3,6 @@
 // mà không cần store biết gì về canvas (tách lớp logic / hiển thị).
 //
 // Các sự kiện đang dùng:
-//   cultivate               - người chơi bấm Tụ Khí
 //   breakthrough-success    - đột phá thành công { realmChanged }
 //   breakthrough-fail       - đột phá thất bại
 //   tribulation-start       - bắt đầu độ kiếp { total }

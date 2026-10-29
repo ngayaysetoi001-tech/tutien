@@ -240,7 +240,6 @@ export function deserialize(save, defaults) {
       breakthroughs: num(d.stats?.breakthroughs, 0),
       failures: num(d.stats?.failures, 0),
       tribulations: num(d.stats?.tribulations, 0),
-      clicks: num(d.stats?.clicks, 0),
       playSeconds: num(d.stats?.playSeconds, 0),
       kills: num(d.stats?.kills, 0),
       bossKills: num(d.stats?.bossKills, 0),

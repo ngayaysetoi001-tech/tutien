@@ -20,7 +20,6 @@ export function bindAudio() {
   }
 
   const offs = [
-    on('cultivate', () => sfx.click()),
     on('battle-hit', ({ target, crit, skill }) => {
       if (target === 'player') return throttled(() => sfx.hurt())
       // Đòn chiêu thức chạm đích sau ~0.3s (khớp hiệu ứng bay)

@@ -1,6 +1,6 @@
 <script setup>
 // ScreenHost.vue - Hiển thị màn hình hiện tại (mỗi tab một màn hình riêng).
-//   Nhân Vật : (canvas tu luyện ở trên) nút Tụ Khí / Đột Phá, gợi ý, thông tin nhân vật, nhật ký
+//   Nhân Vật : (canvas tu luyện ở trên) nút Đột Phá, gợi ý, thông tin nhân vật, nhật ký
 //   Bí Cảnh  : (canvas chiến đấu ở trên) danh sách bí cảnh, thu hoạch, nhật ký
 //   Còn lại  : tiêu đề + nội dung chiếm toàn bộ chiều cao còn lại
 import { computed, ref } from 'vue'
@@ -37,11 +37,8 @@ const breakLabel = computed(() => {
       </div>
 
       <!-- Nút hành động: chỉ ở màn Nhân Vật -->
-      <div v-if="ui.tab === 'character'" class="grid shrink-0 grid-cols-2 gap-2">
-        <button class="btn-jade btn-big" :disabled="game.isFull || game.tribulation.active" @click="game.cultivate()">
-          <Icon name="lotus" :size="20" />Tụ Khí
-        </button>
-        <button class="btn-gold btn-big" :class="{ 'glow-ready': game.canBreakthrough }" :disabled="!game.canBreakthrough" @click="game.breakthrough()">
+      <div v-if="ui.tab === 'character'" class="shrink-0">
+        <button class="btn-gold btn-big w-full" :class="{ 'glow-ready': game.canBreakthrough }" :disabled="!game.canBreakthrough" @click="game.breakthrough()">
           <Icon name="bolt" :size="20" />{{ breakLabel }}
         </button>
       </div>
