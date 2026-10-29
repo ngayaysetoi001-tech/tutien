@@ -31,6 +31,7 @@ export const useUiStore = defineStore('ui', {
     seen: initial().seen ?? {}, // màn đã ghé thăm (để chấm "mới" ở màn vừa mở khoá)
     lastInGroup: {}, // màn cuối cùng ghé thăm trong mỗi nhóm (bấm nhóm quay lại đúng màn đó)
     legacySeen: initial().seen === null, // chưa từng lưu: coi mọi màn đang mở là đã thấy
+    tourShown: false, // danh sách khởi đầu đang hiện (ẩn dải gợi ý để khỏi trùng)
     logOpen: false, // bảng nhật ký đầy đủ (mở từ thanh trên)
     meditate: false, // chế độ thiền định: ẩn giao diện, ngừng vẽ cảnh, tick thưa để tiết kiệm pin (không lưu)
   }),

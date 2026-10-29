@@ -9,9 +9,13 @@ import { TIERS, templateById } from '../../game/quests.js'
 import { ITEMS } from '../../game/data.js'
 import { fmt } from '../../game/format.js'
 import Icon from '../Icon.vue'
+import ItemIcon from '../ItemIcon.vue'
+import BottomSheet from '../BottomSheet.vue'
+import { GROUP_COLOR, itemGlyph } from '../glyphs.js'
 
 const game = useGameStore()
 const sub = ref('quests') // quests | shop
+const shopSel = ref(null)
 
 const nextRank = computed(() => RANKS[game.rankIdx + 1] ?? null)
 const rankProgress = computed(() => {
@@ -84,40 +88,60 @@ const shopLocked = (e) => game.rankIdx < e.rank
 
     <!-- Nhiệm vụ (dùng được cả khi chưa có tông môn, nhưng không có Cống Hiến) -->
     <template v-if="game.sect.id ? sub === 'quests' : true">
-      <div class="title-rule">Bảng nhiệm vụ</div>
-      <div v-for="q in game.quests" :key="q.uid" class="card">
-        <div class="flex items-center justify-between">
-          <div class="text-sm font-bold text-white">{{ templateById(q.tpl).label }} <span class="text-gold-300">x{{ q.target }}</span></div>
-          <span class="rounded border px-1.5 py-0.5 text-[11px] font-bold" :style="{ color: TIERS[q.tier].css, borderColor: TIERS[q.tier].css + '66' }">{{ TIERS[q.tier].name }}</span>
+      <div class="text-sm font-bold text-gold-300">Bảng nhiệm vụ</div>
+      <div v-for="q in game.quests" :key="q.uid" class="flex items-center gap-2 rounded-lg border px-2.5 py-2" :class="game.questDone(q) ? 'border-gold-400/70 bg-gold-500/10' : 'border-ink-600 bg-ink-900/60'">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="truncate text-sm font-bold text-white">{{ templateById(q.tpl).label }} <span class="text-gold-300">x{{ q.target }}</span></span>
+            <span class="shrink-0 rounded border px-1.5 text-[11px] font-bold" :style="{ color: TIERS[q.tier].css, borderColor: TIERS[q.tier].css + '66' }">{{ TIERS[q.tier].name }}</span>
+          </div>
+          <div class="my-1 flex items-center gap-2">
+            <div class="bar h-2 flex-1"><div class="bar-fill bg-gradient-to-r from-jade-600 to-jade-300" :style="{ width: ratio(q) * 100 + '%' }"></div></div>
+            <span class="text-xs text-slate-300">{{ Math.min(game.questProgress(q), q.target) }}/{{ q.target }}</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="flex items-center gap-0.5 text-gold-300"><Icon name="stone" :size="12" />{{ fmt(stoneReward(q)) }}</span>
+            <span v-if="game.sect.id" class="flex items-center gap-0.5"><Icon name="spark" :size="12" />{{ contribReward(q) }}</span>
+            <Icon v-if="q.tier === 2" name="herb" :size="12" class="text-jade-300" />
+          </div>
         </div>
-        <div class="mt-1 flex items-center gap-2">
-          <div class="bar h-2.5 flex-1"><div class="bar-fill bg-gradient-to-r from-jade-600 to-jade-300" :style="{ width: ratio(q) * 100 + '%' }"></div></div>
-          <span class="w-14 text-right text-xs text-slate-300">{{ Math.min(game.questProgress(q), q.target) }}/{{ q.target }}</span>
-        </div>
-        <div class="mt-1 flex items-center justify-between gap-2">
-          <span class="text-xs text-slate-400">
-            +{{ fmt(stoneReward(q)) }} linh thạch<template v-if="game.sect.id"> · +{{ contribReward(q) }} Cống Hiến</template><template v-if="q.tier === 2"> · thảo dược</template>
-          </span>
-          <button class="btn-gold px-2.5 py-0.5 text-xs" :disabled="!game.questDone(q)" @click="game.claimQuest(q.uid)">Nhận</button>
-        </div>
+        <button class="btn-gold shrink-0 !px-3 text-xs" :disabled="!game.questDone(q)" @click="game.claimQuest(q.uid)">Nhận</button>
       </div>
-      <button class="btn-ghost w-full py-1.5 text-xs" :disabled="game.spiritStones.lt(game.questRefreshCost)" @click="game.refreshQuests()">
-        Làm mới nhiệm vụ chưa xong - {{ fmt(game.questRefreshCost) }} linh thạch
+      <button class="btn-ghost min-h-[44px] w-full text-sm" :disabled="game.spiritStones.lt(game.questRefreshCost)" @click="game.refreshQuests()">
+        <Icon name="refine" :size="16" />Làm mới nhiệm vụ chưa xong <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(game.questRefreshCost) }}
       </button>
     </template>
 
     <!-- Cửa hàng Cống Hiến -->
     <template v-if="game.sect.id && sub === 'shop'">
-      <div class="title-rule">Cửa hàng Cống Hiến</div>
-      <div v-for="e in SHOP" :key="e.id" class="card flex items-center gap-2 !py-2" :class="{ 'opacity-50': shopLocked(e) }">
-        <div class="min-w-0 flex-1">
-          <div class="truncate text-xs font-bold text-white">{{ ITEMS[e.item].name }} <span class="text-jade-300">x{{ e.count }}</span></div>
-          <div class="truncate text-[11px] text-slate-400">{{ shopLocked(e) ? '🔒 Cần ' + RANKS[e.rank].name : ITEMS[e.item].desc }}</div>
-        </div>
-        <button class="btn-gold shrink-0 px-2.5 py-1 text-xs" :disabled="shopLocked(e) || game.sect.contribution < e.cost" @click="game.buyShop(e.id)">
-          {{ e.cost }}
-        </button>
+      <div class="flex items-center justify-between text-sm font-bold text-gold-300">
+        <span>Cửa hàng Cống Hiến</span><span class="flex items-center gap-1 text-xs font-normal"><Icon name="spark" :size="12" />{{ game.sect.contribution }}</span>
       </div>
+      <div class="grid grid-cols-4 gap-x-2 gap-y-3">
+        <ItemIcon
+          v-for="e in SHOP"
+          :key="e.id"
+          :glyph="itemGlyph(e.item, ITEMS[e.item].group)"
+          :color="GROUP_COLOR[ITEMS[e.item].group]"
+          :label="ITEMS[e.item].name.replace(/ Tàn Quyển/, '')"
+          :badge="e.cost"
+          :locked="shopLocked(e)"
+          :dot="!shopLocked(e) && game.sect.contribution >= e.cost"
+          @click="shopSel = e"
+        />
+      </div>
+      <BottomSheet :open="!!shopSel" :title="shopSel ? ITEMS[shopSel.item].name : ''" :glyph="shopSel ? itemGlyph(shopSel.item, ITEMS[shopSel.item].group) : ''" @close="shopSel = null">
+        <template v-if="shopSel">
+          <p>{{ ITEMS[shopSel.item].desc }}</p>
+          <p class="mt-1 text-xs text-slate-400">Nhận x{{ shopSel.count }} · giá {{ shopSel.cost }} Cống Hiến (đang có {{ game.sect.contribution }})</p>
+          <p v-if="shopLocked(shopSel)" class="mt-1 text-xs text-cinnabar-400">Cần bậc {{ RANKS[shopSel.rank].name }}</p>
+        </template>
+        <template #actions>
+          <button v-if="shopSel" class="btn-gold" :disabled="shopLocked(shopSel) || game.sect.contribution < shopSel.cost" @click="game.buyShop(shopSel.id)">
+            Đổi <Icon name="spark" :size="14" />{{ shopSel.cost }}
+          </button>
+        </template>
+      </BottomSheet>
     </template>
 
     <!-- Đổi tông môn -->

@@ -1,6 +1,6 @@
 <script setup>
 // CharacterTab.vue - Bảng điều khiển nhân vật: chỉ số dạng chip, "việc cần làm" mở bảng trượt, thống kê thu gọn.
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watchEffect } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { fmt, fmtDuration, fmtPercent } from '../../game/format.js'
@@ -32,6 +32,25 @@ const statRows = computed(() => [
   { label: 'Phòng ngự', icon: 'shield', value: game.combat.def, color: 'text-sky-300' },
   { label: 'Thân pháp', icon: 'speed', value: game.combat.speed, color: 'text-jade-300' },
 ])
+
+// Danh sách khởi đầu cho người mới: 4 bước, tự tick theo tiến trình, tắt được (nhớ trong LocalStorage)
+const TOUR_KEY = 'tutien-tour-off'
+const tourOff = ref(false)
+try { tourOff.value = localStorage.getItem(TOUR_KEY) === '1' } catch { /* bỏ qua */ }
+const tour = computed(() => [
+  { id: 'break', icon: 'bolt', text: 'Đột phá khi thanh linh khí đầy', done: game.stats.breakthroughs > 0, go: null },
+  { id: 'array', icon: 'home', text: 'Nâng Tụ Linh Trận ở Động Phủ', done: game.arrayLevel > 0, go: 'dwelling' },
+  { id: 'battle', icon: 'dungeon', text: 'Vượt ải đầu tiên ở Vượt Ải', done: game.campaign.record > 0, go: 'battle' },
+  { id: 'skill', icon: 'arts', text: 'Học và gắn một võ kỹ', done: game.skills.slots.some(Boolean), go: 'skills' },
+])
+const tourShow = computed(() => !tourOff.value && tour.value.some((t) => !t.done))
+const tourLeft = computed(() => tour.value.filter((t) => !t.done).length)
+watchEffect(() => { ui.tourShown = tourShow.value })
+onBeforeUnmount(() => { ui.tourShown = false })
+function closeTour() {
+  tourOff.value = true
+  try { localStorage.setItem(TOUR_KEY, '1') } catch { /* bỏ qua */ }
+}
 
 // Các ô "việc cần làm": mỗi ô một biểu tượng, một dòng trạng thái, chấm đỏ khi cần làm ngay
 const tiles = computed(() => {
@@ -86,6 +105,19 @@ function pickPath(id) {
         Hệ {{ ELEMENTS[game.element].name }}
         <span class="font-normal opacity-80">khắc {{ ELEMENTS[BEAT_TARGET[game.element]].name }}</span>
       </span>
+    </div>
+
+    <!-- Khởi đầu -->
+    <div v-if="tourShow" class="rounded-lg border border-gold-500/40 bg-gold-500/10 p-2">
+      <div class="mb-1 flex items-center justify-between text-sm">
+        <b class="text-gold-300">Khởi đầu · còn {{ tourLeft }} bước</b>
+        <button class="px-2 text-xs text-slate-500" @click="closeTour">Ẩn</button>
+      </div>
+      <div v-for="t in tour" :key="t.id" class="flex min-h-[40px] items-center gap-2 text-sm" :class="t.done ? 'text-slate-500 line-through' : 'text-slate-200'">
+        <Icon :name="t.done ? 'check' : t.icon" :size="18" :class="t.done ? 'text-jade-300' : 'text-gold-300'" />
+        <span class="flex-1">{{ t.text }}</span>
+        <button v-if="!t.done && t.go" class="btn-gold !px-3 text-xs" @click="ui.go(t.go)">Đi</button>
+      </div>
     </div>
 
     <!-- 4 chỉ số -->

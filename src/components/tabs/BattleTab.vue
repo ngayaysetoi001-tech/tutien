@@ -1,15 +1,20 @@
 <script setup>
-// BattleTab.vue - Vượt Ải: ải đang đánh, tiến độ chương, thu nhập thụ động theo ải cao nhất, cày ải cũ.
+// BattleTab.vue - Vượt Ải: ải đang đánh, chip đặc tính, tỉ lệ thắng, thu nhập thụ động, cày ải cũ.
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { useBattleStore } from '../../stores/battleStore.js'
+import { useUiStore } from '../../stores/uiStore.js'
 import { MONSTERS, itemName } from '../../game/data.js'
 import * as C from '../../game/campaign.js'
 import { fmt } from '../../game/format.js'
 import { ELEMENTS, elementEdge } from '../../game/elements.js'
+import Icon from '../Icon.vue'
+import BottomSheet from '../BottomSheet.vue'
 
 const game = useGameStore()
 const battle = useBattleStore()
+const ui = useUiStore()
+const sheet = ref(null) // 'mods' | 'farm' | 'income'
 
 const healPills = computed(() => game.itemCount('hoi_huyet_dan'))
 const runItems = computed(() => Object.entries(battle.run.items))
@@ -66,131 +71,165 @@ const milestoneText = computed(() => {
     .join(', ')
 })
 
+const SHEET_TITLES = { mods: 'Đặc tính kẻ địch', farm: 'Cày ải đã vượt', income: 'Thu nhập thụ động' }
+const TIPS = [
+  { to: 'character', icon: 'bolt', label: 'Đột phá' },
+  { to: 'gear', icon: 'gear', label: 'Trang bị' },
+  { to: 'skills', icon: 'arts', label: 'Công pháp' },
+]
+
 function stepFarm(d) {
   farmInput.value = Math.min(Math.max(1, best.value), Math.max(1, (farmInput.value || 1) + d))
 }
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div class="space-y-2.5">
     <!-- Ải đang đánh -->
-    <div class="card space-y-1.5">
-      <div class="flex items-center justify-between">
+    <div class="space-y-2">
+      <div class="flex items-baseline justify-between">
         <div class="font-bold text-gold-300">{{ C.chapterName(target) }}</div>
         <div class="text-xs text-slate-400">Chương {{ C.chapterOf(target) }}</div>
       </div>
       <div class="grid grid-cols-10 gap-0.5">
-        <div
-          v-for="c in strip"
-          :key="c.n"
-          class="flex h-8 flex-col items-center justify-center rounded border text-[11px] leading-none"
-          :class="cellClass(c)"
-        >
+        <div v-for="c in strip" :key="c.n" class="flex h-9 flex-col items-center justify-center rounded border text-xs leading-none" :class="cellClass(c)">
           <span class="text-[10px] text-cinnabar-400">{{ cellMark(c) || '&nbsp;' }}</span>
           <span>{{ c.n }}</span>
         </div>
       </div>
-      <div class="text-sm text-white">
-        <span v-if="farming" class="mr-1 rounded bg-gold-500/30 px-1 text-xs text-gold-200">Cày</span>
-        Ải {{ target }} · {{ C.AI_KINDS[nextKind].name }}: {{ nextMonster.name }}
-        <span :style="{ color: ELEMENTS[nextMonster.element].css }">({{ ELEMENTS[nextMonster.element].name }}{{ edgeMark }})</span>
-      </div>
-      <div v-if="nextMods.length" class="space-y-0.5 rounded border border-ink-600 bg-ink-900 p-1.5 text-xs">
-        <div v-for="m in nextMods" :key="m" class="leading-snug">
-          <b :class="C.ENEMY_MODS[m].kind === 'boss' ? 'text-cinnabar-400' : 'text-gold-200'">{{ C.ENEMY_MODS[m].name }}</b>
-          <span class="text-slate-400"> · {{ C.ENEMY_MODS[m].desc }}</span>
-        </div>
-      </div>
-      <div>
-        <div class="mb-0.5 flex items-center justify-between text-xs text-slate-300">
-          <span>Tỉ lệ thắng ước tính</span>
-          <b :class="chanceClass">{{ chance }}%</b>
-        </div>
-        <div class="h-1.5 overflow-hidden rounded bg-ink-900"><div class="h-full transition-all" :class="chanceBar" :style="{ width: chance + '%' }"></div></div>
-        <div v-if="game.campaign.grit > 0" class="mt-0.5 text-xs text-jade-300">Kiên Trì +{{ Math.round(game.campaign.grit * C.GRIT_STEP * 100) }}% chỉ số (mất khi vượt ải)</div>
-      </div>
-      <div v-if="stuck" class="rounded border border-gold-500/30 bg-gold-500/10 p-1.5 text-xs leading-snug text-gold-200">
-        Đang kẹt ở ải {{ best }}. Muốn qua ải {{ target }}: đột phá cảnh giới, mặc trang bị tốt hơn, học võ kỹ và công pháp, dùng đan tăng chỉ số. Trong lúc đó vẫn nhận thu nhập của ải {{ best }}.
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <button class="btn-jade" :disabled="!battle.inFight || healPills < 1 || battle.hp >= battle.maxHp" @click="battle.useHealPill()">
-          Hồi Huyết Đan ({{ healPills }})
-        </button>
-        <label class="card flex items-center justify-between py-2 text-xs">
-          <span>Tự chiến đấu</span>
-          <input v-model="game.settings.autoRepeat" type="checkbox" class="h-4 w-4 accent-emerald-500" />
-        </label>
-      </div>
-      <label class="flex items-center justify-between text-xs text-slate-300">
-        <span>Tự dùng Hồi Huyết Đan khi dưới 35%</span>
-        <input v-model="game.settings.autoHeal" type="checkbox" class="h-4 w-4 accent-emerald-500" />
-      </label>
-    </div>
 
-    <!-- Thu nhập thụ động -->
-    <div class="card space-y-0.5 text-xs">
-      <div class="flex items-center justify-between">
-        <div class="font-semibold text-slate-200">Thu nhập thụ động</div>
-        <div class="text-slate-400">Ải cao nhất: <b class="text-white">{{ best }}</b> · Kỷ lục: {{ game.campaign.record }}</div>
+      <!-- Kẻ địch: tên + chip đặc tính -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-sm font-bold text-white">
+          <span v-if="farming" class="mr-1 rounded bg-gold-500/30 px-1 text-xs text-gold-200">Cày</span>Ải {{ target }}
+        </span>
+        <span class="rounded bg-cinnabar-500/25 px-1.5 py-0.5 text-xs text-cinnabar-300">{{ C.AI_KINDS[nextKind].name }}</span>
+        <span class="text-sm" :style="{ color: ELEMENTS[nextMonster.element].css }">{{ nextMonster.name }} · {{ ELEMENTS[nextMonster.element].name }}{{ edgeMark }}</span>
       </div>
-      <template v-if="best > 0">
-        <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome) }}/giây)</div>
-        <div class="text-gold-300">+{{ fmt(stoneIncome) }} linh thạch/giây</div>
-        <div v-if="incomeAi < best" class="text-xs text-slate-500">Thu nhập đang tính đến ải {{ incomeAi }} (trần theo cảnh giới, đột phá để mở rộng thêm).</div>
-        <div v-if="itemIncome.length" class="text-slate-300">
-          Mỗi giờ:
-          <span v-for="(it, i) in itemIncome" :key="it.id">{{ i ? ', ' : '' }}{{ itemName(it.id) }} ~{{ it.perHour.toFixed(1) }}</span>
+      <div v-if="nextMods.length" class="flex flex-wrap items-center gap-1.5">
+        <button
+          v-for="m in nextMods"
+          :key="m"
+          class="min-h-[32px] rounded-full border px-2.5 text-xs font-bold"
+          :class="C.ENEMY_MODS[m].kind === 'boss' ? 'border-cinnabar-500/60 bg-cinnabar-500/15 text-cinnabar-300' : 'border-gold-500/40 bg-gold-500/10 text-gold-200'"
+          @click="sheet = 'mods'"
+        >{{ C.ENEMY_MODS[m].name }}</button>
+        <button class="min-h-[32px] px-1 text-slate-500" aria-label="Chi tiết đặc tính" @click="sheet = 'mods'"><Icon name="info" :size="16" /></button>
+      </div>
+
+      <!-- Tỉ lệ thắng: một thanh -->
+      <div class="relative h-7 overflow-hidden rounded-lg bg-ink-900">
+        <div class="h-full opacity-80 transition-all" :class="chanceBar" :style="{ width: Math.max(chance, 3) + '%' }"></div>
+        <span class="absolute inset-0 flex items-center justify-between px-2 text-xs font-bold text-white">
+          <span>Tỉ lệ thắng ước tính</span><span :class="chanceClass" class="rounded bg-black/50 px-1">{{ chance }}%</span>
+        </span>
+      </div>
+      <div v-if="game.campaign.grit > 0" class="text-xs text-jade-300">Kiên Trì +{{ Math.round(game.campaign.grit * C.GRIT_STEP * 100) }}% chỉ số (mất khi vượt ải)</div>
+
+      <!-- Đang kẹt: 3 lối tăng sức -->
+      <div v-if="stuck" class="rounded-lg border border-gold-500/30 bg-gold-500/10 p-2">
+        <div class="mb-1.5 text-xs text-gold-200">Kẹt ở ải {{ best }}. Tăng sức để qua ải {{ target }}:</div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button
+            v-for="t in TIPS"
+            :key="t.to"
+            class="flex min-h-[48px] flex-col items-center justify-center rounded-lg border border-ink-600 bg-ink-900/70 text-xs font-bold text-slate-200"
+            @click="ui.go(t.to)"
+          ><Icon :name="t.icon" :size="18" class="text-gold-300" />{{ t.label }}</button>
         </div>
-      </template>
-      <div v-else class="text-slate-400">Vượt ải đầu tiên để bắt đầu nhận thu nhập. Mỗi ải vượt thêm làm thu nhập tăng lên.</div>
+      </div>
+
+      <!-- Hành động -->
+      <div class="grid grid-cols-3 gap-1.5">
+        <button class="btn-jade !px-1 text-xs" :disabled="!battle.inFight || healPills < 1 || battle.hp >= battle.maxHp" @click="battle.useHealPill()">
+          <Icon name="pill" :size="16" />Hồi huyết ({{ healPills }})
+        </button>
+        <button
+          class="btn !px-1 text-xs"
+          :class="game.settings.autoRepeat ? 'border-jade-500/60 bg-jade-500/20 text-jade-200' : 'border-ink-600 bg-ink-900 text-slate-400'"
+          @click="game.settings.autoRepeat = !game.settings.autoRepeat"
+        ><Icon name="swords" :size="16" />Tự đánh {{ game.settings.autoRepeat ? 'BẬT' : 'TẮT' }}</button>
+        <button
+          class="btn !px-1 text-xs"
+          :class="game.settings.autoHeal ? 'border-jade-500/60 bg-jade-500/20 text-jade-200' : 'border-ink-600 bg-ink-900 text-slate-400'"
+          @click="game.settings.autoHeal = !game.settings.autoHeal"
+        ><Icon name="heart" :size="16" />Tự hồi {{ game.settings.autoHeal ? 'BẬT' : 'TẮT' }}</button>
+      </div>
     </div>
 
     <!-- Chọn phần thưởng boss -->
-    <div v-if="game.bossChoice" class="card space-y-1.5 border-gold-400 text-xs">
-      <div class="font-semibold text-gold-300">Chọn phần thưởng: {{ C.AI_KINDS[game.bossChoice.kind].name }} ải {{ game.bossChoice.n }}</div>
-      <button v-for="(o, i) in game.bossChoice.options" :key="o.id" class="btn-ghost w-full text-left" @click="game.chooseBossReward(i)">
-        {{ o.label }}
-      </button>
-      <div class="text-xs text-slate-500">Không chọn sau 10 phút sẽ tự lấy phương án đầu tiên.</div>
+    <div v-if="game.bossChoice" class="space-y-1.5 rounded-lg border border-gold-400 bg-gold-500/10 p-2">
+      <div class="text-sm font-bold text-gold-300">Chọn thưởng: {{ C.AI_KINDS[game.bossChoice.kind].name }} ải {{ game.bossChoice.n }}</div>
+      <button v-for="(o, i) in game.bossChoice.options" :key="o.id" class="btn-ghost min-h-[44px] w-full text-left text-sm" @click="game.chooseBossReward(i)">{{ o.label }}</button>
+      <div class="text-xs text-slate-500">Không chọn sau 10 phút sẽ tự lấy phương án đầu.</div>
     </div>
 
     <!-- Rương mốc ải -->
-    <div v-if="milestone" class="card space-y-1 text-xs" :class="game.milestoneClaimable ? 'border-gold-400' : ''">
-      <div class="flex items-center justify-between">
-        <div class="font-semibold text-slate-200">Rương mốc ải {{ milestone.ai }}</div>
-        <div class="text-slate-400">Kỷ lục: {{ game.campaign.record }}/{{ milestone.ai }}</div>
+    <div v-if="milestone" class="flex items-center gap-2 rounded-lg border px-2.5 py-2" :class="game.milestoneClaimable ? 'border-gold-400 bg-gold-500/10' : 'border-ink-600 bg-ink-900/60'">
+      <Icon name="gift" :size="26" class="shrink-0 text-gold-300" />
+      <div class="min-w-0 flex-1">
+        <div class="flex justify-between text-xs"><b class="text-slate-200">Rương mốc ải {{ milestone.ai }}</b><span class="text-slate-400">{{ game.campaign.record }}/{{ milestone.ai }}</span></div>
+        <div class="my-1 h-1.5 overflow-hidden rounded bg-ink-900"><div class="h-full bg-gold-500" :style="{ width: Math.min(100, (game.campaign.record / milestone.ai) * 100) + '%' }"></div></div>
+        <div class="truncate text-xs text-slate-400">{{ milestoneText }}</div>
       </div>
-      <div class="h-1.5 overflow-hidden rounded bg-ink-900">
-        <div class="h-full bg-gold-500" :style="{ width: Math.min(100, (game.campaign.record / milestone.ai) * 100) + '%' }"></div>
-      </div>
-      <div class="text-xs text-slate-400">Thưởng: {{ milestoneText }}.</div>
-      <button class="btn-gold w-full" :disabled="!game.milestoneClaimable" @click="game.claimMilestone()">
-        {{ game.milestoneClaimable ? 'Nhận rương mốc' : `Còn ${milestone.ai - game.campaign.record} ải` }}
+      <button class="btn-gold shrink-0 !px-3 text-xs" :disabled="!game.milestoneClaimable" @click="game.claimMilestone()">
+        {{ game.milestoneClaimable ? 'Nhận' : `Còn ${milestone.ai - game.campaign.record}` }}
       </button>
     </div>
 
-    <!-- Cày ải đã vượt -->
-    <div class="card space-y-1.5 text-xs">
-      <div class="font-semibold text-slate-200">Cày ải đã vượt (cày tàn quyển, trang bị)</div>
-      <div v-if="farming" class="text-gold-300">Đang cày ải {{ game.campaign.farm }}, không tiến lên.</div>
-      <div v-else class="text-slate-400">Đang tiến lên. Chọn một ải đã vượt để đánh lặp lại.</div>
-      <div class="flex items-center gap-1.5">
-        <button class="btn-ghost !px-2.5" :disabled="best < 1" @click="stepFarm(-1)">−</button>
-        <input v-model.number="farmInput" type="number" min="1" :max="Math.max(1, best)" class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-center text-white" />
-        <button class="btn-ghost !px-2.5" :disabled="best < 1" @click="stepFarm(1)">+</button>
-        <button class="btn-gold flex-1" :disabled="best < 1" @click="battle.setFarm(Math.min(best, Math.max(1, farmInput || 1)))">Cày ải này</button>
-        <button class="btn-ghost" :disabled="!farming" @click="battle.setFarm(null)">Tiến lên</button>
+    <!-- Thu nhập thụ động: chip -->
+    <button class="w-full rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2 text-left" @click="sheet = 'income'">
+      <div class="mb-1 flex items-center justify-between text-xs"><b class="text-slate-200">Thu nhập thụ động</b><span class="text-slate-400">Ải {{ best }} · kỷ lục {{ game.campaign.record }}</span></div>
+      <div v-if="best > 0" class="flex items-center justify-around text-sm">
+        <span class="flex items-center gap-1 text-jade-300"><Icon name="lotus" :size="15" />+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}%</span>
+        <span class="flex items-center gap-1 text-gold-300"><Icon name="stone" :size="15" />{{ fmt(stoneIncome) }}/s</span>
+        <span v-if="itemIncome.length" class="flex items-center gap-1 text-slate-300"><Icon name="herb" :size="15" />{{ itemIncome.length }} loại/giờ</span>
+        <Icon name="info" :size="14" class="text-slate-500" />
       </div>
+      <div v-else class="text-xs text-slate-400">Vượt ải đầu tiên để bắt đầu nhận thu nhập.</div>
+    </button>
+
+    <button class="btn-ghost min-h-[44px] w-full text-sm" :disabled="best < 1" @click="sheet = 'farm'">
+      <Icon name="rest" :size="16" />{{ farming ? `Đang cày ải ${game.campaign.farm}` : 'Cày ải đã vượt' }}
+    </button>
+
+    <div class="px-1 text-xs text-slate-500">
+      Từ lúc mở game: hạ {{ battle.run.kills }} yêu thú · +{{ fmt(battle.run.stones) }} linh thạch
+      <span v-if="battle.run.gear.length"> · trang bị: {{ battle.run.gear.slice(-3).join(', ') }}</span>
+      <span v-if="runItems.length"> · <span v-for="([id, n], i) in runItems" :key="id">{{ i ? ', ' : '' }}{{ itemName(id) }} x{{ n }}</span></span>
     </div>
 
-    <!-- Thu hoạch -->
-    <div class="rounded bg-ink-900 p-2 text-xs text-slate-300">
-      <div class="mb-0.5 font-semibold text-slate-200">Thu hoạch từ lúc mở game</div>
-      <div>Hạ {{ battle.run.kills }} yêu thú · <span class="text-gold-300">+{{ fmt(battle.run.stones) }} linh thạch</span></div>
-      <div v-if="battle.run.gear.length" class="text-gold-300">Trang bị: {{ battle.run.gear.slice(-5).join(', ') }}</div>
-      <div v-if="runItems.length" class="text-jade-300">
-        <span v-for="([id, n], i) in runItems" :key="id">{{ i ? ', ' : '' }}{{ itemName(id) }} x{{ n }}</span>
-      </div>
-    </div>
+    <!-- Bảng trượt -->
+    <BottomSheet :open="!!sheet" :title="SHEET_TITLES[sheet] ?? ''" @close="sheet = null">
+      <template v-if="sheet === 'mods'">
+        <div v-for="m in nextMods" :key="m" class="mb-1.5">
+          <b :class="C.ENEMY_MODS[m].kind === 'boss' ? 'text-cinnabar-400' : 'text-gold-200'">{{ C.ENEMY_MODS[m].name }}</b>
+          <span class="text-slate-400"> · {{ C.ENEMY_MODS[m].desc }}</span>
+        </div>
+        <p v-if="!nextMods.length" class="text-slate-400">Ải này không có đặc tính đặc biệt.</p>
+      </template>
+      <template v-else-if="sheet === 'income'">
+        <template v-if="best > 0">
+          <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome) }}/giây)</div>
+          <div class="text-gold-300">+{{ fmt(stoneIncome) }} linh thạch/giây</div>
+          <div v-if="incomeAi < best" class="mt-1 text-xs text-slate-500">Đang tính đến ải {{ incomeAi }} (trần theo cảnh giới, đột phá để mở rộng thêm).</div>
+          <div v-if="itemIncome.length" class="mt-1 text-slate-300">Mỗi giờ: <span v-for="(it, i) in itemIncome" :key="it.id">{{ i ? ', ' : '' }}{{ itemName(it.id) }} ~{{ it.perHour.toFixed(1) }}</span></div>
+        </template>
+      </template>
+      <template v-else-if="sheet === 'farm'">
+        <p class="mb-2 text-slate-400">{{ farming ? `Đang cày ải ${game.campaign.farm}, không tiến lên.` : 'Đang tiến lên. Chọn một ải đã vượt để đánh lặp lại (cày tàn quyển, trang bị).' }}</p>
+        <div class="flex items-center gap-2">
+          <button class="btn-ghost !px-3" :disabled="best < 1" @click="stepFarm(-1)">−</button>
+          <input v-model.number="farmInput" type="number" min="1" :max="Math.max(1, best)" class="h-11 w-20 rounded border border-ink-600 bg-ink-900 px-2 text-center text-white" />
+          <button class="btn-ghost !px-3" :disabled="best < 1" @click="stepFarm(1)">+</button>
+        </div>
+      </template>
+      <template #actions>
+        <template v-if="sheet === 'farm'">
+          <button class="btn-gold" :disabled="best < 1" @click="battle.setFarm(Math.min(best, Math.max(1, farmInput || 1))); sheet = null">Cày ải này</button>
+          <button class="btn-ghost" :disabled="!farming" @click="battle.setFarm(null); sheet = null">Tiến lên</button>
+        </template>
+      </template>
+    </BottomSheet>
   </div>
 </template>

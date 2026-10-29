@@ -1,6 +1,6 @@
 <script setup>
 // ItemIcon.vue - Ô biểu tượng vuông: khung theo độ hiếm, glyph theo ngũ hành, huy hiệu cấp, thanh tiến độ.
-defineProps({
+const props = defineProps({
   glyph: { type: String, default: 'star' },
   color: { type: String, default: '#e8d9a8' }, // màu glyph (ngũ hành)
   frame: { type: String, default: '' }, // màu khung (độ hiếm); trống = khung vàng mờ
@@ -13,11 +13,24 @@ defineProps({
   dot: { type: Boolean, default: false }, // chấm báo "có thể làm"
   tint: { type: String, default: '' }, // màu nền nhẹ (ngũ hành)
 })
+import { ref, watch } from 'vue'
 import Icon from './Icon.vue'
+
+// Nháy sáng khi huy hiệu (cấp / số lượng) thay đổi: phản hồi khi học, nâng cấp, nhận đồ
+const flash = ref(false)
+watch(
+  () => props.badge,
+  (n, o) => {
+    if (o === undefined || n === o) return
+    flash.value = false
+    requestAnimationFrame(() => (flash.value = true))
+    setTimeout(() => (flash.value = false), 700)
+  },
+)
 </script>
 
 <template>
-  <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected }">
+  <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected, 'is-flash': flash }">
     <span class="item-icon__box" :style="{ borderColor: frame || undefined, background: tint ? `radial-gradient(circle at 50% 35%, ${tint}44, rgb(12 16 30 / 0.92))` : undefined }">
       <Icon :name="locked ? 'lock' : glyph" :size="26" :style="{ color: locked ? '#64748b' : color }" />
       <span v-if="badge !== ''" class="item-icon__badge">{{ badge }}</span>
@@ -61,6 +74,19 @@ import Icon from './Icon.vue'
 }
 .is-selected .item-icon__box {
   box-shadow: 0 0 0 2px var(--gold-line), 0 0 10px rgb(217 165 58 / 0.4);
+}
+.is-flash .item-icon__box {
+  animation: icon-flash 0.7s ease-out;
+}
+@keyframes icon-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgb(252 217 121 / 0.9);
+    transform: scale(1.12);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgb(252 217 121 / 0);
+    transform: scale(1);
+  }
 }
 .item-icon__badge {
   position: absolute;

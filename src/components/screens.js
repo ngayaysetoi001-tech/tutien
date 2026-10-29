@@ -11,6 +11,7 @@ import GardenTab from './tabs/GardenTab.vue'
 import ReincarnationTab from './tabs/ReincarnationTab.vue'
 import SectTab from './tabs/SectTab.vue'
 import DisciplesTab from './tabs/DisciplesTab.vue'
+import JourneyTab from './tabs/JourneyTab.vue'
 import StoryTab from './tabs/StoryTab.vue'
 
 export const SCREEN_COMPONENTS = {
@@ -25,6 +26,7 @@ export const SCREEN_COMPONENTS = {
   garden: GardenTab,
   reincarnation: ReincarnationTab,
   story: StoryTab,
+  journey: JourneyTab,
   achievements: AchievementsTab,
   settings: SettingsTab,
 }

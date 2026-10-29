@@ -5,6 +5,7 @@ import { useGameStore } from '../stores/gameStore.js'
 import { useUiStore } from '../stores/uiStore.js'
 import { computed, onMounted, watch } from 'vue'
 import { groupOf, groupScreens, unlockedGroups, unlockedScreens } from '../game/screens.js'
+import { screenWork } from './badges.js'
 import Icon from './Icon.vue'
 
 const game = useGameStore()
@@ -32,17 +33,8 @@ function openGroup(id) {
   ui.go(list.some((s) => s.id === last) ? last : list[0].id)
 }
 
-/** Chấm đỏ báo có việc ở một màn. */
-function screenBadge(id) {
-  if (id === 'story') return game.loreUnread > 0 || (game.storyNext && !game.chapterLock(game.storyNext))
-  if (id === 'achievements') return game.claimableCount > 0
-  if (id === 'sect') return game.quests.some((q) => game.questDone(q))
-  if (id === 'battle') return game.milestoneClaimable || !!game.bossChoice
-  if (id === 'character') return game.dailyPending || game.canChoosePath || game.talentPending
-  return !ui.seen[id] // màn vừa mở khoá, chưa ghé lần nào
-}
-/** Chấm đỏ của nhóm: có việc ở màn con nào đó (trừ màn đang xem). */
-const groupBadge = (id) => groupScreens(id, game).some((s) => s.id !== ui.tab && screenBadge(s.id))
+/** Chấm đỏ của nhóm: có việc làm được ở màn con nào đó (trừ màn đang xem). */
+const groupBadge = (id) => groupScreens(id, game).some((s) => s.id !== ui.tab && screenWork(game, s.id))
 </script>
 
 <template>

@@ -23,6 +23,19 @@ const canEnhance = (it) => it.enh < MAX_ENHANCE && game.spiritStones.gte(enhance
 const canReroll = (it) => !it.legend && affixCount(it.rarity) > 0
 const legendText = (it) => LEGENDS[it.legend]?.text
 const item = computed(() => (sel.value ? game.gear.bag.find((x) => x.uid === sel.value) ?? null : null))
+// So với món đang mặc cùng ô: chênh lệch từng chỉ số (xanh = tốt hơn, đỏ = kém hơn)
+const STAT_LABEL = { hp: 'Khí huyết', atk: 'Công', def: 'Thủ', speed: 'Thân pháp', exp: 'Linh khí' }
+const delta = computed(() => {
+  const it = item.value
+  if (!it || isEquipped(it.uid)) return []
+  const cur = game.equippedItems[SLOT_IDS.indexOf(it.slot)]
+  const a = itemStats(it)
+  const b = cur ? itemStats(cur) : {}
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].map((k) => {
+    const d = (a[k] ?? 0) - (b[k] ?? 0)
+    return { k, label: STAT_LABEL[k], d, text: k === 'exp' ? (d * 100).toFixed(1) + '%' : String(d) }
+  }).filter((x) => Math.abs(x.d) > 1e-9)
+})
 // Món bị phân giải / không còn trong túi thì bảng tự đóng
 const open = computed(() => !!item.value)
 </script>
@@ -77,6 +90,10 @@ const open = computed(() => !!item.value)
       <template v-if="item">
         <div class="mb-1 text-xs text-slate-500">{{ SLOTS[item.slot] }}{{ isEquipped(item.uid) ? ' · đang mặc' : '' }}</div>
         <div class="text-slate-100">{{ statsText(itemStats(item)) }}</div>
+        <div v-if="delta.length" class="mt-2 flex flex-wrap gap-1.5 text-xs">
+          <span class="text-slate-500">So với đang mặc:</span>
+          <span v-for="x in delta" :key="x.k" class="rounded px-1.5 py-0.5 font-bold" :class="x.d > 0 ? 'bg-jade-500/20 text-jade-300' : 'bg-cinnabar-500/20 text-cinnabar-300'">{{ x.d > 0 ? '▲ +' : '▼ ' }}{{ x.text }} {{ x.label }}</span>
+        </div>
         <div v-if="item.legend" class="mt-1 text-pink-300">{{ legendText(item) }}</div>
         <div v-else-if="item.affixes?.length" class="mt-1 text-jade-300">{{ affixText(item) }}</div>
         <button

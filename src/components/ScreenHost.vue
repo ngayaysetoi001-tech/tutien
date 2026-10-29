@@ -11,6 +11,7 @@ import { nextGoal } from '../game/goals.js'
 import { groupOf, groupScreens } from '../game/screens.js'
 import { SCREEN_COMPONENTS } from './screens.js'
 import LogPanel from './LogPanel.vue'
+import { isNewScreen, screenWork } from './badges.js'
 import Icon from './Icon.vue'
 
 const game = useGameStore()
@@ -58,6 +59,7 @@ const breakLabel = computed(() => {
           @click="ui.go(c.id)"
         >
           <Icon :name="c.icon" :size="16" />{{ c.label }}
+          <span v-if="ui.tab !== c.id && (screenWork(game, c.id) || isNewScreen(ui, c.id))" class="h-2 w-2 rounded-full bg-cinnabar-500"></span>
         </button>
       </div>
       <h1 v-else-if="!ui.hasCanvas" class="title-rule px-0.5 !text-sm"><Icon :name="ui.screen.icon" :size="17" class="text-gold-400" />{{ ui.screen.label }}</h1>
@@ -71,7 +73,7 @@ const breakLabel = computed(() => {
 
       <!-- Gợi ý việc nên làm -->
       <div
-        v-if="ui.tab === 'character' && hint"
+        v-if="ui.tab === 'character' && hint && !ui.tourShown"
         class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gold-500/35 bg-gold-500/10 py-1 pl-2 pr-1 text-xs leading-snug"
       >
         <Icon name="spark" :size="14" class="shrink-0 text-gold-400" />

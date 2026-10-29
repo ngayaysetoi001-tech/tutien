@@ -4468,9 +4468,9 @@ ok('fmt rút gọn số lớn', () => {
 // Màn hình theo tab (screens.js + uiStore)
 // =====================================================================
 const { useUiStore } = await import('../src/stores/uiStore.js')
-ok('màn hình: 13 màn thuộc 5 nhóm, id duy nhất, chỉ Nhân Vật và Bí Cảnh có canvas', () => {
-  assert.equal(SCREENS.length, 13)
-  assert.equal(new Set(SCREENS.map((x) => x.id)).size, 13)
+ok('màn hình: 14 màn thuộc 5 nhóm, id duy nhất, chỉ Nhân Vật và Bí Cảnh có canvas', () => {
+  assert.equal(SCREENS.length, 14)
+  assert.equal(new Set(SCREENS.map((x) => x.id)).size, 14)
   assert.ok(SCREENS.every((x) => SCR.GROUPS.some((g) => g.id === x.group)), 'mỗi màn thuộc một nhóm có thật')
   assert.equal(SCR.GROUPS.length, 5)
   assert.deepEqual(SCREENS.filter((x) => hasCanvas(x.id)).map((x) => x.id), ['character', 'battle'])

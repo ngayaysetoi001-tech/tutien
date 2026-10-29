@@ -42,18 +42,6 @@ const showBreakChip = computed(() => game.canBreakthrough && ui.tab !== 'charact
       <div class="top-chip text-gold-300" title="Linh thạch">
         <Icon name="stone" :size="13" /><b>{{ fmt(game.spiritStones) }}</b>
       </div>
-      <div v-if="game.reincarnation.dao > 0" class="top-chip text-jade-300" title="Đạo Vận">
-        <Icon name="reborn" :size="13" /><b>{{ game.reincarnation.dao }}</b>
-      </div>
-      <button
-        v-if="game.timeBank > 0 || game.settings.warp"
-        class="top-chip !px-1.5 text-xs"
-        :class="game.settings.warp ? 'text-gold-300 ring-1 ring-gold-400' : 'text-slate-300'"
-        :title="'Kho thời gian: ' + Math.floor(game.timeBank / 60) + ' phút. Bật để chạy nhanh x4'"
-        @click="game.settings.warp = !game.settings.warp"
-      >
-        ⏩ {{ game.timeBank >= 3600 ? (game.timeBank / 3600).toFixed(1) + 'g' : Math.floor(game.timeBank / 60) + 'p' }}
-      </button>
       <button class="top-chip !px-1.5 text-slate-300" aria-label="Thiền định (tiết kiệm pin)" title="Thiền định: tiết kiệm pin" @click="ui.meditate = true">
         <Icon name="lotus" :size="15" />
       </button>
@@ -61,7 +49,21 @@ const showBreakChip = computed(() => game.canBreakthrough && ui.tab !== 'charact
         <Icon name="log" :size="15" />
       </button>
     </div>
-    <ProgressBar class="mt-1" compact :value="game.progress" :label="barLabel" :full="game.isFull" />
+    <div class="mt-1 flex items-center gap-1.5">
+      <ProgressBar class="min-w-0 flex-1" compact :value="game.progress" :label="barLabel" :full="game.isFull" />
+        <div v-if="game.reincarnation.dao > 0" class="top-chip text-jade-300" title="Đạo Vận">
+          <Icon name="reborn" :size="13" /><b>{{ game.reincarnation.dao }}</b>
+        </div>
+        <button
+          v-if="game.timeBank > 0 || game.settings.warp"
+          class="top-chip !px-1.5 text-xs"
+          :class="game.settings.warp ? 'text-gold-300 ring-1 ring-gold-400' : 'text-slate-300'"
+          :title="'Kho thời gian: ' + Math.floor(game.timeBank / 60) + ' phút. Bật để chạy nhanh x4'"
+          @click="game.settings.warp = !game.settings.warp"
+        >
+          ⏩ {{ game.timeBank >= 3600 ? (game.timeBank / 3600).toFixed(1) + 'g' : Math.floor(game.timeBank / 60) + 'p' }}
+        </button>
+    </div>
   </header>
 </template>
 

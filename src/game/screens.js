@@ -16,6 +16,7 @@ export const SCREENS = [
   { id: 'sect', label: 'Tông Môn', icon: 'sect', canvas: false, group: 'monphai' },
   { id: 'disciples', label: 'Đệ Tử', icon: 'disciple', canvas: false, group: 'monphai' },
   { id: 'story', label: 'Cốt Truyện', icon: 'book', canvas: false, group: 'them' },
+  { id: 'journey', label: 'Hành Trình', icon: 'target', canvas: false, group: 'them' },
   { id: 'achievements', label: 'Thành Tựu', icon: 'trophy', canvas: false, group: 'them' },
   { id: 'settings', label: 'Cài Đặt', icon: 'settings', canvas: false, group: 'them' },
 ]
@@ -47,6 +48,7 @@ export const UNLOCKS = {
   },
   story: { text: 'Đạt Luyện Khí Tầng 2', test: (g) => maxStageOf(g) >= 1 || g.story.done > 0, progress: (g) => Math.min(1, maxStageOf(g) / 1) },
   garden: { text: 'Đạt Luyện Khí Tầng 2', test: (g) => maxStageOf(g) >= 1, progress: (g) => Math.min(1, maxStageOf(g) / 1) },
+  journey: { text: 'Hạ yêu thú đầu tiên', test: (g) => g.stats.kills >= 1 || g.stats.breakthroughs > 0 || g.claimableCount > 0 },
   achievements: { text: 'Hạ yêu thú đầu tiên', test: (g) => g.stats.kills >= 1 || g.stats.breakthroughs > 0 || g.claimableCount > 0 },
   inventory: { text: 'Nhặt được vật phẩm đầu tiên', test: (g) => hasAnyItem(g) || g.stats.kills >= 5 },
   skills: {
