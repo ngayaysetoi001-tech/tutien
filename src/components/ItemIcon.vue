@@ -11,13 +11,14 @@ defineProps({
   dim: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
   dot: { type: Boolean, default: false }, // chấm báo "có thể làm"
+  tint: { type: String, default: '' }, // màu nền nhẹ (ngũ hành)
 })
 import Icon from './Icon.vue'
 </script>
 
 <template>
   <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected }">
-    <span class="item-icon__box" :style="{ borderColor: frame || undefined }">
+    <span class="item-icon__box" :style="{ borderColor: frame || undefined, background: tint ? `radial-gradient(circle at 50% 35%, ${tint}44, rgb(12 16 30 / 0.92))` : undefined }">
       <Icon :name="locked ? 'lock' : glyph" :size="26" :style="{ color: locked ? '#64748b' : color }" />
       <span v-if="badge !== ''" class="item-icon__badge">{{ badge }}</span>
       <span v-if="dot" class="item-icon__dot"></span>

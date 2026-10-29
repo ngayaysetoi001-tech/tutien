@@ -54,9 +54,9 @@ export function nextHints(g) {
   const learnable = Object.keys(SKILLS).find((id) => !g.skills.owned[id] && g.itemCount(fragmentId(id)) >= LEARN_COST)
   if (learnable) add('skill', 'Đủ tàn quyển để học một võ kỹ mới.', 'skills')
   const learnableArt = Object.keys(ARTS).find((id) => !g.arts.owned[id] && g.itemCount(artFragmentId(id)) >= ART_LEARN_COST)
-  if (learnableArt) add('art', 'Đủ tàn quyển để học một công pháp bị động mới.', 'arts')
+  if (learnableArt) add('art', 'Đủ tàn quyển để học một công pháp bị động mới.', 'skills')
   const learnablePet = Object.keys(PETS).find((id) => !g.pets.owned[id] && g.itemCount(petFragmentId(id)) >= PET_LEARN_COST)
-  if (learnablePet) add('pet', 'Đủ Linh Thú Phách để thu phục một linh thú đồng hành.', 'pets')
+  if (learnablePet) add('pet', 'Đủ Linh Thú Phách để thu phục một linh thú đồng hành.', 'skills')
   const emptySlot = SLOT_IDS.some((slot) => !g.gear.equipped[slot] && g.gear.bag.some((it) => it.slot === slot))
   if (emptySlot) add('gear', 'Túi có trang bị chưa mặc.', 'gear')
   if (g.sect.id && g.disciples.length === 0 && g.spiritStones.gte(recruitCost(g.stageIdx, 0))) {

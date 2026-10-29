@@ -2,6 +2,11 @@
 // Icon.vue gộp GLYPHS vào PATHS nên dùng chung một thẻ <Icon name="..." />.
 
 export const GLYPHS = {
+  dagger: '<path d="M5 19l9-9"/><path d="M13 7l4-4 4 4-4 4z"/><path d="M4 20.500l2.500-.5L5 17.500z"/>',
+  cloudbolt: '<path d="M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.500 1.500A3.500 3.500 0 0 1 17 15z"/><path d="M12.500 12l-2 3.500h3l-2 3.500"/>',
+  cracks: '<path d="M3 8h6l2 4 2-3 3 5 5-1"/><path d="M11 12l-1 7M16 14l1 5"/>',
+  fireball: '<circle cx="14" cy="10" r="5.500"/><path d="M3 21l6-6M3 15l4-4M9 21l4-4"/>',
+  claw: '<path d="M6 4c1 6 1 11 0 16M12 3c1.500 6 1.500 12 0 18M18 4c1 6 1 11 0 16"/>',
   flame: '<path d="M12 3c1 3.500 5 5.500 5 10a5 5 0 0 1-10 0c0-2 1-3.500 2.500-4.500.2 1.500 1 2.200 1.800 2.500C11 8 11 5.500 12 3z"/>',
   snow: '<path d="M12 3v18M4.200 7.500l15.600 9M19.800 7.500l-15.600 9"/><path d="M9.500 4.500L12 6.500l2.500-2M9.500 19.500l2.500-2 2.500 2"/>',
   leaf: '<path d="M5 19c0-8 5-13.500 14.500-14.500C19 14 14 19.500 5 19z"/><path d="M5 19c3-4.500 6-7.500 10-9.500"/>',
@@ -49,15 +54,15 @@ export const GLYPHS = {
 // ---------- id -> biểu tượng ----------
 export const SKILL_GLYPH = {
   ngu_kiem: 'sword', liet_hoa: 'flame', huyen_bang: 'snow', thanh_moc: 'leaf', hau_tho: 'mountain', phong_loi: 'wind',
-  doc_chu: 'skull', loi_dinh: 'bolt', tuyet_sat: 'swords', huyet_thuc: 'drop', bao_nhan: 'fist', phan_chan: 'burst',
-  thien_ha: 'star', van_kiem: 'swords', kim_than: 'shield', ngu_loi: 'bolt', dan_hoa: 'flame', tran_dia: 'mountain',
+  doc_chu: 'skull', loi_dinh: 'bolt', tuyet_sat: 'dagger', huyet_thuc: 'drop', bao_nhan: 'fist', phan_chan: 'burst',
+  thien_ha: 'star', van_kiem: 'swords', kim_than: 'helm', ngu_loi: 'cloudbolt', dan_hoa: 'fireball', tran_dia: 'cracks',
 }
 export const ART_GLYPH = {
   thanh_tam: 'lotus', cuong_the: 'heart', pha_quan: 'fist', kim_cang: 'shield', truy_phong: 'wind',
   tu_bao: 'coin', ho_phap: 'eye', thien_nhan: 'star', ngu_hanh: 'burst', luan_hoi: 'reborn',
 }
 export const PET_GLYPH = {
-  tieu_ho: 'paw', quy_giap: 'shell', linh_hac: 'wing', kim_thiem: 'paw', van_ho: 'paw', bang_ly: 'snow', thanh_long: 'wave', hoa_phuong: 'flame',
+  tieu_ho: 'paw', quy_giap: 'shell', linh_hac: 'wing', kim_thiem: 'claw', van_ho: 'mask', bang_ly: 'snow', thanh_long: 'wave', hoa_phuong: 'flame',
 }
 export const PATH_GLYPH = { kiem: 'sword', the: 'shield', phap: 'burst', dan: 'pill', tran: 'target' }
 export const GROUP_GLYPH = { herbs: 'herb', ores: 'stone', scrolls: 'scroll', pills: 'pill' }
