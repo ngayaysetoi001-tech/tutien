@@ -2874,6 +2874,270 @@ ok('gợi ý: đủ Linh Thú Phách thì nhắc thu phục', () => {
 })
 
 // =====================================================================
+// Công trình Động Phủ và thám hiểm của đệ tử
+// =====================================================================
+const DW = await import('../src/game/dwelling.js')
+const EX = await import('../src/game/expedition.js')
+const disc = (uid, over = {}) => ({ uid, name: 'Đệ ' + uid, element: 'kim', grade: 1, level: 3, job: 'herb', since: Date.now(), ...over })
+
+ok('công trình động phủ: dữ liệu hợp lệ, giá tăng dần, cần bậc tu vi tăng theo cấp, thưởng gộp', () => {
+  assert.equal(DW.BUILDING_IDS.length, 5)
+  for (const [id, b] of Object.entries(DW.BUILDINGS)) {
+    assert.ok(b.name && b.text && b.minStage >= 0, id)
+    assert.ok(Object.keys(b.perk).every((k) => ['exp', 'double', 'arts', 'forge', 'atk', 'def'].includes(k)), id)
+    assert.ok(DW.buildingCost(id, 5).gt(DW.buildingCost(id, 0)))
+    assert.equal(DW.buildingNeedStage(id, 3), b.minStage + 3)
+  }
+  const none = DW.dwellingPerks(DW.emptyDwelling())
+  assert.ok(Object.values(none).every((v) => v === 0))
+  const p = DW.dwellingPerks({ linh_mach: 4, dien_vo: 2, luyen_khi: 1 })
+  assert.ok(Math.abs(p.exp - 0.1) < 1e-9 && Math.abs(p.atk - 0.03) < 1e-9 && Math.abs(p.forge - 0.08) < 1e-9)
+})
+
+ok('nâng công trình: cần bậc tu vi, linh thạch, tối đa cấp 10; thưởng có hiệu lực; giữ khi luân hồi và lưu', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 0
+  s.spiritStones = new Decimal(1e30)
+  assert.equal(s.upgradeBuilding('linh_mach'), false, 'chưa đủ bậc tu vi')
+  assert.equal(s.upgradeBuilding('khong_co'), false)
+  s.stageIdx = 2
+  assert.equal(s.upgradeBuilding('linh_mach'), true)
+  assert.equal(s.dwelling.linh_mach, 1)
+  assert.equal(s.upgradeBuilding('linh_mach'), false, 'cấp 2 cần bậc 3')
+  const exp1 = s.expRate
+  s.stageIdx = 12
+  for (let i = 0; i < 12; i++) s.upgradeBuilding('linh_mach')
+  assert.equal(s.dwelling.linh_mach, DW.BUILDING_MAX_LEVEL)
+  assert.ok(s.expRate.gt(exp1))
+  assert.ok(s.extraPerk.exp > 0.2)
+  s.spiritStones = new Decimal(0)
+  s.stageIdx = 12
+  assert.equal(s.upgradeBuilding('dien_vo'), false, 'không đủ linh thạch')
+  // thưởng cụ thể
+  s.spiritStones = new Decimal(1e30)
+  for (const id of ['dien_vo', 'tang_kinh', 'luyen_dan']) for (let i = 0; i < 3; i++) s.upgradeBuilding(id)
+  assert.ok(s.extraPerk.atk > 0 && s.extraPerk.def > 0 && s.extraPerk.arts > 0 && s.extraPerk.double > 0)
+  s.arts.owned.pha_quan = 5
+  s.arts.slots[0] = 'pha_quan'
+  const a1 = s.artBonus.atk
+  s.dwelling.tang_kinh = 0
+  assert.ok(a1 > s.artBonus.atk, 'Tàng Kinh Các tăng hiệu quả công pháp')
+  // luân hồi giữ, lưu và tải chặn cấp
+  s.dwelling.dien_vo = 3
+  s.stageIdx = 12
+  s.reincarnate()
+  assert.equal(s.dwelling.dien_vo, 3)
+  s.save()
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.dwelling = { linh_mach: 99, dien_vo: -4, khong_co: 5 }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.dwelling.linh_mach, DW.BUILDING_MAX_LEVEL)
+  assert.equal(s2.dwelling.dien_vo, 0)
+  assert.ok(!('khong_co' in s2.dwelling))
+  delete raw.data.dwelling
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.deepEqual({ ...s3.dwelling }, DW.emptyDwelling(), 'save cũ không có công trình vẫn tải được')
+})
+
+ok('Luyện Khí Phòng làm rèn ra đồ hiếm hơn; Luyện Đan Phòng tăng tỉ lệ luyện gấp đôi', () => {
+  const avgRarity = (level) => {
+    const s = freshStore()
+    s.init()
+    s.stageIdx = 5
+    s.dwelling.luyen_khi = level
+    let total = 0
+    const n = 800
+    for (let i = 0; i < n; i++) {
+      const weights = EQ.FORGE_RARITY_WEIGHTS.map((w, k) => (k === 0 ? w : w * (1 + s.extraPerk.forge)))
+      total += EQ.generateItem('weapon', 0, weights).rarity
+    }
+    return total / n
+  }
+  assert.ok(avgRarity(10) > avgRarity(0) + 0.15)
+  // thật trong game: rèn bằng store
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 5
+  s.dwelling.luyen_khi = 10
+  assert.ok(Math.abs(s.extraPerk.forge - 0.8) < 1e-9)
+  s.addItem('ores', 'thiet_tinh', 50)
+  s.spiritStones = new Decimal(1e9)
+  const item = s.forge(0, 'weapon')
+  assert.ok(item && s.gear.bag.length === 1)
+  // Luyện Đan Phòng: rng 0.05 dưới ngưỡng cộng thêm 15% (cấp 10 x 1.5%)
+  const t = freshStore()
+  t.init()
+  t.stageIdx = 9
+  t.dwelling.luyen_dan = 10
+  t.spiritStones = new Decimal(1e6)
+  t.addItem('herbs', 'linh_thao', 30)
+  Math.random = () => 0.1
+  t.craft('tu_khi_dan', 3)
+  Math.random = realRandom
+  assert.equal(t.itemCount('tu_khi_dan'), 6)
+})
+
+ok('thám hiểm: dữ liệu hợp lệ, số chỗ theo cấp bậc tông môn, xác suất tăng theo sức mạnh và có trần', () => {
+  assert.equal(EX.MISSION_IDS.length, 5)
+  for (const [id, m] of Object.entries(EX.MISSIONS)) {
+    assert.ok(m.name && m.seconds > 0 && m.need >= 1 && m.need <= EX.MAX_PARTY && m.diff > 0 && m.stones > 0, id)
+  }
+  const secs = EX.MISSION_IDS.map((id) => EX.MISSIONS[id].seconds)
+  assert.ok(secs.every((v, i) => i === 0 || v > secs[i - 1]), 'nhiệm vụ sau dài hơn')
+  assert.deepEqual([0, 1, 2, 4, 5].map(EX.expeditionSlots), [1, 1, 2, 3, 3])
+  assert.ok(EX.successChance(2, 2) > EX.successChance(1, 2))
+  assert.ok(EX.successChance(0.01, 5) >= 0.1 && EX.successChance(1e9, 5) <= 0.95)
+  const weak = [disc('a', { grade: 0, level: 1 })]
+  const strong = [disc('a', { grade: 3, level: 15 }), disc('b', { grade: 2, level: 10 })]
+  assert.ok(EX.partyPower(strong) > EX.partyPower(weak) * 5)
+  assert.ok(EX.partyPower([disc('a', { element: 'kim' })], 'kim') > EX.partyPower([disc('a', { element: 'kim' })], 'moc'), 'cùng hệ tông môn mạnh hơn')
+})
+
+ok('phần thưởng thám hiểm: thất bại chỉ còn 25% linh thạch và thảo dược; thành công có tàn quyển hiếm hợp ải và đạo lộ', () => {
+  const m = EX.MISSIONS.vuc
+  const ok1 = EX.missionEffects(m, 20, true, { record: 100, path: 'kiem' })
+  const bad = EX.missionEffects(m, 20, false, { record: 100, path: 'kiem' })
+  assert.equal(bad.length, 2)
+  assert.ok(Math.abs(bad[0].base - m.stones * 0.25) < 1e-9)
+  assert.ok(ok1[0].base > bad[0].base * 3)
+  assert.ok(ok1.some((e) => e.id?.startsWith('cp_')) && ok1.some((e) => e.id?.startsWith('ln_')) && ok1.some((e) => e.id?.startsWith('qk_')))
+  for (const e of ok1) if (e.type === 'item') assert.ok(ALL_ITEMS[e.id], e.id)
+  for (let i = 0; i < 100; i++) {
+    for (const e of EX.missionEffects(m, 20, true, { record: 20, path: 'the' })) {
+      if (e.id?.startsWith('qk_')) { const sk = SK.SKILLS[e.id.slice(3)]; assert.ok(!sk.path || sk.path === 'the', e.id) }
+      if (e.id?.startsWith('cp_')) assert.ok(AR.ARTS[e.id.slice(3)].minAi <= 20, e.id)
+      if (e.id?.startsWith('ln_')) assert.ok(PT10.PETS[e.id.slice(3)].minAi <= 20, e.id)
+    }
+  }
+  const easy = EX.missionEffects(EX.MISSIONS.rung, 0, true, { record: 1 })
+  assert.ok(!easy.some((e) => e.id?.startsWith('cp_') || e.id?.startsWith('ln_')), 'nhiệm vụ dễ không có tàn quyển hiếm')
+})
+
+ok('cử đệ tử thám hiểm: điều kiện, đệ tử tạm bỏ việc, về nhận thưởng và trở lại việc cũ', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 3
+  const t0 = 1_000_000_000_000
+  s.disciples = [disc('a', { since: t0 }), disc('b', { since: t0, job: 'ore' }), disc('c', { since: t0, job: null })]
+  assert.equal(s.expeditionSlotCount, 1)
+  assert.equal(s.startExpedition('khong_co', ['a'], t0), false)
+  assert.equal(s.startExpedition('mach', ['a'], t0), false, 'cần ít nhất 2 đệ tử')
+  assert.equal(s.startExpedition('thu', ['a', 'b', 'c'], t0), false, 'chưa đủ bậc tu vi')
+  assert.equal(s.startExpedition('rung', ['a', 'a', 'khong_co'], t0), true)
+  assert.equal(s.disciples[0].away, true)
+  assert.equal(s.disciples[0].job, null)
+  assert.equal(s.disciples[0].prevJob, 'herb')
+  assert.equal(s.startExpedition('rung', ['b'], t0), false, 'hết chỗ (1 chỗ)')
+  assert.equal(s.assignJob('a', 'ore', t0), false, 'đang thám hiểm không đổi việc')
+  assert.equal(s.dismissDisciple('a'), false)
+  assert.equal(s.claimExpedition(0, t0 + 1000), null, 'chưa đủ giờ')
+  assert.equal(s.expeditionReady(s.expeditions[0], t0 + EX.MISSIONS.rung.seconds * 1000), true)
+  // thành công
+  const stones = s.spiritStones
+  Math.random = () => 0.0
+  const res = s.claimExpedition(0, t0 + EX.MISSIONS.rung.seconds * 1000)
+  Math.random = realRandom
+  assert.equal(res.success, true)
+  assert.ok(s.spiritStones.gt(stones))
+  assert.equal(s.expeditions.length, 0)
+  assert.equal(s.disciples[0].away, false)
+  assert.equal(s.disciples[0].job, 'herb')
+  assert.equal(s.disciples[0].prevJob, undefined)
+  assert.equal(s.stats.expeditions, 1)
+  assert.equal(s.achievementValue('expeditionsDone'), 1)
+  // thất bại: ít hơn, không tính thành tựu
+  s.startExpedition('rung', ['b'], t0)
+  Math.random = () => 0.999
+  const fail = s.claimExpedition(0, t0 + 1e9)
+  Math.random = realRandom
+  assert.equal(fail.success, false)
+  assert.equal(s.stats.expeditions, 1)
+  assert.equal(s.disciples[1].job, 'ore', 'về lại việc cũ')
+})
+
+ok('thám hiểm: nhiều chỗ khi bậc tông môn cao, đệ tử đang đi không đi hai nơi, thành công cộng Cống Hiến', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  s.joinSect('van_moc')
+  s.sect.total = 10000 // Phó Chưởng Môn
+  assert.equal(s.expeditionSlotCount, 3)
+  const t0 = 2_000_000_000_000
+  s.disciples = ['a', 'b', 'c', 'd', 'e'].map((u) => disc(u, { since: t0 }))
+  assert.equal(s.startExpedition('rung', ['a'], t0), true)
+  assert.equal(s.startExpedition('rung', ['a'], t0), false, 'a đang đi')
+  assert.equal(s.startExpedition('mach', ['b', 'c'], t0), true)
+  assert.equal(s.startExpedition('mo', ['d', 'e'], t0), true)
+  assert.equal(s.expeditions.length, 3)
+  assert.equal(s.startExpedition('rung', ['d'], t0), false, 'hết 3 chỗ')
+  const contrib = s.sect.contribution
+  Math.random = () => 0
+  s.claimExpedition(0, t0 + 1e9)
+  Math.random = realRandom
+  assert.ok(s.sect.contribution > contrib)
+  assert.equal(s.expeditions.length, 2)
+  // đoàn quá 5 người
+  s.disciples = ['a', 'b', 'c', 'd', 'e', 'f'].map((u) => disc(u))
+  s.expeditions = []
+  s.disciples.forEach((d) => { d.away = false })
+  assert.equal(s.startExpedition('mach', ['a', 'b', 'c', 'd', 'e', 'f'], t0), false, 'tối đa ' + EX.MAX_PARTY)
+  // thử thách Độc Hành: không đệ tử
+  s.challenge = 'doc_hanh'
+  assert.equal(s.startExpedition('rung', ['a'], t0), false)
+})
+
+ok('save/load thám hiểm: giữ đoàn, đệ tử đang đi, việc cũ; loại nhiệm vụ lạ, đệ tử lạ hoặc trùng; chạy được khi đã quá giờ', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  const t0 = Date.now() - 3 * 3600 * 1000
+  s.disciples = [disc('a', { since: t0 }), disc('b', { since: t0, job: 'guard' }), disc('c', { since: t0 })]
+  s.startExpedition('mach', ['a', 'b'], t0)
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.expeditions.length, 1)
+  assert.deepEqual([...s2.expeditions[0].uids], ['a', 'b'])
+  const da = s2.disciples.find((d) => d.uid === 'a')
+  assert.equal(da.away, true)
+  assert.equal(da.prevJob, 'herb')
+  assert.equal(da.job, null)
+  assert.equal(s2.disciples.find((d) => d.uid === 'c').away, undefined)
+  assert.equal(s2.expeditionReady(s2.expeditions[0]), true, '3 giờ trôi qua nên đã xong')
+  const res = s2.claimExpedition(0)
+  assert.ok(res)
+  assert.equal(s2.disciples.find((d) => d.uid === 'b').job, 'guard')
+  // dữ liệu hỏng
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.expeditions = [
+    { id: 'khong_co', uids: ['a'], since: 1 },
+    { id: 'rung', uids: ['a', 'khong_co', 'a'], since: 5 },
+    { id: 'rung', uids: ['a', 'c'], since: 6 },
+    { id: 'mach', uids: ['x'], since: 7 },
+  ]
+  raw.data.disciples[2].away = true // cờ "đang đi" mà không có thám hiểm nào: phải bị xoá
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.expeditions.length, 2)
+  assert.deepEqual([...s3.expeditions[0].uids], ['a'])
+  assert.deepEqual([...s3.expeditions[1].uids], ['c'], 'a chỉ thuộc một đoàn')
+  assert.equal(s3.disciples.find((d) => d.uid === 'b').away, undefined)
+  assert.equal(s3.expeditions[0].seconds, EX.MISSIONS.rung.seconds)
+  // save cũ không có thám hiểm vẫn tải được
+  delete raw.data.expeditions
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s4 = freshStore(true)
+  s4.init()
+  assert.deepEqual(s4.expeditions, [])
+})
+
+// =====================================================================
 // Giai đoạn 3: cảnh giới mới, luân hồi, Linh Điền, khoáng mạch, farm offline
 // =====================================================================
 const RB = await import('../src/game/reincarnation.js')

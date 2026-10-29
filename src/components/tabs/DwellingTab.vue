@@ -6,6 +6,7 @@ import { ITEMS, RECIPES, itemName } from '../../game/data.js'
 import { STAGES } from '../../game/constants.js'
 import { alchemyDoubleChance, alchemyExpNeeded } from '../../game/formulas.js'
 import { fmt, fmtPercent } from '../../game/format.js'
+import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage } from '../../game/dwelling.js'
 import { FORGE, FORGE_RARITY_WEIGHTS, RARITIES, SLOTS, SLOT_IDS, TIERS, itemFullName } from '../../game/equipment.js'
 
 const forgeTier = ref(0) // phẩm cấp đang chọn ở lò rèn
@@ -17,6 +18,9 @@ function forge(slot) {
 }
 
 const game = useGameStore()
+
+const buildingLocked = (id) => game.stageIdx < buildingNeedStage(id, game.dwelling[id])
+const canBuild = (id) => game.dwelling[id] < BUILDING_MAX_LEVEL && !buildingLocked(id) && game.spiritStones.gte(buildingCost(id, game.dwelling[id]))
 
 const alchemyNeed = computed(() => alchemyExpNeeded(game.alchemy.level))
 
@@ -50,6 +54,20 @@ function maxBatches(r) {
         Nâng cấp - {{ fmt(game.arrayCost) }} linh thạch
       </button>
       <div class="mt-1 text-center text-[11px] text-slate-500">Đang có: {{ fmt(game.spiritStones) }} linh thạch</div>
+    </div>
+
+    <div class="card space-y-1.5">
+      <div class="title-rule">Công trình (giữ khi luân hồi)</div>
+      <div v-for="id in BUILDING_IDS" :key="id" class="rounded bg-ink-900 p-1.5 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-white">{{ BUILDINGS[id].name }}</span>
+          <span class="text-gold-300">Cấp {{ game.dwelling[id] }}/{{ BUILDING_MAX_LEVEL }}</span>
+        </div>
+        <div class="text-[11px] text-slate-400">{{ BUILDINGS[id].text }}</div>
+        <button class="btn-gold mt-1 w-full py-1 text-[11px]" :disabled="!canBuild(id)" @click="game.upgradeBuilding(id)">
+          {{ game.dwelling[id] >= BUILDING_MAX_LEVEL ? 'Tối đa' : buildingLocked(id) ? `Cần ${STAGES[buildingNeedStage(id, game.dwelling[id])].fullName}` : `Nâng cấp - ${fmt(buildingCost(id, game.dwelling[id]))} linh thạch` }}
+        </button>
+      </div>
     </div>
 
     <div class="card">

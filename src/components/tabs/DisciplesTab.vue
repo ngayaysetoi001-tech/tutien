@@ -1,11 +1,13 @@
 <script setup>
 // DisciplesTab.vue - Đệ tử: thu nhận, giao việc, thu hoạch theo giờ thật, nâng cấp.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { ELEMENTS } from '../../game/elements.js'
 import { GRADES, JOBS, JOB_IDS, MAX_LEVEL, levelCap, levelCost, pending, recruitCost } from '../../game/disciples.js'
 import { itemName } from '../../game/data.js'
 import { fmt, fmtDuration } from '../../game/format.js'
+import { MAX_PARTY, MISSIONS, MISSION_IDS } from '../../game/expedition.js'
+import { STAGES } from '../../game/constants.js'
 import Icon from '../Icon.vue'
 
 const game = useGameStore()
@@ -24,6 +26,24 @@ function pendingText(d) {
   if (!p) return 'Đang nghỉ'
   return p.kind === 'stones' ? `${fmt(p.amount)} linh thạch` : `${itemName(p.id)} x${p.amount.toFixed(1)}`
 }
+
+// ---------- Thám hiểm ----------
+const picked = reactive({}) // { [missionId]: [uid, ...] } đệ tử đã chọn cho từng nhiệm vụ
+const idle = computed(() => game.disciples.filter((d) => !d.away))
+const sel = (m) => (picked[m] ??= [])
+function toggle(m, uid) {
+  const list = sel(m)
+  const i = list.indexOf(uid)
+  if (i >= 0) list.splice(i, 1)
+  else if (list.length < MAX_PARTY) list.push(uid)
+}
+const missionLock = (m) => (game.stageIdx < MISSIONS[m].minStage ? `Cần ${STAGES[MISSIONS[m].minStage].fullName}` : null)
+const chance = (m) => Math.round(game.expeditionChance(m, sel(m).filter((u) => idle.value.some((d) => d.uid === u))) * 100)
+const canGo = (m) => !missionLock(m) && game.expeditions.length < game.expeditionSlotCount && sel(m).filter((u) => idle.value.some((d) => d.uid === u)).length >= MISSIONS[m].need
+function go(m) {
+  if (game.startExpedition(m, sel(m))) picked[m] = []
+}
+const remaining = (e) => Math.max(0, Math.ceil((e.since + e.seconds * 1000 - now.value) / 1000))
 
 function onDismiss(d) {
   if (window.confirm(`Tiễn đệ tử ${d.name} rời đi? Không hoàn lại linh thạch.`)) game.dismissDisciple(d.uid)
@@ -46,13 +66,55 @@ function onDismiss(d) {
       </button>
     </div>
 
+    <div class="card space-y-1.5">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-white">Thám hiểm</div>
+        <div class="text-xs text-slate-400">Đang đi {{ game.expeditions.length }}/{{ game.expeditionSlotCount }}</div>
+      </div>
+      <p class="text-[11px] text-slate-400">Cử đệ tử đi theo giờ thật (kể cả khi đóng game). Sức mạnh đoàn càng lớn càng dễ thành công, thất bại chỉ mang về chút ít. Thêm chỗ bằng cấp bậc tông môn.</p>
+      <div v-for="(e, i) in game.expeditions" :key="i" class="flex items-center justify-between rounded bg-ink-900 p-1.5 text-xs">
+        <span class="text-slate-200">{{ MISSIONS[e.id].name }} ({{ e.uids.length }} đệ tử)</span>
+        <button class="btn-jade !px-2 !py-0.5 text-[11px]" :disabled="!game.expeditionReady(e, now)" @click="game.claimExpedition(i)">
+          {{ game.expeditionReady(e, now) ? 'Nhận thưởng' : fmtDuration(remaining(e)) }}
+        </button>
+      </div>
+      <div v-for="m in MISSION_IDS" :key="m" class="rounded border border-ink-600 p-1.5 text-xs" :class="{ 'opacity-60': missionLock(m) }">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-gold-200">{{ MISSIONS[m].name }}</span>
+          <span class="text-slate-400">{{ fmtDuration(MISSIONS[m].seconds) }} · cần ≥{{ MISSIONS[m].need }} đệ tử</span>
+        </div>
+        <div class="text-[11px] text-slate-500">
+          Thưởng: linh thạch, thảo dược<template v-if="MISSIONS[m].ore">, quặng</template><template v-if="MISSIONS[m].art">, công pháp</template><template v-if="MISSIONS[m].pet">, linh thú</template><template v-if="MISSIONS[m].skill">, võ kỹ</template>
+        </div>
+        <div v-if="missionLock(m)" class="text-[11px] text-cinnabar-400">🔒 {{ missionLock(m) }}</div>
+        <template v-else>
+          <div class="mt-1 flex flex-wrap gap-1">
+            <button
+              v-for="d in idle"
+              :key="d.uid"
+              class="rounded border px-1.5 py-0.5 text-[10px]"
+              :class="sel(m).includes(d.uid) ? 'border-jade-500/70 bg-jade-600/25 text-jade-300' : 'border-ink-600 bg-ink-800 text-slate-400'"
+              @click="toggle(m, d.uid)"
+            >
+              {{ d.name }} Lv{{ d.level }}
+            </button>
+            <span v-if="idle.length === 0" class="text-[11px] text-slate-500">Không còn đệ tử rảnh.</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between">
+            <span class="text-[11px] text-slate-300">Tỉ lệ thành công: <b :class="chance(m) >= 60 ? 'text-jade-300' : 'text-gold-300'">{{ chance(m) }}%</b></span>
+            <button class="btn-gold !px-3 !py-0.5 text-[11px]" :disabled="!canGo(m)" @click="go(m)">Cử đi</button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <div v-for="d in game.disciples" :key="d.uid" class="card">
       <div class="flex items-center justify-between">
         <div class="text-sm font-bold" :style="{ color: GRADES[d.grade].css }">
           {{ d.name }}
           <span class="text-[10px] font-normal text-slate-400">{{ GRADES[d.grade].name }} · <span :style="{ color: ELEMENTS[d.element].css }">{{ ELEMENTS[d.element].name }}</span></span>
         </div>
-        <div class="text-xs text-gold-300">Cấp {{ d.level }}/{{ Math.min(MAX_LEVEL, levelCap(game.stageIdx)) }}</div>
+        <div class="text-xs text-gold-300">{{ d.away ? 'Đang thám hiểm · ' : '' }}Cấp {{ d.level }}/{{ Math.min(MAX_LEVEL, levelCap(game.stageIdx)) }}</div>
       </div>
 
       <div class="mt-1.5 grid grid-cols-4 gap-1">
@@ -61,6 +123,7 @@ function onDismiss(d) {
           :key="j"
           class="rounded border px-0.5 py-1 text-[10px] font-semibold"
           :class="d.job === j ? 'border-jade-500/70 bg-jade-600/25 text-jade-300' : 'border-ink-600 bg-ink-800 text-slate-400'"
+          :disabled="d.away"
           :title="JOBS[j].desc"
           @click="game.assignJob(d.uid, j)"
         >

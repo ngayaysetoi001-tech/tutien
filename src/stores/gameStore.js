@@ -28,6 +28,8 @@ import { ELEMENT_IDS, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as AR from '../game/arts.js'
 import * as PT from '../game/pets.js'
+import { MAX_PARTY, MISSIONS, expeditionSlots, missionEffects, partyPower, successChance } from '../game/expedition.js'
+import { BUILDINGS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage, dwellingPerks, emptyDwelling } from '../game/dwelling.js'
 import { PATHS, PATH_MIN_REALM, pathPerk } from '../game/paths.js'
 import * as EQ from '../game/equipment.js'
 import { enemyStats, simulateFight } from '../game/battle.js'
@@ -89,7 +91,7 @@ function rollEventDelay() {
 
 /** State nhân vật mặc định cho một game mới. */
 /** Mọi khoá thưởng bổ sung (linh thú, thiên phú, công trình động phủ): cộng gộp ở extraPerk. */
-const ZERO_EXTRA = { atk: 0, hp: 0, def: 0, speed: 0, crit: 0, cd: 0, thorns: 0, luck: 0, stones: 0, exp: 0, arts: 0, disciple: 0, dao: 0, pill: 0, double: 0 }
+const ZERO_EXTRA = { atk: 0, hp: 0, def: 0, speed: 0, crit: 0, cd: 0, thorns: 0, luck: 0, stones: 0, exp: 0, arts: 0, disciple: 0, dao: 0, pill: 0, double: 0, forge: 0 }
 
 function createPlayerState(minRoot = 0) {
   return {
@@ -109,6 +111,8 @@ function createPlayerState(minRoot = 0) {
     timeBank: 0, // kho thời gian tích luỹ (giây), tiêu để tăng tốc x4; giữ khi luân hồi
     challenge: null, // Kiếp Thử Thách đang theo (xem challenges.js), null = kiếp thường
     challengeDone: false, // đã hoàn thành thử thách trong kiếp này
+    dwelling: emptyDwelling(), // cấp các công trình Động Phủ (giữ khi luân hồi)
+    expeditions: [], // thám hiểm đang đi: { id, uids, since (ms), seconds }
     pets: { owned: {}, active: [null, null] }, // Linh thú. owned: { id: cấp }, active: id linh thú ra trận
     arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
     skills: { owned: {}, slots: [null, null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
@@ -116,7 +120,7 @@ function createPlayerState(minRoot = 0) {
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
       breakthroughs: 0, failures: 0, tribulations: 0, playSeconds: 0,
-      kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0, dailyTasks: 0,
+      kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0, dailyTasks: 0, expeditions: 0,
     },
     settings: {
       particles: true, autoSave: true, autoRepeat: true, autoHeal: true, sound: true, music: true, autoBreak: false,
@@ -278,6 +282,10 @@ export const useGameStore = defineStore('game', {
     canChoosePath() {
       return !this.path && this.realmIdx >= PATH_MIN_REALM
     },
+    /** Số thám hiểm chạy cùng lúc (theo cấp bậc tông môn). */
+    expeditionSlotCount() {
+      return expeditionSlots(this.rankIdx)
+    },
     /** Số ô linh thú đã mở. */
     petSlots() {
       return PT.petSlotCount(this.realmIdx)
@@ -294,6 +302,7 @@ export const useGameStore = defineStore('game', {
     extraPerk() {
       const out = { ...ZERO_EXTRA }
       for (const [k, v] of Object.entries(this.petPerk)) out[k] += v
+      for (const [k, v] of Object.entries(dwellingPerks(this.dwelling))) out[k] += v
       return out
     },
     /** Số ô công pháp (bị động) đã mở. */
@@ -802,6 +811,74 @@ export const useGameStore = defineStore('game', {
     },
 
     // ------------------------------------------------------------
+    // Công trình Động Phủ
+    // ------------------------------------------------------------
+    /** Nâng một công trình lên một cấp (tốn linh thạch, cần bậc tu vi tương ứng). */
+    upgradeBuilding(id) {
+      const b = BUILDINGS[id]
+      const level = this.dwelling[id]
+      if (!b || level === undefined || level >= BUILDING_MAX_LEVEL || this.stageIdx < buildingNeedStage(id, level)) return false
+      const cost = buildingCost(id, level)
+      if (this.spiritStones.lt(cost)) return false
+      this.spiritStones = this.spiritStones.sub(cost)
+      this.dwelling[id] = level + 1
+      this.addLog(`${b.name} lên cấp ${level + 1} (-${fmt(cost)} linh thạch).`, 'good')
+      return true
+    },
+
+    // ------------------------------------------------------------
+    // Thám hiểm của đệ tử
+    // ------------------------------------------------------------
+    /** Xác suất thành công của nhiệm vụ `missionId` với đoàn gồm các đệ tử `uids` (để hiển thị trước). */
+    expeditionChance(missionId, uids) {
+      const party = uids.map((uid) => this.disciples.find((d) => d.uid === uid)).filter(Boolean)
+      return successChance(partyPower(party, this.sectDef?.element ?? null), MISSIONS[missionId].diff)
+    },
+
+    /** Cử đoàn đệ tử đi thám hiểm. Đệ tử đang đi thì tạm bỏ việc thường. Trả về false nếu không hợp lệ. */
+    startExpedition(missionId, uids, now = Date.now()) {
+      const m = MISSIONS[missionId]
+      if (!m || this.challenge === 'doc_hanh' || this.stageIdx < m.minStage || this.expeditions.length >= this.expeditionSlotCount) return false
+      const party = [...new Set(uids)].map((uid) => this.disciples.find((d) => d.uid === uid)).filter(Boolean)
+      if (party.length < m.need || party.length > MAX_PARTY || party.some((d) => d.away)) return false
+      for (const d of party) {
+        this.collectDisciple(d.uid, now) // chốt sản lượng trước khi đi
+        d.prevJob = d.job
+        d.job = null
+        d.away = true
+      }
+      this.expeditions.push({ id: missionId, uids: party.map((d) => d.uid), since: now, seconds: m.seconds })
+      this.addLog(`Cử ${party.length} đệ tử đi ${m.name}.`, 'event')
+      return true
+    },
+
+    /** Đã đủ thời gian để nhận kết quả chưa. */
+    expeditionReady(e, now = Date.now()) {
+      return now >= e.since + e.seconds * 1000
+    },
+
+    /** Nhận kết quả thám hiểm thứ `index`: tung thành công / thất bại, nhận thưởng, đệ tử về làm việc cũ. Trả về { success, texts } hoặc null. */
+    claimExpedition(index, now = Date.now()) {
+      const e = this.expeditions[index]
+      if (!e || !this.expeditionReady(e, now)) return null
+      const m = MISSIONS[e.id]
+      const party = e.uids.map((uid) => this.disciples.find((d) => d.uid === uid)).filter(Boolean)
+      const success = Math.random() < successChance(partyPower(party, this.sectDef?.element ?? null), m.diff)
+      const texts = this.applyEffects(missionEffects(m, this.stageIdx, success, { record: this.campaign.record, path: this.path }))
+      if (success && this.sect.id) this.addContribution(m.contribution)
+      for (const d of party) {
+        d.away = false
+        d.job = d.prevJob ?? null
+        delete d.prevJob
+        d.since = now
+      }
+      this.expeditions.splice(index, 1)
+      if (success) this.stats.expeditions += 1
+      this.addLog(`${m.name}: ${success ? 'thành công' : 'thất bại, chỉ mang về chút ít'}. ${texts.join(', ')}.`, success ? 'good' : 'bad')
+      return { success, texts }
+    },
+
+    // ------------------------------------------------------------
     // Linh thú
     // ------------------------------------------------------------
     /** Thu phục linh thú bằng Linh Thú Phách; tự cho ra trận nếu còn ô trống. */
@@ -1036,7 +1113,9 @@ export const useGameStore = defineStore('game', {
       const r = EQ.FORGE[tier]
       for (const [id, n] of Object.entries(r.ingredients)) this.removeItem(id, n)
       this.spiritStones = this.spiritStones.sub(r.stones)
-      const item = EQ.generateItem(slot, tier)
+      // Luyện Khí Phòng: tăng trọng số các độ hiếm cao
+      const weights = EQ.FORGE_RARITY_WEIGHTS.map((w, i) => (i === 0 ? w : w * (1 + this.extraPerk.forge)))
+      const item = EQ.generateItem(slot, tier, weights)
       this.addGear(item)
       this.stats.forged += 1
       this.addLog(`Rèn thành ${EQ.itemFullName(item)}!`, item.rarity >= 2 ? 'event' : 'good')
@@ -1102,6 +1181,7 @@ export const useGameStore = defineStore('game', {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
       if (key === 'aiRecord') return this.campaign.record
       if (key === 'skills') return Object.keys(this.skills.owned).length
+      if (key === 'expeditionsDone') return this.stats.expeditions
       if (key === 'petLevels') return Object.values(this.pets.owned).reduce((n, v) => n + v, 0)
       if (key === 'dailyTasks') return this.stats.dailyTasks ?? 0
       if (key === 'challengesDone') return Object.values(this.reincarnation.challenges).reduce((n, v) => n + v, 0)
@@ -1368,7 +1448,7 @@ export const useGameStore = defineStore('game', {
     /** Giao việc cho đệ tử (null = nghỉ ngơi). Thu phần đã tích luỹ trước khi đổi việc. */
     assignJob(uid, job, now = Date.now()) {
       const d = this.disciples.find((x) => x.uid === uid)
-      if (!d || (job !== null && !JOBS[job])) return false
+      if (!d || d.away || (job !== null && !JOBS[job])) return false
       this.collectDisciple(uid, now)
       d.job = job
       d.since = now
@@ -1406,7 +1486,7 @@ export const useGameStore = defineStore('game', {
 
     dismissDisciple(uid) {
       const idx = this.disciples.findIndex((x) => x.uid === uid)
-      if (idx < 0) return false
+      if (idx < 0 || this.disciples[idx].away) return false // đang thám hiểm thì chưa tiễn được
       this.collectDisciple(uid)
       this.disciples.splice(idx, 1)
       return true

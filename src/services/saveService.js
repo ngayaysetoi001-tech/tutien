@@ -12,6 +12,8 @@ import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
 import { MAX_PET_SLOTS, PETS, PET_MAX_LEVEL } from '../game/pets.js'
+import { MAX_PARTY, MISSIONS } from '../game/expedition.js'
+import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL } from '../game/dwelling.js'
 import { PATHS } from '../game/paths.js'
 import { MAX_SKILL_SLOTS } from '../game/skills.js'
 import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
@@ -52,6 +54,8 @@ export function serialize(state, now = Date.now()) {
       skills: JSON.parse(JSON.stringify(state.skills)),
       arts: JSON.parse(JSON.stringify(state.arts)),
       pets: JSON.parse(JSON.stringify(state.pets)),
+      dwelling: { ...state.dwelling },
+      expeditions: JSON.parse(JSON.stringify(state.expeditions)),
       path: state.path ?? null,
       challenge: state.challenge ?? null,
       daily: JSON.parse(JSON.stringify(state.daily)),
@@ -241,6 +245,26 @@ export function deserialize(save, defaults) {
       since: num(x.since, Date.now(), 0, Date.now()),
     })
   }
+  // Thám hiểm: nhiệm vụ có thật, đệ tử tồn tại và chỉ thuộc một đoàn; đệ tử "đang đi" phải nằm trong một thám hiểm
+  const away = new Set()
+  const expeditions = []
+  for (const e of Array.isArray(d.expeditions) ? d.expeditions : []) {
+    if (!e || !MISSIONS[e.id]) continue
+    const uids = [...new Set(Array.isArray(e.uids) ? e.uids : [])].filter((u) => discSeen.has(u) && !away.has(u)).slice(0, MAX_PARTY)
+    if (uids.length === 0) continue
+    uids.forEach((u) => away.add(u))
+    expeditions.push({ id: e.id, uids, since: num(e.since, Date.now(), 0, Date.now() + 1000), seconds: MISSIONS[e.id].seconds })
+  }
+  for (const x of disciples) {
+    const raw = d.disciples.find((y) => y && y.uid === x.uid)
+    if (away.has(x.uid)) {
+      x.away = true
+      x.prevJob = JOBS[raw?.prevJob] ? raw.prevJob : null
+      x.job = null
+    }
+  }
+  // Công trình Động Phủ: chỉ công trình có thật, cấp hợp lệ
+  const dwelling = Object.fromEntries(BUILDING_IDS.map((id) => [id, Math.floor(num(d.dwelling?.[id], 0, 0, BUILDING_MAX_LEVEL))]))
   // Cốt truyện: chỉ giữ cờ hợp lệ, chương và mục điển tịch có thật; danh hiệu suy ra từ kết cục
   const loreIds = new Set(LORE.map((l) => l.id))
   const pickIds = (obj, allowed) =>
@@ -278,6 +302,8 @@ export function deserialize(save, defaults) {
     skills: { owned, slots },
     arts: { owned: artsOwned, slots: artSlots },
     pets: { owned: petsOwned, active: petActive },
+    dwelling,
+    expeditions,
     path: PATHS[d.path] ? d.path : null,
     challenge: CHALLENGES[d.challenge] ? d.challenge : null,
     daily,
@@ -331,6 +357,7 @@ export function deserialize(save, defaults) {
       harvests: num(d.stats?.harvests, 0),
       questsDone: num(d.stats?.questsDone, 0),
       dailyTasks: num(d.stats?.dailyTasks, 0),
+      expeditions: num(d.stats?.expeditions, 0),
     },
     settings: {
       particles: d.settings?.particles !== false,
