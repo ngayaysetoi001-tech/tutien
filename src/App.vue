@@ -12,6 +12,7 @@ import { useUiStore } from './stores/uiStore.js'
 import OfflineModal from './components/OfflineModal.vue'
 import EventModal from './components/EventModal.vue'
 import StoryModal from './components/StoryModal.vue'
+import MeditateOverlay from './components/MeditateOverlay.vue'
 import { bindAudio } from './game/audioDirector.js'
 import { setAudioPrefs } from './game/audio.js'
 import { notify } from './services/notify.js'
@@ -76,7 +77,7 @@ onBeforeUnmount(() => {
             : 'pointer-events-none invisible absolute inset-x-0 top-0 h-[34%] min-h-[190px]'
         "
       >
-        <GameCanvas :active="ui.hasCanvas" />
+        <GameCanvas :active="ui.hasCanvas && !ui.meditate" />
       </div>
 
       <section class="min-h-0 flex-1">
@@ -89,6 +90,7 @@ onBeforeUnmount(() => {
       <EventModal />
       <StoryModal />
       <OfflineModal />
+      <MeditateOverlay />
     </main>
   </div>
 </template>

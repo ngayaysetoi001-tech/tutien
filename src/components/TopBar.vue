@@ -45,6 +45,18 @@ const showBreakChip = computed(() => game.canBreakthrough && ui.tab !== 'charact
       <div v-if="game.reincarnation.dao > 0" class="top-chip text-jade-300" title="Đạo Vận">
         <Icon name="reborn" :size="13" /><b>{{ game.reincarnation.dao }}</b>
       </div>
+      <button
+        v-if="game.timeBank > 0 || game.settings.warp"
+        class="top-chip !px-1.5 text-[11px]"
+        :class="game.settings.warp ? 'text-gold-300 ring-1 ring-gold-400' : 'text-slate-300'"
+        :title="'Kho thời gian: ' + Math.floor(game.timeBank / 60) + ' phút. Bật để chạy nhanh x4'"
+        @click="game.settings.warp = !game.settings.warp"
+      >
+        ⏩ {{ game.timeBank >= 3600 ? (game.timeBank / 3600).toFixed(1) + 'g' : Math.floor(game.timeBank / 60) + 'p' }}
+      </button>
+      <button class="top-chip !px-1.5 text-slate-300" aria-label="Thiền định (tiết kiệm pin)" title="Thiền định: tiết kiệm pin" @click="ui.meditate = true">
+        <Icon name="lotus" :size="15" />
+      </button>
       <button class="top-chip !px-1.5 text-slate-300" aria-label="Nhật ký" @click="ui.logOpen = true">
         <Icon name="log" :size="15" />
       </button>

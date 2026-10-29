@@ -7,6 +7,9 @@ export const SAVE_KEY = 'tutien-save-v1'
 export const SAVE_VERSION = 1
 export const AUTOSAVE_INTERVAL = 5 // giây
 export const OFFLINE_CAP_SECONDS = 8 * 3600 // tối đa 8 tiếng offline
+export const TIME_BANK_CAP = 24 * 3600 // kho thời gian tích luỹ tối đa 24 giờ
+export const WARP_FACTOR = 4 // tăng tốc: chạy nhanh gấp 4, mỗi giây thật tiêu 3 giây trong kho
+export const LOW_POWER_STEP = 0.5 // chế độ thiền định: tick mỗi 0.5 giây thay vì 0.1
 export const OFFLINE_MIN_SECONDS = 15 // dưới ngưỡng này không tính là "offline"
 export const LOG_LIMIT = 200
 
@@ -91,7 +94,7 @@ export const INVENTORY_GROUPS = [
 // ---- Các hằng số cân bằng game (xem formulas.js) ----
 export const BALANCE = {
   baseRequirement: 100, // linh khí cần cho tầng 1
-  requirementGrowth: 2.20, // mỗi bậc cần gấp 2.20 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
+  requirementGrowth: 2.22, // mỗi bậc cần gấp 2.22 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
   stageExpGrowth: 1.5, // mỗi bậc tăng tốc hấp thụ ~1.5 lần
   baseSuccessRate: 0.9, // tỉ lệ đột phá bậc đầu
   successDropPerStage: 0.03, // giảm mỗi bậc

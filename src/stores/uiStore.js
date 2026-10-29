@@ -31,6 +31,7 @@ export const useUiStore = defineStore('ui', {
     seen: initial().seen ?? {}, // màn đã ghé thăm (để chấm "mới" ở màn vừa mở khoá)
     legacySeen: initial().seen === null, // chưa từng lưu: coi mọi màn đang mở là đã thấy
     logOpen: false, // bảng nhật ký đầy đủ (mở từ thanh trên)
+    meditate: false, // chế độ thiền định: ẩn giao diện, ngừng vẽ cảnh, tick thưa để tiết kiệm pin (không lưu)
   }),
   getters: {
     /** Màn hiện tại có cảnh PixiJS không (Nhân Vật, Bí Cảnh). */

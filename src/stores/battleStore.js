@@ -28,7 +28,8 @@ const AUTO_HEAL_BELOW = 0.35
 
 /** Hiệu ứng hình ảnh/âm thanh chỉ phát khi người chơi đang xem màn Vượt Ải (trận vẫn chạy ngầm ở màn khác). */
 const fx = (name, payload) => {
-  if (useUiStore().tab === 'battle') emit(name, payload)
+  const ui = useUiStore()
+  if (ui.tab === 'battle' && !ui.meditate) emit(name, payload)
 }
 
 const emptyRun = () => ({ kills: 0, stones: new Decimal(0), items: {}, gear: [], wins: 0 })
@@ -417,6 +418,7 @@ export const useBattleStore = defineStore('battle', {
         const gear = kind === 'lord' && Math.random() < 0.6 ? EQ.generateLegend(slot, C.themeOf(n).idx) : EQ.generateItem(slot, C.themeOf(n).idx, EQ.DROP_RARITY_WEIGHTS)
         game.addGear(gear)
         this.run.gear.push(EQ.itemFullName(gear))
+        if (this.run.gear.length > 50) this.run.gear.shift() // tránh phình bộ nhớ khi để chạy nhiều giờ
         game.addLog(`Rơi trang bị: ${EQ.itemFullName(gear)}!`, gear.rarity >= 2 ? 'event' : 'good')
       }
       for (const { id, count } of loot) {

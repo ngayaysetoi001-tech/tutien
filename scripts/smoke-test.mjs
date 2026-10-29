@@ -603,8 +603,13 @@ ok('kỳ ngộ: hiện hộp thoại, không dừng chiến đấu, chọn phư�
   assert.equal(s.event.phase, 'result')
   assert.ok(s.event.resultText.length > 0)
   assert.equal(s.stats.events, 1)
-  s.closeEvent()
+  // kỳ ngộ có thể nối chuỗi: đi tiếp bằng phương án an toàn cho tới khi kết thúc
+  for (let i = 0; i < 6 && s.event; i++) {
+    if (s.event.phase === 'choose') s.chooseEvent(RANDOM_EVENTS.find((e) => e.id === s.event.id).safe)
+    s.closeEvent()
+  }
   assert.equal(s.event, null)
+
 })
 
 ok('kỳ ngộ bỏ ngỏ: tự chọn phương án an toàn sau 90 giây rồi đóng, ghi nhận vào thống kê', () => {
@@ -2495,6 +2500,165 @@ ok('thông báo: không có API thì không lỗi; cài đặt thông báo lưu 
   const s2 = freshStore(true)
   s2.init()
   assert.equal(s2.settings.notify, true)
+})
+
+// =====================================================================
+// Kho thời gian, tăng tốc, chế độ thiền định, giới hạn bộ nhớ
+// =====================================================================
+const CON9 = await import('../src/game/constants.js')
+
+ok('kho thời gian: phần offline vượt giới hạn vào kho, tối đa 24 giờ; phần trong giới hạn không vào', () => {
+  const s = freshStore()
+  s.init()
+  const cap = s.offlineCap
+  s.offlineReport = null
+  s.applyOffline(cap - 100)
+  assert.equal(s.timeBank, 0)
+  s.applyOffline(cap + 1000)
+  assert.equal(s.timeBank, 1000)
+  s.applyOffline(cap + 100 * 3600)
+  assert.equal(s.timeBank, CON9.TIME_BANK_CAP, 'tối đa 24 giờ')
+  s.addTimeBank(-5)
+  s.addTimeBank(0)
+  assert.equal(s.timeBank, CON9.TIME_BANK_CAP)
+})
+
+ok('kho thời gian: điểm danh ngày 7 thêm 1 giờ, xong 3 nhiệm vụ ngày thêm 30 phút', () => {
+  const s = freshStore()
+  s.init()
+  s.daily = DY.emptyDaily()
+  s.daily.streak = 6
+  s.daily.day = '2026-05-01'
+  s.daily.claimed = false
+  s.claimDaily()
+  assert.equal(s.timeBank, 3600)
+  const t = freshStore()
+  t.init()
+  t.daily = { day: '2026-05-01', streak: 0, claimed: true, bonus: false, tasks: [] }
+  for (let i = 0; i < 3; i++) t.daily.tasks.push({ tpl: 'kills', target: 1, start: 0, claimed: false })
+  t.stats.kills = 5
+  for (let i = 0; i < 3; i++) t.claimDailyTask(i)
+  assert.equal(t.timeBank, DY.DAILY_BONUS_TIME)
+})
+
+ok('tăng tốc: bật thì chạy nhanh gấp 4 và tiêu 3 giây kho mỗi giây thật; tắt thì không tiêu; hết kho tự tắt', () => {
+  const run = (warp, bank) => {
+    const s = freshStore()
+    s.init()
+    s.spiritRoot = { ...s.spiritRoot, mult: 1 } // căn cốt ngẫu nhiên mỗi lần: cố định để so sánh
+    s.settings.autoRepeat = false // chỉ đo tu luyện thụ động
+    s.settings.warp = warp
+    s.timeBank = bank
+    const exp0 = s.exp
+    for (let i = 0; i < 100; i++) s.warpTick(0.1) // 10 giây thật
+    return { s, gained: s.exp.sub(exp0).toNumber() }
+  }
+  const off = run(false, 1000)
+  const on = run(true, 1000)
+  assert.equal(off.s.timeBank, 1000)
+  assert.ok(Math.abs(on.gained / off.gained - 4) < 0.05, 'nhanh x4: ' + on.gained / off.gained)
+  assert.ok(Math.abs(on.s.timeBank - (1000 - 30)) < 0.5, 'tiêu 3 giây mỗi giây thật')
+  assert.equal(on.s.settings.warp, true)
+  // kho ít: chạy một lúc rồi tự tắt, không âm
+  const low = run(true, 5)
+  assert.ok(low.s.timeBank >= 0 && low.s.timeBank < 0.1)
+  assert.equal(low.s.settings.warp, false, 'hết kho thì tự tắt')
+  assert.ok(low.gained > off.gained && low.gained < on.gained)
+  // bật tăng tốc khi kho rỗng thì tự tắt ngay
+  const none = run(true, 0)
+  assert.equal(none.s.settings.warp, false)
+  assert.ok(Math.abs(none.gained / off.gained - 1) < 0.02)
+})
+
+ok('kho thời gian lưu và tải, bị chặn trong khoảng hợp lệ; tăng tốc không được lưu', () => {
+  const s = freshStore()
+  s.init()
+  s.timeBank = 4321
+  s.settings.warp = true
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.timeBank, 4321)
+  assert.equal(s2.settings.warp, false)
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.timeBank = 1e12
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.timeBank, CON9.TIME_BANK_CAP)
+  raw.data.timeBank = -50
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s4 = freshStore(true)
+  s4.init()
+  assert.equal(s4.timeBank, 0)
+})
+
+ok('vòng lặp: bình thường tick mỗi bước; thiền định chỉ tick mỗi 0.5 giây; nghỉ lâu thì tính như offline', () => {
+  const s = freshStore()
+  s.init()
+  const ui = useUiStoreEarly()
+  const t0 = 1_000_000
+  s.syncLoopClock(t0)
+  assert.equal(s.loopStep(t0 + 100), true)
+  assert.equal(s.loopStep(t0 + 200), true)
+  // thiền định: bỏ qua các bước ngắn
+  ui.meditate = true
+  s.syncLoopClock(t0)
+  const play = s.stats.playSeconds
+  assert.equal(s.loopStep(t0 + 100), false)
+  assert.equal(s.loopStep(t0 + 300), false)
+  assert.equal(s.loopStep(t0 + 500), true)
+  assert.ok(Math.abs(s.stats.playSeconds - play - 0.5) < 1e-9, 'tick gộp 0.5 giây')
+  ui.meditate = false
+  // nghỉ lâu hơn 5 giây: xử lý như offline
+  s.syncLoopClock(t0)
+  s.offlineReport = null
+  assert.equal(s.loopStep(t0 + 60_000), true)
+  assert.ok(s.offlineReport, 'có báo cáo offline')
+})
+
+ok('thiền định: hiệu ứng chiến đấu không phát; chiến đấu vẫn chạy bình thường', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 10
+  const ui = useUiStoreEarly()
+  ui.tab = 'battle'
+  const hits = []
+  const off = onEvent('battle-hit', (e) => hits.push(e.damage))
+  const b = useBattleStore()
+  runFor(s, 20)
+  const loud = hits.length
+  assert.ok(loud > 0, 'xem màn Vượt Ải thì có hiệu ứng')
+  ui.meditate = true
+  const kills = s.stats.kills
+  runFor(s, 20)
+  off()
+  assert.equal(hits.length, loud, 'thiền định thì không phát hiệu ứng')
+  assert.ok(s.stats.kills > kills, 'vẫn đánh và hạ yêu thú')
+  ui.meditate = false
+})
+
+ok('bộ nhớ: để chạy nhiều giờ thì nhật ký, danh sách trang bị rơi, túi đồ đều bị chặn', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 24
+  s.stats.maxStage = 24
+  s.campaign.best = 0
+  const b = useBattleStore()
+  Math.random = () => 0.01 // luôn rơi đồ
+  for (let i = 0; i < 400; i++) {
+    b.run.gear.push('x')
+    if (b.run.gear.length > 50) b.run.gear.shift()
+  }
+  assert.ok(b.run.gear.length <= 50)
+  // chạy chiến đấu nhiều ải (rơi nhiều trang bị): danh sách rơi không vượt 50, nhật ký không vượt giới hạn
+  s.settings.autoRepeat = true
+  for (let t = 0; t < 4000; t++) s.tick(0.5)
+  Math.random = realRandom
+  assert.ok(b.run.gear.length <= 50, 'danh sách rơi ' + b.run.gear.length)
+  assert.ok(s.log.length <= CON9.LOG_LIMIT, 'nhật ký ' + s.log.length)
+  assert.ok(s.gear.bag.length <= EQ.BAG_LIMIT, 'túi trang bị ' + s.gear.bag.length)
+  assert.ok(Object.keys(b.run.items).length < 200)
 })
 
 // =====================================================================

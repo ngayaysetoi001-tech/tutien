@@ -13,6 +13,9 @@ import {
   LOG_LIMIT,
   MAX_STAGE_IDX,
   OFFLINE_CAP_SECONDS,
+  LOW_POWER_STEP,
+  TIME_BANK_CAP,
+  WARP_FACTOR,
   OFFLINE_MIN_SECONDS,
   SPIRIT_ROOTS,
   STAGES,
@@ -32,7 +35,7 @@ import { MIN_STAGE, daoGain, perkById, perkCost } from '../game/reincarnation.js
 import { AUTOMATIONS, AUTOMATION_INTERVAL, SALVAGE_BAG_LIMIT, automationById, automationUnlocked } from '../game/automation.js'
 import { CHALLENGES, challengeReward } from '../game/challenges.js'
 import {
-  DAILY_BONUS_REWARD, DAILY_TASK_COUNT, DAILY_TASK_REWARD, DAILY_TEMPLATE_IDS, STREAK_DAYS, dailyArtPool, dailyReward, dayKey, emptyDaily, nextRewardDay, previousDayKey,
+  DAILY_BONUS_REWARD, DAILY_BONUS_TIME, DAILY_TASK_COUNT, DAILY_TASK_REWARD, DAILY_TEMPLATE_IDS, STREAK_DAYS, dailyArtPool, dailyReward, dayKey, emptyDaily, nextRewardDay, previousDayKey,
 } from '../game/daily.js'
 import { BOSS_CHOICE_SECONDS, bossChoiceOptions } from '../game/bossChoice.js'
 import { CROPS, cropById, mineAmount, mineInfo, plotCount, seedCost, MAX_PLOTS } from '../game/garden.js'
@@ -47,6 +50,7 @@ import { LORE } from '../game/lore.js'
 import { EVENT_AUTO_SECONDS, EVENT_INTERVAL, EVENT_RESULT_SECONDS, RANDOM_EVENTS, eventById } from '../game/randomEvents.js'
 import { ACHIEVEMENTS, achievementReward } from '../game/achievements.js'
 import { useBattleStore } from './battleStore.js'
+import { useUiStore } from './uiStore.js'
 import {
   clearLocal,
   deserialize,
@@ -98,6 +102,7 @@ function createPlayerState(minRoot = 0) {
     element: ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)], // hệ ngũ hành chủ đạo
     path: null, // Đạo Lộ (xem paths.js): chọn khi đạt Trúc Cơ, chọn lại sau luân hồi
     daily: emptyDaily(), // điểm danh ngày và nhiệm vụ ngày (giữ khi luân hồi)
+    timeBank: 0, // kho thời gian tích luỹ (giây), tiêu để tăng tốc x4; giữ khi luân hồi
     challenge: null, // Kiếp Thử Thách đang theo (xem challenges.js), null = kiếp thường
     challengeDone: false, // đã hoàn thành thử thách trong kiếp này
     arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
@@ -111,6 +116,7 @@ function createPlayerState(minRoot = 0) {
     settings: {
       particles: true, autoSave: true, autoRepeat: true, autoHeal: true, sound: true, music: true, autoBreak: false,
       notify: false, // thông báo trình duyệt khi linh khí đầy lúc tab ở nền
+      warp: false, // đang tăng tốc (không lưu)
       auto: Object.fromEntries(AUTOMATIONS.map((a) => [a.id, false])), // tự động hoá đã mở khoá: bật / tắt từng cái
       autoCraft: null, // id công thức tự luyện
     },
@@ -363,19 +369,49 @@ export const useGameStore = defineStore('game', {
     startLoop() {
       if (loopHandle) return
       lastTs = Date.now()
-      loopHandle = setInterval(() => {
-        const now = Date.now()
-        const dt = (now - lastTs) / 1000
-        lastTs = now
-        // Khoảng nghỉ lớn (máy ngủ / tab bị đóng băng) được xử lý như offline
-        if (dt > 5) this.applyOffline(dt)
-        else this.tick(dt)
-        saveAcc += dt
-        if (saveAcc >= AUTOSAVE_INTERVAL) {
-          saveAcc = 0
-          if (this.settings.autoSave) this.save()
-        }
-      }, 100)
+      loopHandle = setInterval(() => this.loopStep(), 100)
+    },
+
+    /** Đặt lại mốc đồng hồ của vòng lặp (dùng khi bắt đầu hoặc trong test). */
+    syncLoopClock(now = Date.now()) {
+      lastTs = now
+      saveAcc = 0
+    },
+
+    /**
+     * Một bước của vòng lặp (gọi mỗi 100 ms). Chế độ thiền định chỉ tick mỗi LOW_POWER_STEP giây để đỡ tốn pin.
+     * Trả về true nếu đã chạy một nhịp.
+     */
+    loopStep(now = Date.now()) {
+      const dt = (now - lastTs) / 1000
+      if (useUiStore().meditate && dt < LOW_POWER_STEP) return false
+      lastTs = now
+      // Khoảng nghỉ lớn (máy ngủ / tab bị đóng băng) được xử lý như offline
+      if (dt > 5) this.applyOffline(dt)
+      else this.warpTick(dt)
+      saveAcc += dt
+      if (saveAcc >= AUTOSAVE_INTERVAL) {
+        saveAcc = 0
+        if (this.settings.autoSave) this.save()
+      }
+      return true
+    },
+
+    /** Cộng thời gian vào kho (tối đa TIME_BANK_CAP). */
+    addTimeBank(seconds) {
+      if (!(seconds > 0)) return
+      this.timeBank = Math.min(TIME_BANK_CAP, this.timeBank + seconds)
+    },
+
+    /** Một nhịp có tính tăng tốc: bật tăng tốc thì chạy thêm tối đa WARP_FACTOR - 1 nhịp, mỗi nhịp thêm tiêu dt giây trong kho. */
+    warpTick(dt) {
+      let extra = 0
+      if (this.settings.warp) {
+        extra = this.timeBank > 0 && dt > 0 ? Math.min(WARP_FACTOR - 1, Math.floor(this.timeBank / dt)) : 0
+        if (extra === 0) this.settings.warp = false // hết kho thì tự tắt
+      }
+      if (extra > 0) this.timeBank = Math.max(0, this.timeBank - extra * dt)
+      for (let i = 0; i <= extra; i++) this.tick(dt)
     },
 
     stopLoop() {
@@ -452,6 +488,7 @@ export const useGameStore = defineStore('game', {
       if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < OFFLINE_MIN_SECONDS) return
       const cap = this.offlineCap
       const seconds = Math.min(elapsedSeconds, cap)
+      this.addTimeBank(elapsedSeconds - cap) // phần vắng mặt vượt giới hạn không bị mất hẳn mà vào kho thời gian
       const gain = F.offlineGain({
         seconds,
         expRate: this.expRate,
@@ -1535,6 +1572,7 @@ export const useGameStore = defineStore('game', {
       const texts = this.applyEffects(dailyReward(day, pool[Math.floor(Math.random() * pool.length)]))
       d.streak += 1
       d.claimed = true
+      if (day === STREAK_DAYS) this.addTimeBank(3600) // ngày 7: thêm 1 giờ vào kho thời gian
       this.addLog(`Điểm danh ngày ${day}/${STREAK_DAYS} (chuỗi ${d.streak} ngày): ${texts.join(', ')}.`, 'event')
       return true
     },
@@ -1556,6 +1594,7 @@ export const useGameStore = defineStore('game', {
       this.stats.dailyTasks = (this.stats.dailyTasks ?? 0) + 1
       if (!this.daily.bonus && this.daily.tasks.every((x) => x.claimed)) {
         this.daily.bonus = true
+        this.addTimeBank(DAILY_BONUS_TIME)
         const texts = this.applyEffects(DAILY_BONUS_REWARD)
         this.addLog(`Xong cả ${DAILY_TASK_COUNT} nhiệm vụ ngày: ${texts.join(', ')}.`, 'event')
       }

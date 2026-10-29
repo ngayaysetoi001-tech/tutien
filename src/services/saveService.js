@@ -5,7 +5,7 @@
 // Decimal được lưu dưới dạng chuỗi để JSON không mất độ chính xác.
 // =====================================================================
 import Decimal from 'break_infinity.js'
-import { MAX_STAGE_IDX, SAVE_KEY, SAVE_VERSION, SPIRIT_ROOTS } from '../game/constants.js'
+import { MAX_STAGE_IDX, SAVE_KEY, SAVE_VERSION, SPIRIT_ROOTS, TIME_BANK_CAP } from '../game/constants.js'
 import { DUNGEONS, ITEMS, RECIPES } from '../game/data.js'
 import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
@@ -53,6 +53,7 @@ export function serialize(state, now = Date.now()) {
       path: state.path ?? null,
       challenge: state.challenge ?? null,
       daily: JSON.parse(JSON.stringify(state.daily)),
+      timeBank: Math.floor(state.timeBank ?? 0),
       challengeDone: !!state.challengeDone,
       gear: JSON.parse(JSON.stringify(state.gear)),
       achTier: { ...state.achTier },
@@ -265,6 +266,7 @@ export function deserialize(save, defaults) {
     path: PATHS[d.path] ? d.path : null,
     challenge: CHALLENGES[d.challenge] ? d.challenge : null,
     daily,
+    timeBank: Math.floor(num(d.timeBank, 0, 0, TIME_BANK_CAP)),
     challengeDone: d.challengeDone === true,
     gear: { bag, equipped },
     achTier,
@@ -324,6 +326,7 @@ export function deserialize(save, defaults) {
       music: d.settings?.music !== false,
       autoBreak: d.settings?.autoBreak === true,
       notify: d.settings?.notify === true,
+      warp: false,
       auto: Object.fromEntries(AUTOMATION_IDS.map((id) => [id, d.settings?.auto?.[id] === true])),
       autoCraft: RECIPES.some((r) => r.id === d.settings?.autoCraft) ? d.settings.autoCraft : null,
     },

@@ -179,6 +179,16 @@ function createBot(s, b) {
       if (s.tribulation.active) return
     }
 
+    // Phần thưởng: rương mốc ải, điểm danh ngày, nhiệm vụ ngày, chọn 1 trong 3 phần thưởng boss
+    while (s.milestoneClaimable) s.claimMilestone()
+    if (s.daily.day && !s.daily.claimed) s.claimDaily()
+    s.daily.tasks.forEach((t, i) => { if (!t.claimed && s.dailyTaskDone(t)) s.claimDailyTask(i) })
+    if (s.bossChoice) {
+      const order = ['exp', 'stat', 'art', 'skill', 'stones']
+      const best = [...s.bossChoice.options].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))[0]
+      s.chooseBossReward(s.bossChoice.options.indexOf(best))
+    }
+
     // Đạo lộ: chọn ngay khi mở
     if (s.canChoosePath) s.choosePath(PATH)
 

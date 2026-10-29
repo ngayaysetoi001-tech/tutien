@@ -179,7 +179,7 @@ Chiến đấu không còn là chọn bí cảnh mà là **chuỗi ải vô hạ
 | `AI_GROWTH` | 1.006 | mỗi ải thêm 0.6% (cộng dồn) ngoài tăng theo bậc |
 | `AI_EXP_PER_CLEAR` | 0.02 | +2% linh khí mỗi ải |
 | `INCOME_AI_BASE/PER_STAGE` | 10 / 8 | trần ải tính thu nhập theo bậc |
-| `BALANCE.requirementGrowth` | 2.20 | tăng từ 2.1 để bù thu nhập từ ải, công pháp và trang bị |
+| `BALANCE.requirementGrowth` | 2.22 | tăng từ 2.1 để bù thu nhập từ ải, công pháp, trang bị và các phần thưởng mốc |
 
 Nhịp đo được: kiếp đầu 15-27 giờ ảo (người chơi trực tuyến) và 23-28 giờ (ghé 30 phút/lần); kiếp 2 còn 7-11 giờ; kiếp 3 trở đi 5-8 giờ. Mỗi bậc đầu 1-6 phút, giữa 4-40 phút, cuối 1-7 giờ. Ải cao nhất cuối kiếp 1 khoảng 150-190.
 
@@ -232,3 +232,12 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Thông báo khi linh khí đầy** (tuỳ chọn ở Cài Đặt, `src/services/notify.js`): chỉ khi trang / PWA còn mở ở nền, vì game không có máy chủ đẩy nên không báo được khi đã đóng hẳn.
 - **Chọn 1 trong 3 phần thưởng boss** (`src/game/bossChoice.js`): lần đầu hạ Tiểu Boss / Đại Boss / Chúa Tể của một ải mới thì chọn một trong ba phần thưởng khác loại (linh thạch, chỉ số vĩnh viễn, công pháp tàn quyển, võ kỹ tàn quyển, +% linh khí). Không chọn sau 10 phút thì tự lấy phương án đầu.
 - **Chuỗi kỳ ngộ nhiều bước:** kỳ ngộ có thể nối sang bước kế (`next`, `chainOnly` trong `randomEvents.js`). Hiện có chuỗi Cổ Mộ (3 bước, có giao chiến) và chuỗi Hồ Ly (3 bước). Bỏ ngỏ thì chuỗi dừng ở phương án an toàn.
+
+## Hiện dần, mục tiêu, kho thời gian, thiền định
+
+- **Hiện dần hệ thống** (`UNLOCKS` trong `src/game/screens.js`): game mới chỉ có 3 màn (Nhân Vật, Vượt Ải, Cài Đặt), các màn khác mở theo tiến độ (ví dụ Động Phủ và Linh Điền ở Luyện Khí Tầng 2, Tông Môn ở Tầng 3, Công Pháp và Trang Bị khi hạ Tiểu Boss đầu tiên, Luân Hồi ở Trúc Cơ). Màn vừa mở có chấm đỏ. Thanh điều hướng tự chia đều các hàng.
+- **Mục tiêu kế tiếp** (`src/game/goals.js`): thanh luôn hiện một đích gần kèm tiến độ (đột phá, Tiểu Boss/Đại Boss kế tiếp, rương mốc, điểm danh, màn sắp mở khoá), việc đã sẵn sàng lên đầu.
+- **Rương mốc ải:** 10 mốc (ải 10, 25, 50, 75, 100, 150, 200, 300, 400, 500), mỗi mốc nhận một lần theo kỷ lục mọi kiếp, thưởng vĩnh viễn (chỉ số, công pháp tàn quyển, thỉnh thoảng +1% linh khí).
+- **Kho thời gian + Tăng tốc x4:** phần vắng mặt vượt giới hạn offline không mất mà vào kho (tối đa 24 giờ), điểm danh ngày 7 thêm 1 giờ, xong 3 nhiệm vụ ngày thêm 30 phút. Bật nút ⏩ ở thanh trên để chạy nhanh gấp 4, mỗi giây thật tiêu 3 giây trong kho; hết kho tự tắt.
+- **Chế độ thiền định** (nút hoa sen ở thanh trên): màn hình tối giản, ngừng vẽ cảnh và tắt hiệu ứng, vòng lặp chỉ tick mỗi 0.5 giây để tiết kiệm pin. Game vẫn chạy bình thường, chạm để thoát.
+- Giới hạn bộ nhớ khi để chạy lâu: danh sách trang bị rơi tối đa 50 mục, nhật ký 200 dòng, túi trang bị 40 món; có test chạy nhiều giờ giả lập.
