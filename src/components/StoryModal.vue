@@ -52,8 +52,8 @@ function tap() {
 
       <div class="panel max-h-[80%] overflow-y-auto p-4" @click="tap">
         <div class="mb-2 flex items-center justify-between gap-2">
-          <div class="title-rule flex-1 !text-[11px]">{{ chapter.title }}</div>
-          <span v-if="view.replay" class="text-[10px] text-slate-500">đọc lại</span>
+          <div class="title-rule flex-1 !text-xs">{{ chapter.title }}</div>
+          <span v-if="view.replay" class="text-[11px] text-slate-500">đọc lại</span>
         </div>
         <div class="mb-2 h-0.5 overflow-hidden rounded bg-white/10">
           <div class="h-full bg-gold-400/70 transition-all duration-300" :style="{ width: progress * 100 + '%' }"></div>
@@ -93,11 +93,11 @@ function tap() {
             @click="game.storyChoose(i)"
           >
             <span>{{ game.storyText(opt.label) }}</span>
-            <span v-if="game.optionLock(opt)" class="text-[11px] font-normal text-cinnabar-400">🔒 {{ game.optionLock(opt) }}</span>
+            <span v-if="game.optionLock(opt)" class="text-xs font-normal text-cinnabar-400">🔒 {{ game.optionLock(opt) }}</span>
           </button>
         </div>
 
-        <div v-else class="mt-3 flex items-center justify-end gap-1 text-[11px] text-slate-500">
+        <div v-else class="mt-3 flex items-center justify-end gap-1 text-xs text-slate-500">
           Chạm để tiếp tục <Icon name="down" :size="12" class="animate-bounce" />
         </div>
       </div>

@@ -250,3 +250,10 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Thiên Phú** (`src/game/talents.js`, màn Nhân Vật): mỗi kiếp bốc 3 thiên phú (13 loại, ba độ hiếm), chọn 1; bốc lại bằng 3 Đạo Vận; kiếp sau bốc lại.
 - **Đại Thừa và Độ Kiếp:** thêm 2 đại cảnh giới (6 bậc), tổng 33 bậc, mỗi bước có thiên kiếp riêng (Hợp Thể → Đại Thừa 9 đạo, Đại Thừa → Độ Kiếp 12 đạo). Từ sau Hợp Thể hệ số tăng yêu cầu đột phá nhẹ hơn (1.62 thay vì 2.22) để các bậc cuối không kéo dài vô lý. Nhân vật có thêm vòng sáng và đốm sáng bay lên.
 - Sửa lỗi: từ vòng ải thứ hai (sau ải 80) trang bị rơi luôn là phẩm cấp cao nhất thay vì quay về phẩm cấp thấp theo bối cảnh.
+
+## Giao diện (biểu tượng + 5 nhóm)
+
+- **Thanh dưới 5 nhóm**: Tu Luyện (Nhân Vật, Động Phủ, Linh Điền, Luân Hồi), Vượt Ải (Vượt Ải, Võ Kỹ, Công Pháp, Linh Thú), Hành Trang (Trang Bị, Túi Đồ), Môn Phái (Tông Môn, Đệ Tử), Thêm (Cốt Truyện, Thành Tựu, Cài Đặt). Màn con chọn bằng chip ở đầu màn hình; nhóm/màn hiện dần khi mở khoá.
+- **Lưới biểu tượng + bảng trượt**: Võ Kỹ, Công Pháp, Linh Thú, Trang Bị, Túi Đồ hiển thị bằng ô icon (khung theo độ hiếm, màu theo ngũ hành, huy hiệu cấp, thanh tiến độ tàn quyển, chấm đỏ khi làm được); bấm ô để mở chi tiết và nút hành động.
+- **Nhân Vật dạng bảng điều khiển**: chip chỉ số, hàng tốc độ, ô "Việc cần làm" (điểm danh, thiên phú, đạo lộ, thử thách) mở bảng trượt.
+- Bộ glyph vẽ bằng code nằm ở `src/components/glyphs.js` (thêm icon: sửa `GLYPHS` và bảng id→glyph). Chỉ giao diện, không đổi cân bằng.

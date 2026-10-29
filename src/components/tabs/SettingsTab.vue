@@ -68,18 +68,18 @@ function onReset() {
       <input v-model="game.settings.music" type="checkbox" class="h-4 w-4 accent-emerald-500" />
     </label>
     <label class="card flex items-center justify-between text-sm">
-      <span>Tự động đột phá bậc nhỏ<br /><span class="text-[11px] text-slate-500">Bậc có thiên kiếp vẫn phải tự bấm</span></span>
+      <span>Tự động đột phá bậc nhỏ<br /><span class="text-xs text-slate-500">Bậc có thiên kiếp vẫn phải tự bấm</span></span>
       <input v-model="game.settings.autoBreak" type="checkbox" class="h-4 w-4 accent-emerald-500" />
     </label>
     <div class="card space-y-1.5">
       <div class="title-rule">Tự động hoá (mở khoá dần)</div>
       <div v-for="a in AUTOMATIONS" :key="a.id" class="text-sm">
         <label v-if="automationUnlocked(a, game)" class="flex items-center justify-between">
-          <span>{{ a.name }}<br /><span class="text-[11px] text-slate-500">{{ a.desc }}</span></span>
+          <span>{{ a.name }}<br /><span class="text-xs text-slate-500">{{ a.desc }}</span></span>
           <input v-model="game.settings.auto[a.id]" type="checkbox" class="h-4 w-4 accent-emerald-500" />
         </label>
         <div v-else class="flex items-center justify-between text-slate-500">
-          <span>🔒 {{ a.name }}<br /><span class="text-[11px]">{{ a.text }} ({{ Math.min(automationValue(a, game), a.need.value) }}/{{ a.need.value }})</span></span>
+          <span>🔒 {{ a.name }}<br /><span class="text-xs">{{ a.text }} ({{ Math.min(automationValue(a, game), a.need.value) }}/{{ a.need.value }})</span></span>
         </div>
         <select
           v-if="a.id === 'craft' && automationUnlocked(a, game)"
@@ -92,7 +92,7 @@ function onReset() {
       </div>
     </div>
     <label v-if="notifySupported()" class="card flex items-center justify-between text-sm">
-      <span>Thông báo khi linh khí đầy<br /><span class="text-[11px] text-slate-500">Chỉ khi trang vẫn mở ở nền, không báo được khi đã đóng hẳn</span></span>
+      <span>Thông báo khi linh khí đầy<br /><span class="text-xs text-slate-500">Chỉ khi trang vẫn mở ở nền, không báo được khi đã đóng hẳn</span></span>
       <input v-model="game.settings.notify" type="checkbox" class="h-4 w-4 accent-emerald-500" @change="onNotifyChange" />
     </label>
     <label class="card flex items-center justify-between text-sm">

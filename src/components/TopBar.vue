@@ -26,16 +26,16 @@ const showBreakChip = computed(() => game.canBreakthrough && ui.tab !== 'charact
       <div class="min-w-0 flex-1">
         <div class="truncate text-[15px] font-bold leading-tight tracking-wide text-gold-300">
           {{ game.stage.fullName }}
-          <span v-if="game.story.title" class="ml-1 text-[10px] font-bold text-jade-300">✦ {{ game.story.title }}</span>
+          <span v-if="game.story.title" class="ml-1 text-[11px] font-bold text-jade-300">✦ {{ game.story.title }}</span>
         </div>
-        <div class="flex items-center gap-1.5 text-[10px] leading-tight text-slate-400">
+        <div class="flex items-center gap-1.5 text-[11px] leading-tight text-slate-400">
           <span :style="{ color: ELEMENTS[game.element].css }" class="font-bold">{{ ELEMENTS[game.element].name }}</span>
           <span class="text-slate-600">·</span>
           <span class="truncate">{{ game.spiritRoot.name }}</span>
         </div>
       </div>
 
-      <button v-if="showBreakChip" class="btn-gold glow-ready shrink-0 !px-2 !py-1 text-[11px]" @click="ui.go('character')">
+      <button v-if="showBreakChip" class="btn-gold glow-ready shrink-0 !px-2 !py-1 text-xs" @click="ui.go('character')">
         <Icon name="bolt" :size="13" />Đột Phá!
       </button>
 
@@ -47,7 +47,7 @@ const showBreakChip = computed(() => game.canBreakthrough && ui.tab !== 'charact
       </div>
       <button
         v-if="game.timeBank > 0 || game.settings.warp"
-        class="top-chip !px-1.5 text-[11px]"
+        class="top-chip !px-1.5 text-xs"
         :class="game.settings.warp ? 'text-gold-300 ring-1 ring-gold-400' : 'text-slate-300'"
         :title="'Kho thời gian: ' + Math.floor(game.timeBank / 60) + ' phút. Bật để chạy nhanh x4'"
         @click="game.settings.warp = !game.settings.warp"

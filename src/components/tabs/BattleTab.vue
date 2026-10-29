@@ -77,25 +77,25 @@ function stepFarm(d) {
     <div class="card space-y-1.5">
       <div class="flex items-center justify-between">
         <div class="font-bold text-gold-300">{{ C.chapterName(target) }}</div>
-        <div class="text-[11px] text-slate-400">Chương {{ C.chapterOf(target) }}</div>
+        <div class="text-xs text-slate-400">Chương {{ C.chapterOf(target) }}</div>
       </div>
       <div class="grid grid-cols-10 gap-0.5">
         <div
           v-for="c in strip"
           :key="c.n"
-          class="flex h-8 flex-col items-center justify-center rounded border text-[10px] leading-none"
+          class="flex h-8 flex-col items-center justify-center rounded border text-[11px] leading-none"
           :class="cellClass(c)"
         >
-          <span class="text-[9px] text-cinnabar-400">{{ cellMark(c) || '&nbsp;' }}</span>
+          <span class="text-[10px] text-cinnabar-400">{{ cellMark(c) || '&nbsp;' }}</span>
           <span>{{ c.n }}</span>
         </div>
       </div>
       <div class="text-sm text-white">
-        <span v-if="farming" class="mr-1 rounded bg-gold-500/30 px-1 text-[11px] text-gold-200">Cày</span>
+        <span v-if="farming" class="mr-1 rounded bg-gold-500/30 px-1 text-xs text-gold-200">Cày</span>
         Ải {{ target }} · {{ C.AI_KINDS[nextKind].name }}: {{ nextMonster.name }}
         <span :style="{ color: ELEMENTS[nextMonster.element].css }">({{ ELEMENTS[nextMonster.element].name }}{{ edgeMark }})</span>
       </div>
-      <div v-if="nextMods.length" class="space-y-0.5 rounded border border-ink-600 bg-ink-900 p-1.5 text-[11px]">
+      <div v-if="nextMods.length" class="space-y-0.5 rounded border border-ink-600 bg-ink-900 p-1.5 text-xs">
         <div v-for="m in nextMods" :key="m" class="leading-snug">
           <b :class="C.ENEMY_MODS[m].kind === 'boss' ? 'text-cinnabar-400' : 'text-gold-200'">{{ C.ENEMY_MODS[m].name }}</b>
           <span class="text-slate-400"> · {{ C.ENEMY_MODS[m].desc }}</span>
@@ -107,9 +107,9 @@ function stepFarm(d) {
           <b :class="chanceClass">{{ chance }}%</b>
         </div>
         <div class="h-1.5 overflow-hidden rounded bg-ink-900"><div class="h-full transition-all" :class="chanceBar" :style="{ width: chance + '%' }"></div></div>
-        <div v-if="game.campaign.grit > 0" class="mt-0.5 text-[11px] text-jade-300">Kiên Trì +{{ Math.round(game.campaign.grit * C.GRIT_STEP * 100) }}% chỉ số (mất khi vượt ải)</div>
+        <div v-if="game.campaign.grit > 0" class="mt-0.5 text-xs text-jade-300">Kiên Trì +{{ Math.round(game.campaign.grit * C.GRIT_STEP * 100) }}% chỉ số (mất khi vượt ải)</div>
       </div>
-      <div v-if="stuck" class="rounded border border-gold-500/30 bg-gold-500/10 p-1.5 text-[11px] leading-snug text-gold-200">
+      <div v-if="stuck" class="rounded border border-gold-500/30 bg-gold-500/10 p-1.5 text-xs leading-snug text-gold-200">
         Đang kẹt ở ải {{ best }}. Muốn qua ải {{ target }}: đột phá cảnh giới, mặc trang bị tốt hơn, học võ kỹ và công pháp, dùng đan tăng chỉ số. Trong lúc đó vẫn nhận thu nhập của ải {{ best }}.
       </div>
       <div class="grid grid-cols-2 gap-2">
@@ -136,7 +136,7 @@ function stepFarm(d) {
       <template v-if="best > 0">
         <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome) }}/giây)</div>
         <div class="text-gold-300">+{{ fmt(stoneIncome) }} linh thạch/giây</div>
-        <div v-if="incomeAi < best" class="text-[11px] text-slate-500">Thu nhập đang tính đến ải {{ incomeAi }} (trần theo cảnh giới, đột phá để mở rộng thêm).</div>
+        <div v-if="incomeAi < best" class="text-xs text-slate-500">Thu nhập đang tính đến ải {{ incomeAi }} (trần theo cảnh giới, đột phá để mở rộng thêm).</div>
         <div v-if="itemIncome.length" class="text-slate-300">
           Mỗi giờ:
           <span v-for="(it, i) in itemIncome" :key="it.id">{{ i ? ', ' : '' }}{{ itemName(it.id) }} ~{{ it.perHour.toFixed(1) }}</span>
@@ -151,7 +151,7 @@ function stepFarm(d) {
       <button v-for="(o, i) in game.bossChoice.options" :key="o.id" class="btn-ghost w-full text-left" @click="game.chooseBossReward(i)">
         {{ o.label }}
       </button>
-      <div class="text-[11px] text-slate-500">Không chọn sau 10 phút sẽ tự lấy phương án đầu tiên.</div>
+      <div class="text-xs text-slate-500">Không chọn sau 10 phút sẽ tự lấy phương án đầu tiên.</div>
     </div>
 
     <!-- Rương mốc ải -->
@@ -163,7 +163,7 @@ function stepFarm(d) {
       <div class="h-1.5 overflow-hidden rounded bg-ink-900">
         <div class="h-full bg-gold-500" :style="{ width: Math.min(100, (game.campaign.record / milestone.ai) * 100) + '%' }"></div>
       </div>
-      <div class="text-[11px] text-slate-400">Thưởng: {{ milestoneText }}.</div>
+      <div class="text-xs text-slate-400">Thưởng: {{ milestoneText }}.</div>
       <button class="btn-gold w-full" :disabled="!game.milestoneClaimable" @click="game.claimMilestone()">
         {{ game.milestoneClaimable ? 'Nhận rương mốc' : `Còn ${milestone.ai - game.campaign.record} ải` }}
       </button>

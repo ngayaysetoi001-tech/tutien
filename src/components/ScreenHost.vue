@@ -41,7 +41,7 @@ const breakLabel = computed(() => {
       <!-- Mục tiêu kế tiếp -->
       <button
         v-if="goal"
-        class="relative shrink-0 overflow-hidden rounded border border-ink-600 bg-ink-900/70 px-2 py-0.5 text-left text-[11px] leading-tight text-slate-300"
+        class="relative shrink-0 overflow-hidden rounded border border-ink-600 bg-ink-900/70 px-2 py-0.5 text-left text-xs leading-tight text-slate-300"
         @click="goal.tab && ui.go(goal.tab)"
       >
         <span class="absolute inset-y-0 left-0 bg-jade-500/20" :style="{ width: Math.round(goal.progress * 100) + '%' }"></span>
@@ -72,11 +72,11 @@ const breakLabel = computed(() => {
       <!-- Gợi ý việc nên làm -->
       <div
         v-if="ui.tab === 'character' && hint"
-        class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gold-500/35 bg-gold-500/10 py-1 pl-2 pr-1 text-[11.5px] leading-snug"
+        class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gold-500/35 bg-gold-500/10 py-1 pl-2 pr-1 text-xs leading-snug"
       >
         <Icon name="spark" :size="14" class="shrink-0 text-gold-400" />
         <span class="min-w-0 flex-1 text-gold-200">{{ hint.text }}</span>
-        <button v-if="hint.tab" class="btn-gold shrink-0 !px-2 !py-0.5 text-[11px]" @click="ui.go(hint.tab)">Đi</button>
+        <button v-if="hint.tab" class="btn-gold shrink-0 !px-2 !py-0.5 text-xs" @click="ui.go(hint.tab)">Đi</button>
         <button class="shrink-0 px-1.5 text-slate-500 hover:text-slate-300" aria-label="Tắt gợi ý" @click="dismissed.push(hint.id)">✕</button>
       </div>
 

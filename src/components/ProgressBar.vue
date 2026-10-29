@@ -19,7 +19,7 @@ defineProps({
     <div class="pointer-events-none absolute inset-0 flex">
       <div v-for="i in 4" :key="i" class="flex-1" :class="i < 4 ? 'border-r border-white/10' : ''"></div>
     </div>
-    <div :class="compact ? 'text-[10px]' : 'text-[11px]'" class="absolute inset-0 flex items-center justify-center font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+    <div :class="compact ? 'text-[11px]' : 'text-xs'" class="absolute inset-0 flex items-center justify-center font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
       {{ label }}
     </div>
   </div>

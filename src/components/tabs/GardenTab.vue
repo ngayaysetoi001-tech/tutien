@@ -34,17 +34,17 @@ const mine = computed(() => mineInfo(game.stageIdx))
     <div class="card">
       <div class="flex items-center justify-between">
         <div class="font-bold text-white">Linh Điền</div>
-        <button class="btn-gold px-2 py-0.5 text-[11px]" :disabled="readyCount === 0" @click="game.harvestAll()">
+        <button class="btn-gold px-2 py-0.5 text-xs" :disabled="readyCount === 0" @click="game.harvestAll()">
           Thu hoạch tất cả ({{ readyCount }})
         </button>
       </div>
-      <p class="text-[11px] text-slate-400">Cây lớn theo giờ thật, kể cả khi ngươi vắng mặt. Mở thêm luống khi tu vi cao hơn.</p>
+      <p class="text-xs text-slate-400">Cây lớn theo giờ thật, kể cả khi ngươi vắng mặt. Mở thêm luống khi tu vi cao hơn.</p>
 
       <div class="mt-2 grid grid-cols-3 gap-1">
         <button
           v-for="c in CROPS"
           :key="c.id"
-          class="rounded border px-1 py-1 text-[11px] font-semibold disabled:opacity-40"
+          class="rounded border px-1 py-1 text-xs font-semibold disabled:opacity-40"
           :class="selected === c.id ? 'border-jade-500/70 bg-jade-600/25 text-jade-300' : 'border-ink-600 bg-ink-800 text-slate-400'"
           :disabled="game.stageIdx < c.minStage"
           @click="selected = c.id"
@@ -52,7 +52,7 @@ const mine = computed(() => mineInfo(game.stageIdx))
           {{ itemName(c.id) }}
         </button>
       </div>
-      <div class="mt-1 text-[11px] text-slate-400">
+      <div class="mt-1 text-xs text-slate-400">
         {{ itemName(selected) }}: lớn {{ fmtDuration(cropById(selected).seconds) }}, thu {{ cropById(selected).yield[0] }}-{{
           cropById(selected).yield[1]
         }}, hạt giống {{ fmt(seedCost(cropById(selected))) }} linh thạch
@@ -69,8 +69,8 @@ const mine = computed(() => mineInfo(game.stageIdx))
           <template v-else-if="p.plot">
             <div class="flex items-center justify-between">
               <span class="font-semibold text-slate-100">Luống {{ p.idx + 1 }}: {{ itemName(p.plot.crop) }}</span>
-              <button v-if="remaining(p.plot) <= 0" class="btn-jade px-2 py-0.5 text-[11px]" @click="game.harvest(p.idx)">Thu hoạch</button>
-              <span v-else class="text-[11px] text-slate-400">còn {{ fmtDuration(remaining(p.plot)) }}</span>
+              <button v-if="remaining(p.plot) <= 0" class="btn-jade px-2 py-0.5 text-xs" @click="game.harvest(p.idx)">Thu hoạch</button>
+              <span v-else class="text-xs text-slate-400">còn {{ fmtDuration(remaining(p.plot)) }}</span>
             </div>
             <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-black/50">
               <div class="h-full bg-gradient-to-r from-jade-600 to-jade-300" :style="{ width: progress(p.plot) * 100 + '%' }"></div>
@@ -80,7 +80,7 @@ const mine = computed(() => mineInfo(game.stageIdx))
             <div class="flex items-center justify-between">
               <span class="text-slate-400">Luống {{ p.idx + 1 }}: trống</span>
               <button
-                class="btn-gold px-2 py-0.5 text-[11px]"
+                class="btn-gold px-2 py-0.5 text-xs"
                 :disabled="game.stageIdx < cropById(selected).minStage || game.spiritStones.lt(seedCost(cropById(selected)))"
                 @click="game.plant(p.idx, selected)"
               >
@@ -95,9 +95,9 @@ const mine = computed(() => mineInfo(game.stageIdx))
     <div class="card">
       <div class="flex items-center justify-between">
         <div class="font-bold text-white">Khoáng Mạch</div>
-        <div class="text-[11px] text-slate-400">{{ itemName(mine.ore) }} · {{ mine.perHour }}/giờ</div>
+        <div class="text-xs text-slate-400">{{ itemName(mine.ore) }} · {{ mine.perHour }}/giờ</div>
       </div>
-      <p class="text-[11px] text-slate-400">Quặng tích luỹ theo giờ thật, tối đa {{ MINE_CAP_SECONDS / 3600 }} giờ.</p>
+      <p class="text-xs text-slate-400">Quặng tích luỹ theo giờ thật, tối đa {{ MINE_CAP_SECONDS / 3600 }} giờ.</p>
       <button class="btn-jade mt-1.5 w-full py-1 text-xs" :disabled="mineReady <= 0" @click="game.collectMine()">
         Thu {{ mineReady }} {{ ITEMS[mine.ore].name }}{{ mineFull ? ' (đã đầy)' : '' }}
       </button>

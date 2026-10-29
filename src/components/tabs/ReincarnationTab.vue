@@ -47,7 +47,7 @@ function onReincarnate() {
 
     <div class="card space-y-1.5">
       <div class="title-rule">Kiếp Thử Thách (tuỳ chọn cho kiếp sau)</div>
-      <p class="text-[11px] text-slate-400">Chọn một ràng buộc cho kiếp sau; đạt bậc mục tiêu thì nhận thêm Đạo Vận (lần sau thưởng nhiều hơn).</p>
+      <p class="text-xs text-slate-400">Chọn một ràng buộc cho kiếp sau; đạt bậc mục tiêu thì nhận thêm Đạo Vận (lần sau thưởng nhiều hơn).</p>
       <label class="flex items-center gap-2 text-xs text-slate-300">
         <input v-model="picked" type="radio" :value="null" class="accent-emerald-500" /> Kiếp thường
       </label>
@@ -66,7 +66,7 @@ function onReincarnate() {
         <div class="text-sm font-bold text-white">{{ perk.name }}</div>
         <div class="text-xs text-gold-300">Cấp {{ level(perk) }}/{{ perk.max }}</div>
       </div>
-      <div class="text-[11px] text-slate-400">{{ perk.desc }}</div>
+      <div class="text-xs text-slate-400">{{ perk.desc }}</div>
       <button class="btn-gold mt-1.5 w-full py-1 text-xs" :disabled="maxed(perk) || game.reincarnation.dao < perkCost(perk, level(perk))" @click="game.buyPerk(perk.id)">
         {{ maxed(perk) ? 'Tối đa' : `Nâng cấp - ${perkCost(perk, level(perk))} Đạo Vận` }}
       </button>

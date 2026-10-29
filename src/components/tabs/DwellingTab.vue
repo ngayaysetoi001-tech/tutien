@@ -7,6 +7,7 @@ import { STAGES } from '../../game/constants.js'
 import { alchemyDoubleChance, alchemyExpNeeded } from '../../game/formulas.js'
 import { fmt, fmtPercent } from '../../game/format.js'
 import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage } from '../../game/dwelling.js'
+import Icon from '../Icon.vue'
 import { FORGE, FORGE_RARITY_WEIGHTS, RARITIES, SLOTS, SLOT_IDS, TIERS, itemFullName } from '../../game/equipment.js'
 
 const forgeTier = ref(0) // phẩm cấp đang chọn ở lò rèn
@@ -51,9 +52,9 @@ function maxBatches(r) {
         Hội tụ linh khí thiên địa về động phủ, tăng tốc độ hấp thụ linh khí. Hiện tại: {{ fmt(game.expRate) }} linh khí/giây.
       </p>
       <button class="btn-jade mt-2 w-full" :disabled="!game.canUpgradeArray" @click="game.upgradeArray()">
-        Nâng cấp - {{ fmt(game.arrayCost) }} linh thạch
+        Nâng cấp <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(game.arrayCost) }}
       </button>
-      <div class="mt-1 text-center text-[11px] text-slate-500">Đang có: {{ fmt(game.spiritStones) }} linh thạch</div>
+      <div class="mt-1 flex items-center justify-center gap-1 text-xs text-slate-500">Đang có <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(game.spiritStones) }}</div>
     </div>
 
     <div class="card space-y-1.5">
@@ -63,9 +64,11 @@ function maxBatches(r) {
           <span class="font-bold text-white">{{ BUILDINGS[id].name }}</span>
           <span class="text-gold-300">Cấp {{ game.dwelling[id] }}/{{ BUILDING_MAX_LEVEL }}</span>
         </div>
-        <div class="text-[11px] text-slate-400">{{ BUILDINGS[id].text }}</div>
-        <button class="btn-gold mt-1 w-full py-1 text-[11px]" :disabled="!canBuild(id)" @click="game.upgradeBuilding(id)">
-          {{ game.dwelling[id] >= BUILDING_MAX_LEVEL ? 'Tối đa' : buildingLocked(id) ? `Cần ${STAGES[buildingNeedStage(id, game.dwelling[id])].fullName}` : `Nâng cấp - ${fmt(buildingCost(id, game.dwelling[id]))} linh thạch` }}
+        <div class="text-xs text-slate-400">{{ BUILDINGS[id].text }}</div>
+        <button class="btn-gold mt-1 w-full py-1 text-xs" :disabled="!canBuild(id)" @click="game.upgradeBuilding(id)">
+          <template v-if="game.dwelling[id] >= BUILDING_MAX_LEVEL">Tối đa</template>
+          <template v-else-if="buildingLocked(id)">{{ `Cần ${STAGES[buildingNeedStage(id, game.dwelling[id])].fullName}` }}</template>
+          <template v-else>Nâng cấp <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(buildingCost(id, game.dwelling[id])) }}</template>
         </button>
       </div>
     </div>
@@ -75,7 +78,7 @@ function maxBatches(r) {
         <div class="font-bold text-white">Luyện Đan</div>
         <div class="text-xs text-gold-300">Cấp {{ game.alchemy.level }}</div>
       </div>
-      <div class="mt-1 text-[11px] text-slate-400">
+      <div class="mt-1 text-xs text-slate-400">
         Kinh nghiệm {{ game.alchemy.exp }}/{{ alchemyNeed }} · Ra gấp đôi {{ fmtPercent(alchemyDoubleChance(game.alchemy.level)) }}
       </div>
     </div>
@@ -83,20 +86,20 @@ function maxBatches(r) {
     <div class="card">
       <div class="flex items-center justify-between">
         <div class="font-bold text-white">Lò Rèn Pháp Khí</div>
-        <div class="text-[11px] text-slate-400">{{ rarityOdds }}</div>
+        <div class="text-xs text-slate-400">{{ rarityOdds }}</div>
       </div>
       <div class="mt-1.5 flex gap-1">
         <button
           v-for="(r, t) in FORGE"
           :key="t"
-          class="flex-1 rounded border px-1 py-1 text-[11px] font-semibold"
+          class="flex-1 rounded border px-1 py-1 text-xs font-semibold"
           :class="forgeTier === t ? 'border-gold-500/70 bg-gold-500/20 text-gold-300' : 'border-ink-600 bg-ink-800 text-slate-400'"
           @click="forgeTier = t"
         >
           Phẩm {{ t + 1 }}
         </button>
       </div>
-      <div class="mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
+      <div class="mt-1.5 flex flex-wrap gap-x-3 text-xs">
         <span
           v-for="(need, id) in FORGE[forgeTier].ingredients"
           :key="id"
@@ -104,15 +107,15 @@ function maxBatches(r) {
         >
           {{ itemName(id) }} {{ game.itemCount(id) }}/{{ need }}
         </span>
-        <span :class="game.spiritStones.gte(FORGE[forgeTier].stones) ? 'text-gold-300' : 'text-cinnabar-400'">
-          {{ fmt(FORGE[forgeTier].stones) }} linh thạch
+        <span class="inline-flex items-center gap-1" :class="game.spiritStones.gte(FORGE[forgeTier].stones) ? 'text-gold-300' : 'text-cinnabar-400'">
+          <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(FORGE[forgeTier].stones) }}
         </span>
       </div>
-      <div v-if="game.stageIdx < FORGE[forgeTier].minStage" class="mt-1 text-[11px] text-cinnabar-400">
+      <div v-if="game.stageIdx < FORGE[forgeTier].minStage" class="mt-1 text-xs text-cinnabar-400">
         🔒 Cần {{ STAGES[FORGE[forgeTier].minStage].fullName }}
       </div>
       <div v-else class="mt-1.5 grid grid-cols-3 gap-1.5">
-        <button v-for="slot in SLOT_IDS" :key="slot" class="btn-gold px-1 py-1 text-[11px]" :disabled="!game.canForge(forgeTier)" @click="forge(slot)">
+        <button v-for="slot in SLOT_IDS" :key="slot" class="btn-gold px-1 py-1 text-xs" :disabled="!game.canForge(forgeTier)" @click="forge(slot)">
           {{ TIERS[forgeTier].names[slot] }}
         </button>
       </div>
@@ -125,10 +128,10 @@ function maxBatches(r) {
     <div v-for="r in RECIPES" :key="r.id" class="card" :class="{ 'opacity-60': lockReason(r) }">
       <div class="flex items-center justify-between">
         <div class="text-sm font-bold text-white">{{ ITEMS[r.id].name }}</div>
-        <div class="text-[11px] text-slate-400">Đang có x{{ game.itemCount(r.id) }}</div>
+        <div class="text-xs text-slate-400">Đang có x{{ game.itemCount(r.id) }}</div>
       </div>
-      <div class="text-[11px] text-slate-400">{{ ITEMS[r.id].desc }}</div>
-      <div class="mt-1 flex flex-wrap gap-x-3 text-[11px]">
+      <div class="text-xs text-slate-400">{{ ITEMS[r.id].desc }}</div>
+      <div class="mt-1 flex flex-wrap gap-x-3 text-xs">
         <span
           v-for="(need, id) in r.ingredients"
           :key="id"
@@ -138,7 +141,7 @@ function maxBatches(r) {
         </span>
         <span :class="game.spiritStones.gte(r.stones) ? 'text-gold-300' : 'text-cinnabar-400'">{{ r.stones }} linh thạch</span>
       </div>
-      <div v-if="lockReason(r)" class="mt-1 text-[11px] text-cinnabar-400">🔒 {{ lockReason(r) }}</div>
+      <div v-if="lockReason(r)" class="mt-1 text-xs text-cinnabar-400">🔒 {{ lockReason(r) }}</div>
       <div v-else class="mt-1.5 flex gap-1.5">
         <button class="btn-gold flex-1 py-1 text-xs" :disabled="!game.canCraft(r.id)" @click="game.craft(r.id, 1)">Luyện</button>
         <button class="btn-gold flex-1 py-1 text-xs" :disabled="maxBatches(r) < 2" @click="game.craft(r.id, maxBatches(r))">

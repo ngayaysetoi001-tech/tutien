@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
     <!-- Vượt Ải: thanh khí huyết hai bên -->
     <div v-if="view" class="pointer-events-none absolute inset-x-3 bottom-2 flex items-end justify-between gap-3">
       <div class="w-[44%]">
-        <div class="mb-0.5 flex items-center gap-1 text-[11px] font-bold text-jade-300 [text-shadow:0_1px_3px_#000]">
+        <div class="mb-0.5 flex items-center gap-1 text-xs font-bold text-jade-300 [text-shadow:0_1px_3px_#000]">
           <Icon name="heart" :size="12" />{{ Math.ceil(view.hp) }}/{{ view.maxHp }}
           <span v-if="!view.preview && battle.shield > 0 && battle.clock < battle.shieldUntil" class="flex items-center gap-0.5 text-sky-300">
             <Icon name="shield" :size="11" />{{ battle.shield }}
@@ -121,15 +121,15 @@ onBeforeUnmount(() => {
         <div class="hp-track"><div class="hp-fill from-jade-600 to-jade-300 bg-gradient-to-r" :style="{ width: (view.maxHp > 0 ? (view.hp / view.maxHp) * 100 : 0) + '%' }"></div></div>
       </div>
       <div v-if="view.enemy" class="w-[44%] text-right">
-        <div class="mb-0.5 truncate text-[11px] font-bold [text-shadow:0_1px_3px_#000]" :class="view.enemy.boss ? 'text-cinnabar-400' : 'text-slate-100'">
+        <div class="mb-0.5 truncate text-xs font-bold [text-shadow:0_1px_3px_#000]" :class="view.enemy.boss ? 'text-cinnabar-400' : 'text-slate-100'">
           <Icon name="heart" :size="11" class="mr-0.5 inline text-cinnabar-400" />{{ fmt(Math.max(0, Math.ceil(view.enemy.hp))) }}/{{ fmt(Math.round(view.enemy.maxHp)) }}
         </div>
-        <div class="mb-0.5 truncate text-[11px] font-bold [text-shadow:0_1px_3px_#000]" :class="view.enemy.boss ? 'text-cinnabar-400' : 'text-slate-100'">
-          <span v-if="view.enemy.tier && view.enemy.tier !== 'normal'" class="mr-0.5 rounded bg-cinnabar-500/70 px-1 text-[10px] text-white">{{ C.AI_KINDS[view.enemy.tier].name }}</span>
+        <div class="mb-0.5 truncate text-xs font-bold [text-shadow:0_1px_3px_#000]" :class="view.enemy.boss ? 'text-cinnabar-400' : 'text-slate-100'">
+          <span v-if="view.enemy.tier && view.enemy.tier !== 'normal'" class="mr-0.5 rounded bg-cinnabar-500/70 px-1 text-[11px] text-white">{{ C.AI_KINDS[view.enemy.tier].name }}</span>
           <span :style="{ color: ELEMENTS[view.enemy.element]?.css }">[{{ ELEMENTS[view.enemy.element]?.name }}]</span> {{ view.enemy.name }}
         </div>
         <div v-if="view.enemy.mods?.length" class="mb-0.5 flex flex-wrap justify-end gap-0.5">
-          <span v-for="m in view.enemy.mods" :key="m" class="rounded px-1 text-[9px] text-white [text-shadow:none]" :class="C.ENEMY_MODS[m].kind === 'boss' ? 'bg-cinnabar-500/80' : 'bg-ink-600/90'">{{ C.ENEMY_MODS[m].name }}</span>
+          <span v-for="m in view.enemy.mods" :key="m" class="rounded px-1 text-[10px] text-white [text-shadow:none]" :class="C.ENEMY_MODS[m].kind === 'boss' ? 'bg-cinnabar-500/80' : 'bg-ink-600/90'">{{ C.ENEMY_MODS[m].name }}</span>
         </div>
         <div class="hp-track">
           <div class="hp-fill ml-auto from-cinnabar-500 to-gold-400 bg-gradient-to-l" :style="{ width: (view.enemy.hp / view.enemy.maxHp) * 100 + '%' }"></div>
@@ -146,7 +146,7 @@ onBeforeUnmount(() => {
       <div class="hp-track h-3">
         <div class="hp-fill from-cinnabar-500 to-gold-400 bg-gradient-to-r !duration-500" :style="{ width: (game.tribulation.hp / game.tribulation.maxHp) * 100 + '%' }"></div>
       </div>
-      <div class="mt-0.5 text-center text-[11px] text-slate-200 [text-shadow:0_1px_3px_#000]">
+      <div class="mt-0.5 text-center text-xs text-slate-200 [text-shadow:0_1px_3px_#000]">
         Khí huyết {{ game.tribulation.hp }} / {{ game.tribulation.maxHp }}
       </div>
     </div>

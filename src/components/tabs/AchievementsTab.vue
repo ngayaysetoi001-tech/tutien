@@ -16,15 +16,15 @@ const value = (a) => Math.min(game.achievementValue(a.key), target(a))
     <div v-for="a in ACHIEVEMENTS" :key="a.id" class="card" :class="{ 'opacity-60': done(a) }">
       <div class="flex items-center justify-between">
         <div class="text-sm font-bold text-white">{{ a.name }}</div>
-        <div class="text-[11px] text-gold-300">Mốc {{ Math.min(tierOf(a) + 1, a.targets.length) }}/{{ a.targets.length }}</div>
+        <div class="text-xs text-gold-300">Mốc {{ Math.min(tierOf(a) + 1, a.targets.length) }}/{{ a.targets.length }}</div>
       </div>
-      <div class="text-[11px] text-slate-400">{{ a.desc }}</div>
+      <div class="text-xs text-slate-400">{{ a.desc }}</div>
       <div class="mt-1 flex items-center gap-2">
         <div class="h-2 flex-1 overflow-hidden rounded-full bg-black/50">
           <div class="h-full bg-gradient-to-r from-jade-600 to-jade-300" :style="{ width: (value(a) / target(a)) * 100 + '%' }"></div>
         </div>
-        <span class="w-20 text-right text-[11px] text-slate-300">{{ value(a) }}/{{ target(a) }}</span>
-        <button class="btn-gold px-2 py-0.5 text-[11px]" :disabled="!game.achievementClaimable(a)" @click="game.claimAchievement(a.id)">
+        <span class="w-20 text-right text-xs text-slate-300">{{ value(a) }}/{{ target(a) }}</span>
+        <button class="btn-gold px-2 py-0.5 text-xs" :disabled="!game.achievementClaimable(a)" @click="game.claimAchievement(a.id)">
           {{ done(a) ? 'Xong' : 'Nhận' }}
         </button>
       </div>

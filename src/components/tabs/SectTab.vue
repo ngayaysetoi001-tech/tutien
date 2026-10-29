@@ -48,10 +48,10 @@ const shopLocked = (e) => game.rankIdx < e.rank
       <div v-for="s in SECTS" :key="s.id" class="card">
         <div class="flex items-center justify-between">
           <div class="font-bold" :style="{ color: ELEMENTS[s.element].css }">{{ s.name }}</div>
-          <div class="text-[11px] text-slate-400">Hệ {{ ELEMENTS[s.element].name }}</div>
+          <div class="text-xs text-slate-400">Hệ {{ ELEMENTS[s.element].name }}</div>
         </div>
-        <div class="text-[11px] text-slate-400">{{ s.desc }}</div>
-        <div class="mt-0.5 text-[11px] text-jade-300">{{ s.perkText }}</div>
+        <div class="text-xs text-slate-400">{{ s.desc }}</div>
+        <div class="mt-0.5 text-xs text-jade-300">{{ s.perkText }}</div>
         <button class="btn-gold mt-1.5 w-full py-1 text-xs" @click="join(s.id)">Gia nhập</button>
       </div>
     </template>
@@ -65,13 +65,13 @@ const shopLocked = (e) => game.rankIdx < e.rank
         </div>
         <div class="mt-1.5 flex items-center gap-2">
           <div class="bar h-2.5 flex-1"><div class="bar-fill bg-gradient-to-r from-gold-500 to-gold-300" :style="{ width: rankProgress * 100 + '%' }"></div></div>
-          <span class="text-[11px] text-slate-400">{{ game.sect.total }}<template v-if="nextRank"> / {{ nextRank.need }}</template></span>
+          <span class="text-xs text-slate-400">{{ game.sect.total }}<template v-if="nextRank"> / {{ nextRank.need }}</template></span>
         </div>
-        <div class="mt-1 flex items-center justify-between text-[11px]">
+        <div class="mt-1 flex items-center justify-between text-xs">
           <span class="flex items-center gap-1 text-gold-300"><Icon name="spark" :size="12" />Cống Hiến: <b>{{ game.sect.contribution }}</b></span>
           <span class="text-slate-500">Đệ tử tối đa {{ game.discipleLimit }}</span>
         </div>
-        <div class="mt-1 text-[11px] text-jade-300">{{ perkLines.join(' · ') }}</div>
+        <div class="mt-1 text-xs text-jade-300">{{ perkLines.join(' · ') }}</div>
       </div>
 
       <div class="grid grid-cols-2 gap-1.5">
@@ -88,17 +88,17 @@ const shopLocked = (e) => game.rankIdx < e.rank
       <div v-for="q in game.quests" :key="q.uid" class="card">
         <div class="flex items-center justify-between">
           <div class="text-sm font-bold text-white">{{ templateById(q.tpl).label }} <span class="text-gold-300">x{{ q.target }}</span></div>
-          <span class="rounded border px-1.5 py-0.5 text-[10px] font-bold" :style="{ color: TIERS[q.tier].css, borderColor: TIERS[q.tier].css + '66' }">{{ TIERS[q.tier].name }}</span>
+          <span class="rounded border px-1.5 py-0.5 text-[11px] font-bold" :style="{ color: TIERS[q.tier].css, borderColor: TIERS[q.tier].css + '66' }">{{ TIERS[q.tier].name }}</span>
         </div>
         <div class="mt-1 flex items-center gap-2">
           <div class="bar h-2.5 flex-1"><div class="bar-fill bg-gradient-to-r from-jade-600 to-jade-300" :style="{ width: ratio(q) * 100 + '%' }"></div></div>
-          <span class="w-14 text-right text-[11px] text-slate-300">{{ Math.min(game.questProgress(q), q.target) }}/{{ q.target }}</span>
+          <span class="w-14 text-right text-xs text-slate-300">{{ Math.min(game.questProgress(q), q.target) }}/{{ q.target }}</span>
         </div>
         <div class="mt-1 flex items-center justify-between gap-2">
-          <span class="text-[11px] text-slate-400">
+          <span class="text-xs text-slate-400">
             +{{ fmt(stoneReward(q)) }} linh thạch<template v-if="game.sect.id"> · +{{ contribReward(q) }} Cống Hiến</template><template v-if="q.tier === 2"> · thảo dược</template>
           </span>
-          <button class="btn-gold px-2.5 py-0.5 text-[11px]" :disabled="!game.questDone(q)" @click="game.claimQuest(q.uid)">Nhận</button>
+          <button class="btn-gold px-2.5 py-0.5 text-xs" :disabled="!game.questDone(q)" @click="game.claimQuest(q.uid)">Nhận</button>
         </div>
       </div>
       <button class="btn-ghost w-full py-1.5 text-xs" :disabled="game.spiritStones.lt(game.questRefreshCost)" @click="game.refreshQuests()">
@@ -112,9 +112,9 @@ const shopLocked = (e) => game.rankIdx < e.rank
       <div v-for="e in SHOP" :key="e.id" class="card flex items-center gap-2 !py-2" :class="{ 'opacity-50': shopLocked(e) }">
         <div class="min-w-0 flex-1">
           <div class="truncate text-xs font-bold text-white">{{ ITEMS[e.item].name }} <span class="text-jade-300">x{{ e.count }}</span></div>
-          <div class="truncate text-[10px] text-slate-400">{{ shopLocked(e) ? '🔒 Cần ' + RANKS[e.rank].name : ITEMS[e.item].desc }}</div>
+          <div class="truncate text-[11px] text-slate-400">{{ shopLocked(e) ? '🔒 Cần ' + RANKS[e.rank].name : ITEMS[e.item].desc }}</div>
         </div>
-        <button class="btn-gold shrink-0 px-2.5 py-1 text-[11px]" :disabled="shopLocked(e) || game.sect.contribution < e.cost" @click="game.buyShop(e.id)">
+        <button class="btn-gold shrink-0 px-2.5 py-1 text-xs" :disabled="shopLocked(e) || game.sect.contribution < e.cost" @click="game.buyShop(e.id)">
           {{ e.cost }}
         </button>
       </div>
@@ -124,7 +124,7 @@ const shopLocked = (e) => game.rankIdx < e.rank
     <div v-if="game.sect.id" class="card">
       <div class="title-rule mb-1.5">Đổi tông môn</div>
       <div class="grid grid-cols-2 gap-1.5">
-        <button v-for="s in SECTS.filter((x) => x.id !== game.sect.id)" :key="s.id" class="btn-ghost py-1 text-[11px]" @click="join(s.id)">
+        <button v-for="s in SECTS.filter((x) => x.id !== game.sect.id)" :key="s.id" class="btn-ghost py-1 text-xs" @click="join(s.id)">
           <span :style="{ color: ELEMENTS[s.element].css }">{{ s.name }}</span>
         </button>
       </div>
