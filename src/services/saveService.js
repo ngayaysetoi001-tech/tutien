@@ -13,7 +13,7 @@ import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
 import { PATHS } from '../game/paths.js'
 import { MAX_SKILL_SLOTS } from '../game/skills.js'
-import { BAG_LIMIT, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
+import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
 import { ACHIEVEMENTS } from '../game/achievements.js'
 import { PERKS } from '../game/reincarnation.js'
 import { CROPS, MAX_PLOTS } from '../game/garden.js'
@@ -143,7 +143,17 @@ export function deserialize(save, defaults) {
     if (bag.length >= BAG_LIMIT || !it || typeof it.uid !== 'string' || seen.has(it.uid)) continue
     if (!SLOTS[it.slot] || !TIERS[it.tier] || !RARITIES[it.rarity]) continue
     seen.add(it.uid)
-    bag.push({ uid: it.uid, slot: it.slot, tier: it.tier, rarity: it.rarity, enh: Math.floor(num(it.enh, 0, 0, MAX_ENHANCE)) })
+    // Dòng phụ: id hợp lệ, hợp ô, không trùng, giá trị trong khoảng; Huyền Thoại phải đúng ô
+    const affSeen = new Set()
+    const affixes = []
+    for (const a of Array.isArray(it.affixes) ? it.affixes : []) {
+      const def = a && AFFIXES[a.id]
+      if (!def || !def.slots.includes(it.slot) || affSeen.has(a.id) || affixes.length >= MAX_AFFIXES) continue
+      affSeen.add(a.id)
+      affixes.push({ id: a.id, v: num(a.v, def.min, 0, def.max * 3) })
+    }
+    const legend = LEGENDS[it.legend]?.slot === it.slot ? it.legend : undefined
+    bag.push({ uid: it.uid, slot: it.slot, tier: it.tier, rarity: it.rarity, enh: Math.floor(num(it.enh, 0, 0, MAX_ENHANCE)), affixes: legend ? [] : affixes, ...(legend ? { legend } : {}) })
   }
   const equipped = {}
   for (const slot of Object.keys(SLOTS)) {

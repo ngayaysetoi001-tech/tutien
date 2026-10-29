@@ -47,8 +47,8 @@ export const PATHS = {
   tran: {
     name: 'Trận Pháp Sư', skill: 'tran_dia', css: '#60a5fa',
     desc: 'Bố trận dẫn linh khí, mượn thế trời đất làm sức mạnh.',
-    perk: { array: 0.25, arts: 0.15, disciple: 0.2 },
-    perkText: '+25% hiệu quả Tụ Linh Trận, +15% hiệu quả công pháp, +20% sản lượng đệ tử',
+    perk: { array: 0.2, arts: 0.15, disciple: 0.2 },
+    perkText: '+20% hiệu quả Tụ Linh Trận, +15% hiệu quả công pháp, +20% sản lượng đệ tử',
   },
 }
 

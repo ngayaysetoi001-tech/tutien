@@ -1294,15 +1294,15 @@ ok('Đan Sư: đan tăng chỉ số mạnh hơn 25%, luyện đan dễ ra gấp 
   assert.equal(t.itemCount('tu_khi_dan'), 3, 'không đạo lộ: không ra gấp đôi')
 })
 
-ok('Trận Pháp Sư: Tụ Linh Trận +25%, công pháp +15%, đệ tử +20%', () => {
+ok('Trận Pháp Sư: Tụ Linh Trận +20%, công pháp +15%, đệ tử +20%', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 12
   s.arrayLevel = 20 // trận +200% gốc
   const base = s.expRate
   s.path = 'tran'
-  // (1 + 0.1*20*1.25) / (1 + 0.1*20) = 3.5 / 3
-  assert.ok(Math.abs(s.expRate.div(base).toNumber() - 3.5 / 3) < 1e-6)
+  // (1 + 0.1*20*1.2) / (1 + 0.1*20) = 3.4 / 3
+  assert.ok(Math.abs(s.expRate.div(base).toNumber() - 3.4 / 3) < 1e-6)
   s.path = null
   s.arts.owned.pha_quan = 5
   s.arts.slots[0] = 'pha_quan'
@@ -1456,6 +1456,214 @@ ok('trận thật: yêu thú có đặc tính xuất hiện đúng, ghi vào nh�
   b.enemy.hp = 0
   b.onKill()
   assert.equal(s.campaign.best, n)
+})
+
+// =====================================================================
+// Dòng phụ, bộ trang bị, đồ Huyền Thoại
+// =====================================================================
+const seq = (...xs) => { let i = 0; return () => xs[i++ % xs.length] }
+const wear = (s, ...items) => { for (const it of items) { s.addGear(it); s.equipGear(it.uid) } }
+
+ok('dòng phụ: số dòng theo độ hiếm, hợp ô, không trùng, giá trị trong khoảng, tăng theo phẩm cấp', () => {
+  for (const slot of EQ.SLOT_IDS) {
+    for (const rarity of [0, 1, 2, 3]) {
+      const w = [0, 0, 0, 0]
+      w[rarity] = 1
+      for (let i = 0; i < 30; i++) {
+        const it = EQ.generateItem(slot, 2, w)
+        assert.equal(it.rarity, rarity)
+        assert.equal(it.affixes.length, EQ.affixCount(rarity))
+        assert.equal(new Set(it.affixes.map((a) => a.id)).size, it.affixes.length)
+        for (const a of it.affixes) {
+          const def = EQ.AFFIXES[a.id]
+          assert.ok(def.slots.includes(slot), a.id + ' không hợp ô ' + slot)
+          assert.ok(a.v >= def.min * (1 + 0.16) - 0.001 && a.v <= def.max * (1 + 0.16) + 0.001, // làm tròn 3 chữ số thập phân
+             'giá trị ngoài khoảng ' + a.id + ' ' + a.v)
+        }
+      }
+    }
+  }
+  const lo = EQ.rollAffixes('weapon', 0, 1, () => 0.999)[0].v
+  const hi = EQ.rollAffixes('weapon', 7, 1, () => 0.999)[0].v
+  assert.ok(hi > lo * 1.4, 'phẩm cấp cao dòng phụ mạnh hơn')
+  assert.ok(EQ.affixText(EQ.generateItem('weapon', 0, [0, 0, 0, 1])).includes('%'))
+  // mọi dòng phụ đều có ô hợp lệ và được ít nhất một ô dùng
+  for (const id of EQ.AFFIX_IDS) assert.ok(EQ.AFFIXES[id].slots.length >= 1 && EQ.AFFIXES[id].slots.every((x) => EQ.SLOT_IDS.includes(x)))
+})
+
+ok('dòng phụ cộng vào chỉ số chiến đấu và thưởng khi mặc', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  const c0 = s.combat
+  const w = { uid: 'w1', slot: 'weapon', tier: 0, rarity: 1, enh: 0, affixes: [{ id: 'atk', v: 0.1 }] }
+  const a = { uid: 'a1', slot: 'armor', tier: 1, rarity: 1, enh: 0, affixes: [{ id: 'hp', v: 0.1 }] }
+  const t = { uid: 't1', slot: 'trinket', tier: 2, rarity: 1, enh: 0, affixes: [{ id: 'crit', v: 0.05 }, { id: 'luck', v: 0.1 }] }
+  const base = (item) => { const x = freshStore(); x.init(); x.stageIdx = 12; x.addGear({ ...item, affixes: [] }); x.equipGear(item.uid); return x.combat }
+  wear(s, w)
+  assert.ok(Math.abs(s.combat.atk / base(w).atk - 1.1) < 0.01)
+  wear(s, a)
+  assert.ok(Math.abs(s.combat.hp / base(a).hp - 1.1) < 0.02 || s.combat.hp > c0.hp)
+  wear(s, t)
+  assert.ok(Math.abs(s.gearPerk.crit - 0.05) < 1e-9 && Math.abs(s.lootLuck - 0.1) < 1e-9)
+  assert.ok(Math.abs(s.battlePerk.crit - 0.05) < 1e-9)
+  // mặc không đúng nghĩa thì không có: tháo đồ thì mất
+  s.unequipGear('trinket')
+  assert.equal(s.gearPerk.crit, 0)
+})
+
+ok('bộ trang bị: 2 món cùng phẩm cấp và 3 món cùng phẩm cấp nhận thưởng; khác phẩm cấp thì không', () => {
+  const mk = (slot, tier) => ({ uid: slot + tier, slot, tier, rarity: 0, enh: 0, affixes: [] })
+  const set = EQ.SETS[0]
+  assert.equal(EQ.SETS.length, EQ.TIERS.length, 'mỗi phẩm cấp một bộ')
+  for (const x of EQ.SETS) assert.ok(x.name && Object.keys(x.two).length && Object.keys(x.three).length)
+  const none = EQ.gearPerks([mk('weapon', 0), mk('armor', 1), mk('trinket', 2)])
+  assert.ok(Object.values(none).every((v) => v === 0))
+  assert.equal(EQ.activeSets([mk('weapon', 0), mk('armor', 1), mk('trinket', 2)]).length, 0)
+  const two = EQ.gearPerks([mk('weapon', 0), mk('armor', 0), mk('trinket', 3)])
+  assert.ok(Math.abs(two.hp - set.two.hp) < 1e-9 && two.atk === 0)
+  const three = EQ.gearPerks([mk('weapon', 0), mk('armor', 0), mk('trinket', 0)])
+  assert.ok(Math.abs(three.hp - set.two.hp) < 1e-9 && Math.abs(three.atk - set.three.atk) < 1e-9 && Math.abs(three.def - set.three.def) < 1e-9)
+  const act = EQ.activeSets([mk('weapon', 0), mk('armor', 0), mk('trinket', 0)])
+  assert.equal(act.length, 1)
+  assert.equal(act[0].pieces, 3)
+  assert.ok(EQ.perkText(act[0].bonus).includes('%'))
+  // trong game
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  const hp0 = s.combat.hp
+  wear(s, mk('weapon', 0), mk('armor', 0))
+  assert.equal(s.activeGearSets.length, 1)
+  assert.ok(s.combat.hp > hp0)
+})
+
+ok('đồ Huyền Thoại: đúng ô, đặc hiệu cố định, tên và màu riêng, chỉ số gốc mạnh hơn', () => {
+  for (const slot of EQ.SLOT_IDS) {
+    const lg = EQ.generateLegend(slot, 5)
+    assert.equal(EQ.LEGENDS[lg.legend].slot, slot)
+    assert.equal(lg.affixes.length, 0)
+    assert.ok(EQ.itemFullName(lg).startsWith('[Huyền Thoại]'))
+    assert.equal(EQ.itemColor(lg), EQ.LEGEND_COLOR)
+    const normal = { ...lg, legend: undefined, rarity: 3 }
+    const st = EQ.itemStats(lg)
+    const st0 = EQ.itemStats(normal)
+    for (const k of Object.keys(st0)) if (k !== 'exp') assert.ok(st[k] >= st0[k], 'huyền thoại ' + k)
+  }
+  assert.equal(Object.keys(EQ.LEGENDS).length, 3)
+  const perks = EQ.gearPerks([EQ.generateLegend('weapon', 0), EQ.generateLegend('armor', 0)])
+  assert.ok(perks.extra > 0 && perks.thorns > 0 && perks.atk > 0 && perks.def > 0)
+})
+
+ok('Huyền Thoại: đánh thêm một đòn (Thanh Minh), phản sát thương (Vạn Cổ), giảm hồi chiêu có trần 50%', () => {
+  const x = arena()
+  wear(x.s, EQ.generateLegend('weapon', 0))
+  assert.equal(x.s.battlePerk.extra, 0.25)
+  const hits = []
+  const off = onEvent('battle-hit', (e) => e.target === 'enemy' && !e.skill && hits.push(e.damage))
+  useUiStoreEarly().tab = 'battle'
+  Math.random = seq(0.9, 0.5, 0.1, 0.5, 0.5, 0.5, 0.5) // chí mạng không, phương sai, rồi xác suất đánh thêm 0.1 < 0.25
+  x.b.nextPlayer = 0
+  x.b.playerAct()
+  Math.random = realRandom
+  off()
+  assert.equal(hits.length, 2, 'một đòn thường kèm một đòn đánh thêm')
+  // phản sát thương
+  const y = arena()
+  wear(y.s, EQ.generateLegend('armor', 0))
+  y.b.enemy.atk = 200
+  y.b.nextEnemy = 0
+  const hp = y.b.enemy.hp
+  y.b.enemyAct()
+  assert.ok(y.b.enemy.hp < hp, 'Vạn Cổ phản sát thương dù không có võ kỹ Phản Chấn')
+  // trần giảm hồi chiêu 50%
+  const z = freshStore()
+  z.init()
+  z.stageIdx = 12
+  z.path = 'phap'
+  wear(z, EQ.generateLegend('trinket', 0), { uid: 'sx', slot: 'weapon', tier: 0, rarity: 1, enh: 0, affixes: [{ id: 'skillDmg', v: 0.1 }] })
+  z.gear.bag.find((it) => it.slot === 'trinket').affixes = [{ id: 'cd', v: 0.5 }]
+  assert.ok(z.gearPerk.cd >= 0.15)
+  assert.equal(z.battlePerk.cd, 0.5, 'hồi chiêu giảm tối đa 50%')
+})
+
+ok('Chúa Tể rơi đồ Huyền Thoại (tỉ lệ cao), ải thường và Đại Boss thì không', () => {
+  const dropAt = (best, rnd) => {
+    const s = freshStore()
+    s.init()
+    s.stageIdx = 24
+    s.campaign.best = best
+    const b = useBattleStore()
+    b.start()
+    b.enemy.hp = 0
+    Math.random = () => rnd
+    b.onKill()
+    Math.random = realRandom
+    return s.gear.bag.filter((it) => it.legend)
+  }
+  const lord = dropAt(99, 0.01) // ải 100: Chúa Tể, xác suất rơi + chọn Huyền Thoại
+  assert.equal(lord.length, 1)
+  assert.equal(dropAt(99, 0.7).length, 0, '0.7 >= 0.6: rơi đồ thường')
+  assert.equal(dropAt(9, 0.01).length, 0, 'Đại Boss không rơi Huyền Thoại')
+  assert.equal(dropAt(3, 0.01).length, 0)
+})
+
+ok('đổi dòng phụ: tốn linh thạch, giữ số dòng, không áp dụng cho Phàm / Huyền Thoại', () => {
+  const s = freshStore()
+  s.init()
+  const it = EQ.generateItem('trinket', 2, [0, 0, 1, 0]) // Bảo: 2 dòng
+  s.addGear(it)
+  assert.equal(s.rerollAffixes(it.uid), false, 'chưa đủ linh thạch')
+  s.spiritStones = new Decimal(1e9)
+  const before = JSON.stringify(it.affixes)
+  let changed = false
+  for (let i = 0; i < 20 && !changed; i++) {
+    assert.equal(s.rerollAffixes(it.uid), true)
+    assert.equal(it.affixes.length, 2)
+    if (JSON.stringify(it.affixes) !== before) changed = true
+  }
+  assert.ok(changed, 'dòng phụ đổi sau vài lần')
+  const plain = EQ.generateItem('weapon', 0, [1, 0, 0, 0])
+  s.addGear(plain)
+  assert.equal(s.rerollAffixes(plain.uid), false, 'đồ Phàm không có dòng phụ')
+  const lg = EQ.generateLegend('weapon', 0)
+  s.addGear(lg)
+  assert.equal(s.rerollAffixes(lg.uid), false)
+  assert.ok(EQ.rerollCost({ tier: 4, rarity: 3 }).gt(EQ.rerollCost({ tier: 4, rarity: 1 })))
+})
+
+ok('save/load giữ dòng phụ và Huyền Thoại; loại dòng phụ lạ, sai ô, trùng, Huyền Thoại sai ô', () => {
+  const s = freshStore()
+  s.init()
+  const a = EQ.generateItem('weapon', 1, [0, 0, 0, 1])
+  const lg = EQ.generateLegend('armor', 2)
+  s.addGear(a)
+  s.addGear(lg)
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  const a2 = s2.gear.bag.find((x) => x.uid === a.uid)
+  assert.deepEqual(a2.affixes, a.affixes)
+  const lg2 = s2.gear.bag.find((x) => x.uid === lg.uid)
+  assert.equal(lg2.legend, lg.legend)
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.gear.bag = [
+    { uid: 'g1', slot: 'weapon', tier: 0, rarity: 3, enh: 0, affixes: [{ id: 'atk', v: 0.05 }, { id: 'atk', v: 0.06 }, { id: 'cd', v: 0.05 }, { id: 'khong_co', v: 1 }, { id: 'crit', v: 99 }] },
+    { uid: 'g2', slot: 'weapon', tier: 0, rarity: 1, enh: 0, legend: 'van_co', affixes: [{ id: 'atk', v: 0.05 }] },
+    { uid: 'g3', slot: 'armor', tier: 0, rarity: 3, enh: 0, legend: 'van_co', affixes: [{ id: 'atk', v: 0.05 }] },
+    { uid: 'g4', slot: 'weapon', tier: 0, rarity: 0, enh: 0 },
+  ]
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  const g1 = s3.gear.bag.find((x) => x.uid === 'g1')
+  assert.deepEqual(g1.affixes.map((x) => x.id), ['atk', 'crit'], 'trùng, sai ô, lạ bị loại')
+  assert.ok(g1.affixes.every((x) => x.v <= EQ.AFFIXES[x.id].max * 3 + 1e-9), 'giá trị bị chặn')
+  assert.equal(s3.gear.bag.find((x) => x.uid === 'g2').legend, undefined, 'huyền thoại sai ô bị bỏ')
+  const g3 = s3.gear.bag.find((x) => x.uid === 'g3')
+  assert.equal(g3.legend, 'van_co')
+  assert.deepEqual(g3.affixes, [], 'huyền thoại không có dòng phụ')
+  assert.deepEqual(s3.gear.bag.find((x) => x.uid === 'g4').affixes, [], 'save cũ thiếu affixes vẫn tải được')
 })
 
 // =====================================================================

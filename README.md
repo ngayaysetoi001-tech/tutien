@@ -179,7 +179,7 @@ Chiến đấu không còn là chọn bí cảnh mà là **chuỗi ải vô hạ
 | `AI_GROWTH` | 1.006 | mỗi ải thêm 0.6% (cộng dồn) ngoài tăng theo bậc |
 | `AI_EXP_PER_CLEAR` | 0.02 | +2% linh khí mỗi ải |
 | `INCOME_AI_BASE/PER_STAGE` | 10 / 8 | trần ải tính thu nhập theo bậc |
-| `BALANCE.requirementGrowth` | 2.19 | tăng từ 2.1 để bù thu nhập từ ải và công pháp bị động |
+| `BALANCE.requirementGrowth` | 2.20 | tăng từ 2.1 để bù thu nhập từ ải, công pháp và trang bị |
 
 Nhịp đo được: kiếp đầu 15-27 giờ ảo (người chơi trực tuyến) và 23-28 giờ (ghé 30 phút/lần); kiếp 2 còn 7-11 giờ; kiếp 3 trở đi 5-8 giờ. Mỗi bậc đầu 1-6 phút, giữa 4-40 phút, cuối 1-7 giờ. Ải cao nhất cuối kiếp 1 khoảng 150-190.
 
@@ -201,7 +201,7 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 | Thể Tu | +15% khí huyết, +15% phòng ngự, mọi đòn hút 5% sát thương | Bất Diệt Kim Thân |
 | Pháp Tu | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ (tối đa 5 ô) | Ngũ Lôi Chính Pháp |
 | Đan Sư | +25% hiệu quả đan tăng chỉ số, +10% luyện đan ra gấp đôi | Đan Hỏa Phần Thân |
-| Trận Pháp Sư | +25% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |
+| Trận Pháp Sư | +20% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |
 
 ## Đặc tính yêu thú và kỹ năng boss
 
@@ -211,3 +211,10 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Đại Boss** có một kỹ năng boss theo chương (Nhát Chém Ngàn Cân: đòn thứ 4 gấp 2.5; Cuồng Hóa dưới 40% khí huyết; Huyết Hồn Tái Sinh dưới 50%) và 50% thêm một đặc tính. **Chúa Tể** có hai kỹ năng boss và một đặc tính.
 - Tỉ lệ thắng ước tính và mô phỏng offline đã tính xấp xỉ các hành vi này.
 - Sau khi thêm, nhịp kiếp đầu đo được khoảng 20-30 giờ ảo tuỳ đạo lộ.
+
+## Trang bị: dòng phụ, bộ, Huyền Thoại
+
+- **Dòng phụ** (`AFFIXES` trong `src/game/equipment.js`): đồ từ độ hiếm Linh có 1-3 dòng phụ ngẫu nhiên (công kích, khí huyết, phòng ngự, Thân pháp, chí mạng, sát thương võ kỹ, hút máu, giảm hồi chiêu, khắc hệ, rơi đồ, linh khí), mỗi dòng chỉ xuất hiện ở các ô hợp lý và mạnh dần theo phẩm cấp. Có nút **Đổi dòng phụ** (tốn linh thạch) để đổi lại.
+- **Bộ trang bị:** 8 bộ theo phẩm cấp. Mặc 2 hoặc 3 món cùng phẩm cấp nhận thêm thưởng bộ, hiện ở đầu tab Trang Bị.
+- **Huyền Thoại:** chỉ rơi từ **Chúa Tể** (60%), mỗi ô một món, đặc hiệu cố định: Thanh Minh Thần Kiếm (25% đánh thêm một đòn), Vạn Cổ Chiến Giáp (phản 15% sát thương), Hồng Mông Thần Châu (linh khí, rơi đồ, giảm hồi chiêu, sát thương võ kỹ).
+- Thưởng từ trang bị cộng chung với Đạo Lộ ở một chỗ (`battlePerk`), hồi chiêu giảm tối đa 50%.

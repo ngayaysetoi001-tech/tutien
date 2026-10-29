@@ -91,7 +91,7 @@ export const INVENTORY_GROUPS = [
 // ---- Các hằng số cân bằng game (xem formulas.js) ----
 export const BALANCE = {
   baseRequirement: 100, // linh khí cần cho tầng 1
-  requirementGrowth: 2.19, // mỗi bậc cần gấp 2.19 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
+  requirementGrowth: 2.20, // mỗi bậc cần gấp 2.20 lần (tốc độ gốc chỉ tăng 1.5 lần; thu nhập từ ải bù lại một phần)
   stageExpGrowth: 1.5, // mỗi bậc tăng tốc hấp thụ ~1.5 lần
   baseSuccessRate: 0.9, // tỉ lệ đột phá bậc đầu
   successDropPerStage: 0.03, // giảm mỗi bậc

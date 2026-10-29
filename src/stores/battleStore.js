@@ -221,7 +221,12 @@ export const useBattleStore = defineStore('battle', {
       const stats = this.playerStats()
       const skillId = this.readySkill()
       if (skillId) this.castSkill(skillId, stats)
-      else this.basicAttack(stats)
+      else {
+        this.basicAttack(stats)
+        // Huyền Thoại: có xác suất đánh thêm một đòn
+        const extra = useGameStore().battlePerk.extra
+        if (extra > 0 && this.enemy && this.enemy.hp > 0 && Math.random() < extra) this.basicAttack(stats)
+      }
       const haste = this.clock < this.hasteUntil ? 1 + this.hasteAmt : 1
       this.nextPlayer += B.actionInterval(stats.speed * haste)
       if (this.enemy && this.enemy.hp <= 0) this.onKill()
@@ -273,7 +278,7 @@ export const useBattleStore = defineStore('battle', {
 
     /** Hút máu: đòn đánh hồi khí huyết theo sát thương gây ra nếu Huyết Thực còn hiệu lực. */
     lifestealFrom(damage) {
-      const rate = (this.clock < this.lifestealUntil ? this.lifestealAmt : 0) + useGameStore().pathPerk.lifesteal // Thể Tu hút máu nền
+      const rate = (this.clock < this.lifestealUntil ? this.lifestealAmt : 0) + useGameStore().battlePerk.lifesteal // hút máu nền (Thể Tu, trang bị)
       if (rate <= 0) return
       const heal = Math.round(damage * rate)
       if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal)
@@ -298,7 +303,7 @@ export const useBattleStore = defineStore('battle', {
     basicAttack(stats) {
       const game = useGameStore()
       const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
-      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
+      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE + game.battlePerk.crit, mult, B.CRIT_MULT + game.battlePerk.critMult)
       const damage = this.hurtEnemy(raw)
       this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
@@ -310,15 +315,15 @@ export const useBattleStore = defineStore('battle', {
       const level = game.skills.owned[id]
       const lv = SK.skillLevelMult(level)
       const attack = ['damage', 'stun', 'execute', 'ultimate'].includes(skill.kind)
-      const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1) * (attack ? 1 + game.pathPerk.skillDmg : 1)
-      this.cd[id] = this.clock + SK.skillCooldown(id, level) * (1 - game.pathPerk.cd) // Pháp Tu: hồi chiêu nhanh hơn
+      const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1) * (attack ? 1 + game.battlePerk.skillDmg : 1)
+      this.cd[id] = this.clock + SK.skillCooldown(id, level) * (1 - game.battlePerk.cd) // Pháp Tu: hồi chiêu nhanh hơn
       fx('battle-skill', { name: skill.name, color: ELEMENTS[skill.element].color, kind: SK.visualKind(skill.kind), element: skill.element, seconds: skill.seconds })
       if (attack) {
         let pw = power
         // Tuyệt Sát: gấp bội khi địch sắp gục
         if (skill.kind === 'execute' && this.enemy.hp / this.enemy.maxHp < skill.threshold) pw *= 1 + skill.bonus
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
-        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
+        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE + game.battlePerk.crit, mult, B.CRIT_MULT + game.battlePerk.critMult)
         const damage = this.hurtEnemy(raw, true)
         this.lifestealFrom(damage)
         if (skill.slow) {
@@ -373,8 +378,9 @@ export const useBattleStore = defineStore('battle', {
       this.nextEnemy += B.actionInterval(this.enemy.speed * slow)
       fx('battle-hit', { target: 'player', damage, crit: false, edge: elementEdge(this.enemy.element, game.element) })
       // Phản Chấn: trả lại một phần sát thương nhận vào
-      if (damage > 0 && this.clock < this.reflectUntil) {
-        const back = Math.max(1, Math.round(damage * this.reflectAmt))
+      const reflect = (this.clock < this.reflectUntil ? this.reflectAmt : 0) + game.battlePerk.thorns // Phản Chấn Thể + Huyền Thoại
+      if (damage > 0 && reflect > 0) {
+        const back = Math.max(1, Math.round(damage * reflect))
         this.hurtEnemy(back, true)
         fx('battle-hit', { target: 'enemy', damage: back, crit: false, skill: true, color: ELEMENTS.tho.color, edge: 'none' })
         if (this.enemy.hp <= 0 && this.hp > 0) {
@@ -407,7 +413,8 @@ export const useBattleStore = defineStore('battle', {
       // Trang bị rơi: tỉ lệ theo loại ải; phẩm cấp theo bối cảnh (tối đa phẩm cao nhất)
       if (Math.random() < C.AI_KINDS[kind].gear * (1 + game.lootLuck)) {
         const slot = EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)]
-        const gear = EQ.generateItem(slot, C.themeOf(n).idx, EQ.DROP_RARITY_WEIGHTS)
+        // Chúa Tể: 60% rơi đồ Huyền Thoại đặc hiệu cố định, còn lại là đồ thường
+        const gear = kind === 'lord' && Math.random() < 0.6 ? EQ.generateLegend(slot, C.themeOf(n).idx) : EQ.generateItem(slot, C.themeOf(n).idx, EQ.DROP_RARITY_WEIGHTS)
         game.addGear(gear)
         this.run.gear.push(EQ.itemFullName(gear))
         game.addLog(`Rơi trang bị: ${EQ.itemFullName(gear)}!`, gear.rarity >= 2 ? 'event' : 'good')

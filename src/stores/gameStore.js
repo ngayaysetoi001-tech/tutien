@@ -148,13 +148,13 @@ export const useGameStore = defineStore('game', {
         rootMult: this.spiritRoot.mult,
         stageIdx: this.stageIdx,
         arrayPower: 1 + this.pathPerk.array,
-        expBonus: this.bonus.exp + this.gearStats.exp + this.artBonus.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx, 1 + this.artBonus.income),
+        expBonus: this.bonus.exp + this.gearStats.exp + this.gearPerk.exp + this.artBonus.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx, 1 + this.artBonus.income),
       }).mul(1 + 0.1 * (this.reincarnation.upgrades.tu_chat ?? 0)) // Tu Chất
         .mul(1 + this.sectPerk.exp) // đặc quyền tông môn
     },
     /** Thưởng Phúc Duyên cho tỉ lệ rơi đồ. */
     lootLuck() {
-      return 0.1 * (this.reincarnation.upgrades.phuc_duyen ?? 0) + this.artBonus.luck
+      return 0.1 * (this.reincarnation.upgrades.phuc_duyen ?? 0) + this.artBonus.luck + this.gearPerk.luck
     },
     /** Giờ offline tối đa (8 giờ + Bế Quan Dài). */
     offlineCap() {
@@ -196,6 +196,23 @@ export const useGameStore = defineStore('game', {
     /** Tổng chỉ số từ trang bị đang mặc. */
     gearStats() {
       return EQ.sumStats(this.equippedItems.filter(Boolean))
+    },
+    /** Thưởng từ dòng phụ, bộ trang bị và đồ Huyền Thoại đang mặc. */
+    gearPerk() {
+      return EQ.gearPerks(this.equippedItems.filter(Boolean))
+    },
+    /** Bộ trang bị đang kích hoạt (để hiển thị). */
+    activeGearSets() {
+      return EQ.activeSets(this.equippedItems.filter(Boolean))
+    },
+    /** Thưởng chiến đấu gộp từ Đạo Lộ và trang bị (hồi chiêu giảm tối đa 50%). */
+    battlePerk() {
+      const p = this.pathPerk
+      const g = this.gearPerk
+      return {
+        crit: p.crit + g.crit, critMult: p.critMult + g.critMult, skillDmg: p.skillDmg + g.skillDmg,
+        lifesteal: p.lifesteal + g.lifesteal, cd: Math.min(0.5, p.cd + g.cd), extra: g.extra, thorns: g.thorns,
+      }
     },
     /** Mảng 3 phần tử theo thứ tự EQ.SLOT_IDS (weapon, armor, trinket): món đồ hoặc null */
     equippedItems() {
@@ -247,11 +264,12 @@ export const useGameStore = defineStore('game', {
       const k = 1 + 0.05 * (this.reincarnation.upgrades.than_the ?? 0) // Thân Thể
       const p = this.sectPerk
       const a = this.artBonus
+      const gp = this.gearPerk
       return {
-        hp: Math.round(base.hp * k * (1 + p.hp) * (1 + a.hp) * (1 + this.pathPerk.hp)),
-        atk: Math.round(base.atk * k * (1 + p.atk) * (1 + a.atk) * (1 + this.pathPerk.atk)),
-        def: Math.round(base.def * k * (1 + p.def) * (1 + a.def) * (1 + this.pathPerk.def)),
-        speed: Math.round(base.speed * (1 + a.speed)),
+        hp: Math.round(base.hp * k * (1 + p.hp) * (1 + a.hp) * (1 + this.pathPerk.hp) * (1 + gp.hp)),
+        atk: Math.round(base.atk * k * (1 + p.atk) * (1 + a.atk) * (1 + this.pathPerk.atk) * (1 + gp.atk)),
+        def: Math.round(base.def * k * (1 + p.def) * (1 + a.def) * (1 + this.pathPerk.def) * (1 + gp.def)),
+        speed: Math.round(base.speed * (1 + a.speed) * (1 + gp.speed)),
       }
     },
     /** Lần đột phá kế tiếp có phải độ kiếp không (cấu hình hoặc null) */
@@ -711,7 +729,7 @@ export const useGameStore = defineStore('game', {
 
     /** Ngũ Hành Quy Nhất: sát thương thêm khi hệ tấn công khắc hệ phòng thủ (1 nếu không khắc). */
     artElementMult(attack, defend) {
-      return elementMult(attack, defend) > 1 ? 1 + this.artBonus.elem : 1
+      return elementMult(attack, defend) > 1 ? 1 + this.artBonus.elem + this.gearPerk.elem : 1
     },
 
     /** Đạo Vận nhận được khi luân hồi, đã cộng thưởng công pháp Luân Hồi Bí Điển. */
@@ -746,6 +764,18 @@ export const useGameStore = defineStore('game', {
     },
 
     /** Cường hoá +1 bằng linh thạch (chắc chắn thành công, tối đa +10). */
+    /** Đổi lại toàn bộ dòng phụ của một món (tốn linh thạch; không áp dụng cho đồ Phàm hay Huyền Thoại). */
+    rerollAffixes(uid) {
+      const item = this.gear.bag.find((it) => it.uid === uid)
+      if (!item || item.legend || EQ.affixCount(item.rarity) === 0) return false
+      const cost = EQ.rerollCost(item)
+      if (this.spiritStones.lt(cost)) return false
+      this.spiritStones = this.spiritStones.sub(cost)
+      EQ.rerollItemAffixes(item)
+      this.addLog(`Đổi dòng phụ ${EQ.itemFullName(item)}: ${EQ.affixText(item)} (-${fmt(cost)} linh thạch).`, 'good')
+      return true
+    },
+
     enhanceGear(uid) {
       const item = this.gear.bag.find((it) => it.uid === uid)
       if (!item || item.enh >= EQ.MAX_ENHANCE) return false
