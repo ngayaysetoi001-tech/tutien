@@ -1,10 +1,16 @@
 <script setup>
 // ReincarnationTab.vue - Luân Hồi: đặt lại tiến trình lấy Đạo Vận, mua cường hoá vĩnh viễn.
+import { ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
+import { CHALLENGES, CHALLENGE_IDS, challengeReward } from '../../game/challenges.js'
 import { MIN_STAGE, PERKS, perkCost } from '../../game/reincarnation.js'
 import { STAGES } from '../../game/constants.js'
 
 const game = useGameStore()
+
+const picked = ref(null) // Kiếp Thử Thách chọn cho kiếp sau
+const times = (id) => game.reincarnation.challenges[id] ?? 0
+const stageName = (idx) => STAGES[idx].fullName
 
 const level = (perk) => game.reincarnation.upgrades[perk.id] ?? 0
 const maxed = (perk) => level(perk) >= perk.max
@@ -14,7 +20,8 @@ function onReincarnate() {
     `Luân hồi từ ${game.stage.fullName} để nhận ${game.daoPreview} Đạo Vận?\n\n` +
     'MẤT: cảnh giới, linh khí, linh thạch, Tụ Linh Trận, đan và chỉ số vĩnh viễn, túi vật phẩm, ải cao nhất đã vượt (kỷ lục vẫn giữ), Linh Điền.\n' +
     'GIỮ: võ kỹ, công pháp, trang bị, cấp Luyện Đan, thành tựu, Đạo Vận và cường hoá.'
-  if (window.confirm(msg)) game.reincarnate()
+  const extra = picked.value ? `\n\nKiếp Thử Thách: ${CHALLENGES[picked.value].name}. ${CHALLENGES[picked.value].desc}` : ''
+  if (window.confirm(msg + extra)) game.reincarnate(picked.value)
 }
 </script>
 
@@ -36,6 +43,22 @@ function onReincarnate() {
       <button class="btn-danger mt-2 w-full" :disabled="!game.canReincarnate" @click="onReincarnate">
         {{ game.canReincarnate ? `Luân hồi (+${game.daoPreview} Đạo Vận)` : `Cần ${STAGES[MIN_STAGE].fullName}` }}
       </button>
+    </div>
+
+    <div class="card space-y-1.5">
+      <div class="title-rule">Kiếp Thử Thách (tuỳ chọn cho kiếp sau)</div>
+      <p class="text-[11px] text-slate-400">Chọn một ràng buộc cho kiếp sau; đạt bậc mục tiêu thì nhận thêm Đạo Vận (lần sau thưởng nhiều hơn).</p>
+      <label class="flex items-center gap-2 text-xs text-slate-300">
+        <input v-model="picked" type="radio" :value="null" class="accent-emerald-500" /> Kiếp thường
+      </label>
+      <label v-for="id in CHALLENGE_IDS" :key="id" class="flex items-start gap-2 rounded bg-ink-900 p-1.5 text-xs">
+        <input v-model="picked" type="radio" :value="id" class="mt-0.5 accent-emerald-500" />
+        <span>
+          <b class="text-gold-200">{{ CHALLENGES[id].name }}</b>
+          <span class="text-slate-500"> · đạt {{ stageName(CHALLENGES[id].goalStage) }} → +{{ challengeReward(id, times(id) + 1) }} Đạo Vận (đã xong {{ times(id) }} lần)</span><br />
+          <span class="text-slate-400">{{ CHALLENGES[id].desc }}</span>
+        </span>
+      </label>
     </div>
 
     <div v-for="perk in PERKS" :key="perk.id" class="card">

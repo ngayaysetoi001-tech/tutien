@@ -1,9 +1,12 @@
 <script setup>
 // SettingsTab.vue - Cài đặt: hiệu ứng, lưu thủ công, xuất / nhập save .json, chơi lại từ đầu.
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
+import { AUTOMATIONS, automationUnlocked, automationValue } from '../../game/automation.js'
+import { RECIPES, itemName } from '../../game/data.js'
 
 const game = useGameStore()
+const recipes = computed(() => RECIPES.filter((r) => game.stageIdx >= r.minStage && game.alchemy.level >= r.minAlchemy))
 const fileInput = ref(null)
 const message = ref('')
 const isError = ref(false)
@@ -56,6 +59,26 @@ function onReset() {
       <span>Tự động đột phá bậc nhỏ<br /><span class="text-[11px] text-slate-500">Bậc có thiên kiếp vẫn phải tự bấm</span></span>
       <input v-model="game.settings.autoBreak" type="checkbox" class="h-4 w-4 accent-emerald-500" />
     </label>
+    <div class="card space-y-1.5">
+      <div class="title-rule">Tự động hoá (mở khoá dần)</div>
+      <div v-for="a in AUTOMATIONS" :key="a.id" class="text-sm">
+        <label v-if="automationUnlocked(a, game)" class="flex items-center justify-between">
+          <span>{{ a.name }}<br /><span class="text-[11px] text-slate-500">{{ a.desc }}</span></span>
+          <input v-model="game.settings.auto[a.id]" type="checkbox" class="h-4 w-4 accent-emerald-500" />
+        </label>
+        <div v-else class="flex items-center justify-between text-slate-500">
+          <span>🔒 {{ a.name }}<br /><span class="text-[11px]">{{ a.text }} ({{ Math.min(automationValue(a, game), a.need.value) }}/{{ a.need.value }})</span></span>
+        </div>
+        <select
+          v-if="a.id === 'craft' && automationUnlocked(a, game)"
+          v-model="game.settings.autoCraft"
+          class="mt-1 w-full rounded border border-ink-600 bg-ink-900 px-2 py-1 text-xs text-white"
+        >
+          <option :value="null">— chọn loại đan tự luyện —</option>
+          <option v-for="r in recipes" :key="r.id" :value="r.id">{{ itemName(r.id) }}</option>
+        </select>
+      </div>
+    </div>
     <label class="card flex items-center justify-between text-sm">
       <span>Tự động lưu mỗi 5 giây</span>
       <input v-model="game.settings.autoSave" type="checkbox" class="h-4 w-4 accent-emerald-500" />

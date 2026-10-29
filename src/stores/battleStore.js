@@ -462,7 +462,7 @@ export const useBattleStore = defineStore('battle', {
     /** Dùng Hồi Huyết Đan trong trận. `auto` = tự động (không báo lỗi). */
     useHealPill(auto = false) {
       const game = useGameStore()
-      if (!this.inFight || this.hp >= this.maxHp) return false
+      if (!this.inFight || this.hp >= this.maxHp || game.challenge === 'tinh_tam') return false // Tịnh Tâm: không dùng đan
       if (game.itemCount('hoi_huyet_dan') < 1) return false
       game.removeItem('hoi_huyet_dan', 1)
       const heal = Math.round(this.maxHp * 0.5)

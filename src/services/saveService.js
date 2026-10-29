@@ -6,7 +6,7 @@
 // =====================================================================
 import Decimal from 'break_infinity.js'
 import { MAX_STAGE_IDX, SAVE_KEY, SAVE_VERSION, SPIRIT_ROOTS } from '../game/constants.js'
-import { DUNGEONS, ITEMS } from '../game/data.js'
+import { DUNGEONS, ITEMS, RECIPES } from '../game/data.js'
 import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
@@ -16,6 +16,8 @@ import { MAX_SKILL_SLOTS } from '../game/skills.js'
 import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
 import { ACHIEVEMENTS } from '../game/achievements.js'
 import { PERKS } from '../game/reincarnation.js'
+import { AUTOMATION_IDS } from '../game/automation.js'
+import { CHALLENGES } from '../game/challenges.js'
 import { CROPS, MAX_PLOTS } from '../game/garden.js'
 import { sectById } from '../game/sect.js'
 import { TIERS as QUEST_TIERS, templateById } from '../game/quests.js'
@@ -48,6 +50,8 @@ export function serialize(state, now = Date.now()) {
       skills: JSON.parse(JSON.stringify(state.skills)),
       arts: JSON.parse(JSON.stringify(state.arts)),
       path: state.path ?? null,
+      challenge: state.challenge ?? null,
+      challengeDone: !!state.challengeDone,
       gear: JSON.parse(JSON.stringify(state.gear)),
       achTier: { ...state.achTier },
       reincarnation: JSON.parse(JSON.stringify(state.reincarnation)),
@@ -163,6 +167,12 @@ export function deserialize(save, defaults) {
   }
   const achTier = {}
   for (const a of ACHIEVEMENTS) achTier[a.id] = Math.floor(num(d.achTier?.[a.id], 0, 0, a.targets.length))
+  // Kiếp Thử Thách: số lần hoàn thành mỗi thử thách hợp lệ
+  const challenges = {}
+  for (const id of Object.keys(CHALLENGES)) {
+    const n = Math.floor(num(d.reincarnation?.challenges?.[id], 0, 0, 1e6))
+    if (n > 0) challenges[id] = n
+  }
   // Luân Hồi: chỉ giữ cường hoá hợp lệ, cấp không vượt tối đa
   const upgrades = {}
   for (const p of PERKS) {
@@ -230,6 +240,7 @@ export function deserialize(save, defaults) {
       count: Math.floor(num(d.reincarnation?.count, 0)),
       dao: Math.floor(num(d.reincarnation?.dao, 0)),
       totalDao: Math.floor(num(d.reincarnation?.totalDao, 0)),
+      challenges,
       upgrades,
     },
     garden: { plots },
@@ -238,6 +249,8 @@ export function deserialize(save, defaults) {
     skills: { owned, slots },
     arts: { owned: artsOwned, slots: artSlots },
     path: PATHS[d.path] ? d.path : null,
+    challenge: CHALLENGES[d.challenge] ? d.challenge : null,
+    challengeDone: d.challengeDone === true,
     gear: { bag, equipped },
     achTier,
     name: typeof d.name === 'string' && d.name.trim() ? d.name.slice(0, 24) : defaults.name,
@@ -294,6 +307,8 @@ export function deserialize(save, defaults) {
       sound: d.settings?.sound !== false,
       music: d.settings?.music !== false,
       autoBreak: d.settings?.autoBreak === true,
+      auto: Object.fromEntries(AUTOMATION_IDS.map((id) => [id, d.settings?.auto?.[id] === true])),
+      autoCraft: RECIPES.some((r) => r.id === d.settings?.autoCraft) ? d.settings.autoCraft : null,
     },
     savedAt: num(save.savedAt, Date.now()),
   }

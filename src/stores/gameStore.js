@@ -29,7 +29,9 @@ import * as EQ from '../game/equipment.js'
 import { enemyStats, simulateFight } from '../game/battle.js'
 import * as C from '../game/campaign.js'
 import { MIN_STAGE, daoGain, perkById, perkCost } from '../game/reincarnation.js'
-import { cropById, mineAmount, mineInfo, plotCount, seedCost, MAX_PLOTS } from '../game/garden.js'
+import { AUTOMATIONS, AUTOMATION_INTERVAL, SALVAGE_BAG_LIMIT, automationById, automationUnlocked } from '../game/automation.js'
+import { CHALLENGES, challengeReward } from '../game/challenges.js'
+import { CROPS, cropById, mineAmount, mineInfo, plotCount, seedCost, MAX_PLOTS } from '../game/garden.js'
 import { RANKS, RANK_PERK_STEP, SHOP, SWITCH_PENALTY, discipleCap, rankIndex, sectById } from '../game/sect.js'
 import { BOARD_SIZE, REFRESH_COST_BASE, generateQuest, questReward, templateById } from '../game/quests.js'
 import {
@@ -91,6 +93,8 @@ function createPlayerState(minRoot = 0) {
     inventory: { herbs: {}, ores: {}, scrolls: {}, pills: {} },
     element: ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)], // hệ ngũ hành chủ đạo
     path: null, // Đạo Lộ (xem paths.js): chọn khi đạt Trúc Cơ, chọn lại sau luân hồi
+    challenge: null, // Kiếp Thử Thách đang theo (xem challenges.js), null = kiếp thường
+    challengeDone: false, // đã hoàn thành thử thách trong kiếp này
     arts: { owned: {}, slots: [null, null, null, null, null] }, // Công pháp (bị động). owned: { id: cấp }, slots: id đã trang bị
     skills: { owned: {}, slots: [null, null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
     gear: { bag: [], equipped: { weapon: null, armor: null, trinket: null } }, // equipped lưu uid
@@ -99,13 +103,17 @@ function createPlayerState(minRoot = 0) {
       breakthroughs: 0, failures: 0, tribulations: 0, playSeconds: 0,
       kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0,
     },
-    settings: { particles: true, autoSave: true, autoRepeat: true, autoHeal: true, sound: true, music: true, autoBreak: false },
+    settings: {
+      particles: true, autoSave: true, autoRepeat: true, autoHeal: true, sound: true, music: true, autoBreak: false,
+      auto: Object.fromEntries(AUTOMATIONS.map((a) => [a.id, false])), // tự động hoá đã mở khoá: bật / tắt từng cái
+      autoCraft: null, // id công thức tự luyện
+    },
     buffs: { success: 0, guard: 0 }, // hiệu ứng đan dược dùng một lần
     alchemy: { level: 1, exp: 0 }, // cấp Luyện Đan
     usage: {}, // số lần đã dùng mỗi vật phẩm (kháng đan)
     // Vượt Ải: best = ải cao nhất đã vượt (mất khi luân hồi), record = cao nhất mọi kiếp, grit = Kiên Trì, farm = ải đang cày
     campaign: { best: 0, record: 0, grit: 0, farm: null, milestone: 0 }, // milestone = số rương mốc ải đã nhận (giữ khi luân hồi)
-    reincarnation: { count: 0, dao: 0, totalDao: 0, upgrades: {} }, // Luân Hồi: Đạo Vận và cường hoá vĩnh viễn
+    reincarnation: { count: 0, dao: 0, totalDao: 0, upgrades: {}, challenges: {} }, // Luân Hồi: Đạo Vận, cường hoá vĩnh viễn, số lần hoàn thành mỗi Kiếp Thử Thách
     garden: { plots: Array(MAX_PLOTS).fill(null) }, // Linh Điền: { crop, readyAt(ms) } hoặc null
     mineAt: Date.now(), // mốc thu khoáng mạch lần cuối (ms)
     expPillUses: 0, // số Tụ Khí Đan đã dùng trong bậc hiện tại (giảm hiệu quả liên tiếp)
@@ -129,6 +137,7 @@ export const useGameStore = defineStore('game', {
     tribulation: { active: false, bolt: 0, total: 0, hp: 0, maxHp: 0, name: '' },
     storyView: null, // trình đọc truyện đang mở: { id, idx, replay, phase, result, effectsText }
     storyTimer: 0,
+    autoTimer: 0, // đếm giây cho tự động hoá
     event: null, // kỳ ngộ đang chờ người chơi: { id, resultText, effectsText } hoặc null
     eventTimer: 0,
     eventAge: 0, // số giây kỳ ngộ hiện tại đã chờ (tự xử lý nếu bỏ ngỏ)
@@ -148,7 +157,7 @@ export const useGameStore = defineStore('game', {
         rootMult: this.spiritRoot.mult,
         stageIdx: this.stageIdx,
         arrayPower: 1 + this.pathPerk.array,
-        expBonus: this.bonus.exp + this.gearStats.exp + this.gearPerk.exp + this.artBonus.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx, 1 + this.artBonus.income),
+        expBonus: this.bonus.exp + this.gearStats.exp + this.gearPerk.exp + this.artBonus.exp + C.campaignExpBonus(this.campaign.best, this.stageIdx, 1 + this.artBonus.income, this.incomeCapBonus),
       }).mul(1 + 0.1 * (this.reincarnation.upgrades.tu_chat ?? 0)) // Tu Chất
         .mul(1 + this.sectPerk.exp) // đặc quyền tông môn
     },
@@ -175,9 +184,14 @@ export const useGameStore = defineStore('game', {
       return rankIndex(this.sect.total)
     },
     /** Đặc quyền tông môn đã nhân theo cấp bậc: { atk, hp, def, exp, skill, herb } (phân số). */
+    /** Ải trần cộng thêm cho thu nhập thụ động (cường hoá luân hồi Ải Lộ: +5 mỗi cấp). */
+    incomeCapBonus() {
+      return 5 * (this.reincarnation.upgrades.ai_loc ?? 0)
+    },
     sectPerk() {
       const k = 1 + RANK_PERK_STEP * this.rankIdx
       const out = { atk: 0, hp: 0, def: 0, exp: 0, skill: 0, herb: 0 }
+      if (this.challenge === 'doc_hanh') return out // Độc Hành: không đặc quyền tông môn
       for (const [key, v] of Object.entries(this.sectDef?.perk ?? {})) out[key] = v * k
       return out
     },
@@ -195,14 +209,17 @@ export const useGameStore = defineStore('game', {
     },
     /** Tổng chỉ số từ trang bị đang mặc. */
     gearStats() {
+      if (this.challenge === 'tay_khong') return { hp: 0, atk: 0, def: 0, speed: 0, exp: 0 } // Tay Không: trang bị vô hiệu
       return EQ.sumStats(this.equippedItems.filter(Boolean))
     },
     /** Thưởng từ dòng phụ, bộ trang bị và đồ Huyền Thoại đang mặc. */
     gearPerk() {
+      if (this.challenge === 'tay_khong') return { ...EQ.ZERO_GEAR_PERK }
       return EQ.gearPerks(this.equippedItems.filter(Boolean))
     },
     /** Bộ trang bị đang kích hoạt (để hiển thị). */
     activeGearSets() {
+      if (this.challenge === 'tay_khong') return []
       return EQ.activeSets(this.equippedItems.filter(Boolean))
     },
     /** Thưởng chiến đấu gộp từ Đạo Lộ và trang bị (hồi chiêu giảm tối đa 50%). */
@@ -210,7 +227,7 @@ export const useGameStore = defineStore('game', {
       const p = this.pathPerk
       const g = this.gearPerk
       return {
-        crit: p.crit + g.crit, critMult: p.critMult + g.critMult, skillDmg: p.skillDmg + g.skillDmg,
+        crit: p.crit + g.crit, critMult: p.critMult + g.critMult, skillDmg: p.skillDmg + g.skillDmg + 0.05 * (this.reincarnation.upgrades.vo_ky ?? 0),
         lifesteal: p.lifesteal + g.lifesteal, cd: Math.min(0.5, p.cd + g.cd), extra: g.extra, thorns: g.thorns,
       }
     },
@@ -221,6 +238,7 @@ export const useGameStore = defineStore('game', {
       return out
     },
     skillSlots() {
+      if (this.challenge === 'don_nhat') return 1 // Đơn Nhất: chỉ một võ kỹ
       return Math.min(SK.MAX_SKILL_SLOTS, SK.slotCount(this.realmIdx) + this.pathPerk.slots)
     },
     /** Đặc quyền của Đạo Lộ đã chọn (mọi khoá, 0 nếu chưa chọn). */
@@ -242,8 +260,9 @@ export const useGameStore = defineStore('game', {
     },
     /** Tổng bị động từ công pháp đang trang bị (đã tính thưởng cùng hệ với tông môn). */
     artBonus() {
+      if (this.challenge === 'doc_hanh') return { exp: 0, hp: 0, atk: 0, def: 0, speed: 0, stones: 0, income: 0, luck: 0, elem: 0, dao: 0 } // Độc Hành
       const t = AR.totalArtBonus(this.arts.slots.slice(0, this.artSlots), this.arts.owned, this.sectDef?.element ?? null)
-      const k = 1 + this.pathPerk.arts // Trận Pháp Sư: công pháp mạnh hơn
+      const k = 1 + this.pathPerk.arts + 0.05 * (this.reincarnation.upgrades.cong_phap ?? 0) // Trận Pháp Sư và cường hoá Pháp Duyên
       if (k !== 1) for (const key of Object.keys(t)) t[key] *= k
       return t
     },
@@ -251,7 +270,7 @@ export const useGameStore = defineStore('game', {
     claimableCount() {
       return ACHIEVEMENTS.filter((a) => this.achievementClaimable(a)).length
     },
-    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best, s.stageIdx, 1 + s.artBonus.income)).mul(1 + s.artBonus.stones),
+    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best, s.stageIdx, 1 + s.artBonus.income, s.incomeCapBonus)).mul(1 + s.artBonus.stones),
     /** Tiến độ tu vi 0..1 */
     progress() {
       return Math.min(1, this.exp.div(this.requirement).toNumber())
@@ -359,6 +378,12 @@ export const useGameStore = defineStore('game', {
       this.spiritStones = this.spiritStones.add(this.stonesRate.mul(dt))
       this.gainExp(this.expRate.mul(dt))
       this.grantCampaignItems(dt)
+      this.autoTimer += dt
+      if (this.autoTimer >= AUTOMATION_INTERVAL) {
+        this.autoTimer = 0
+        this.runAutomation()
+        this.checkChallenge()
+      }
       // Tự động đột phá các bậc nhỏ (bậc có thiên kiếp luôn phải tự bấm để chuẩn bị đan)
       if (this.settings.autoBreak && this.canBreakthrough && !this.nextTribulation && !this.storyView && !this.event) this.breakthrough()
       this.storyTimer += dt
@@ -472,6 +497,7 @@ export const useGameStore = defineStore('game', {
       this.fullNotified = false
       this.spiritStones = this.spiritStones.add(reward)
       this.stats.breakthroughs += 1
+      this.checkChallenge()
       this.stats.maxStage = Math.max(this.stats.maxStage, this.stageIdx)
       this.addLog(`Đột phá thành công! Tiến vào ${this.stage.fullName}. +${fmt(reward)} linh thạch.`, 'good')
       if (this.realmIdx !== prevRealm && REALM_FLAVOR[this.realmIdx]) this.addLog(REALM_FLAVOR[this.realmIdx], 'event')
@@ -521,6 +547,7 @@ export const useGameStore = defineStore('game', {
     useItem(id, times = 1) {
       const item = ITEMS[id]
       if (!item?.effect || item.effect.type === 'heal') return 0
+      if (this.challenge === 'tinh_tam') return 0 // Tịnh Tâm: không dùng đan dược
       const cost = item.useCost ?? 1
       const fx = item.effect
       let used = 0
@@ -739,7 +766,7 @@ export const useGameStore = defineStore('game', {
 
     /** Đạo Vận nhận được khi luân hồi, đã cộng thưởng công pháp Luân Hồi Bí Điển. */
     daoWithArts(base) {
-      return Math.round(base * (1 + this.artBonus.dao))
+      return Math.round(base * (1 + this.artBonus.dao + 0.1 * (this.reincarnation.upgrades.khai_thien ?? 0)))
     },
 
     // ------------------------------------------------------------
@@ -769,6 +796,82 @@ export const useGameStore = defineStore('game', {
     },
 
     /** Cường hoá +1 bằng linh thạch (chắc chắn thành công, tối đa +10). */
+    // ------------------------------------------------------------
+    // Tự động hoá (mở khoá dần, xem automation.js)
+    // ------------------------------------------------------------
+    automationUnlocked(id) {
+      const a = automationById(id)
+      return !!a && automationUnlocked(a, this)
+    },
+
+    /** Chạy các việc tự động đã mở khoá và đang bật. Mỗi việc cũng có thể gọi riêng ở các test. */
+    runAutomation() {
+      const on = (id) => this.settings.auto[id] && this.automationUnlocked(id)
+      if (on('equip')) this.autoEquipBest()
+      if (on('claim')) {
+        for (const q of [...this.quests]) if (this.questDone(q)) this.claimQuest(q.uid)
+        for (const a of ACHIEVEMENTS) {
+          for (let i = 0; i < a.targets.length && this.achievementClaimable(a); i++) this.claimAchievement(a.id)
+        }
+        while (this.milestoneClaimable) this.claimMilestone()
+      }
+      if (on('array')) for (let k = 0; k < 20 && this.spiritStones.gte(this.arrayCost.mul(2)); k++) this.upgradeArray()
+      if (on('collect')) {
+        for (let i = 0; i < plotCount(this.stageIdx); i++) {
+          this.harvest(i)
+          if (!this.garden.plots[i]) {
+            const crop = [...CROPS].reverse().find((c) => this.stageIdx >= c.minStage)
+            if (crop && this.spiritStones.gte(seedCost(crop).mul(5))) this.plant(i, crop.id)
+          }
+        }
+        this.collectMine()
+        this.collectAllDisciples()
+      }
+      if (on('craft') && this.settings.autoCraft) {
+        for (let k = 0; k < 5 && this.canCraft(this.settings.autoCraft) && this.spiritStones.gte(this.stonesRate.mul(30)); k++) this.craft(this.settings.autoCraft, 1)
+      }
+      if (on('salvage') && this.gear.bag.length > SALVAGE_BAG_LIMIT) {
+        const worn = Object.values(this.gear.equipped)
+        for (const it of [...this.gear.bag]) {
+          if (this.gear.bag.length <= SALVAGE_BAG_LIMIT) break
+          if (it.rarity === 0 && !it.legend && !worn.includes(it.uid)) this.sellGear(it.uid)
+        }
+      }
+    },
+
+    /** Mỗi ô mặc món có điểm cao nhất trong túi (nếu cao hơn món đang mặc). Trả về số ô đã đổi. */
+    autoEquipBest() {
+      let changed = 0
+      for (const slot of EQ.SLOT_IDS) {
+        const worn = this.gear.bag.find((it) => it.uid === this.gear.equipped[slot])
+        let best = worn
+        for (const it of this.gear.bag) if (it.slot === slot && (!best || EQ.gearScore(it) > EQ.gearScore(best))) best = it
+        if (best && best !== worn) {
+          this.equipGear(best.uid)
+          changed++
+        }
+      }
+      return changed
+    },
+
+    // ------------------------------------------------------------
+    // Kiếp Thử Thách
+    // ------------------------------------------------------------
+    /** Đạt bậc mục tiêu của thử thách đang theo thì nhận Đạo Vận (một lần mỗi kiếp). */
+    checkChallenge() {
+      const def = CHALLENGES[this.challenge]
+      if (!def || this.challengeDone || this.stageIdx < def.goalStage) return false
+      const rb = this.reincarnation
+      const times = (rb.challenges[this.challenge] ?? 0) + 1
+      const reward = challengeReward(this.challenge, times)
+      rb.challenges[this.challenge] = times
+      rb.dao += reward
+      rb.totalDao += reward
+      this.challengeDone = true
+      this.addLog(`Hoàn thành Kiếp Thử Thách ${def.name} (lần ${times}): +${reward} Đạo Vận!`, 'event')
+      return true
+    },
+
     /** Đổi lại toàn bộ dòng phụ của một món (tốn linh thạch; không áp dụng cho đồ Phàm hay Huyền Thoại). */
     rerollAffixes(uid) {
       const item = this.gear.bag.find((it) => it.uid === uid)
@@ -869,6 +972,7 @@ export const useGameStore = defineStore('game', {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
       if (key === 'aiRecord') return this.campaign.record
       if (key === 'skills') return Object.keys(this.skills.owned).length
+      if (key === 'challengesDone') return Object.values(this.reincarnation.challenges).reduce((n, v) => n + v, 0)
       if (key === 'artLevels') return Object.values(this.arts.owned).reduce((n, v) => n + v, 0)
       if (key === 'playHours') return Math.floor(this.stats.playSeconds / 3600)
       if (key === 'pillsUsed') return Object.values(this.usage).reduce((n, v) => n + v, 0)
@@ -898,7 +1002,7 @@ export const useGameStore = defineStore('game', {
     /** Nguyên liệu nhận được từ ải cao nhất: số lượng kỳ vọng theo `seconds`, làm tròn ngẫu nhiên. Trả về { id: n }. */
     grantCampaignItems(seconds) {
       const got = {}
-      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best, this.stageIdx, 1 + this.artBonus.income)) {
+      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best, this.stageIdx, 1 + this.artBonus.income, this.incomeCapBonus)) {
         const x = (perHour * seconds) / 3600
         const n = Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0)
         if (n > 0) {
@@ -938,7 +1042,7 @@ export const useGameStore = defineStore('game', {
     // Luân Hồi
     // ------------------------------------------------------------
     /** Luân hồi chuyển thế: nhận Đạo Vận, đặt lại tiến trình (xem reincarnation.js). Trả về Đạo Vận nhận được. */
-    reincarnate() {
+    reincarnate(challengeId = null) {
       if (!this.canReincarnate) return 0
       useBattleStore().retreat(true)
       const gain = this.daoWithArts(daoGain(this.stageIdx))
@@ -949,16 +1053,18 @@ export const useGameStore = defineStore('game', {
       rb.count += 1
       this.stats.reincarnations += 1
       const fresh = createPlayerState(rb.upgrades.thien_menh ?? 0)
-      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'path', 'spiritRoot', 'element', 'garden', 'mineAt']) {
+      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'path', 'challenge', 'challengeDone', 'spiritRoot', 'element', 'garden', 'mineAt']) {
         this[key] = fresh[key]
       }
       this.arrayLevel = 3 * (rb.upgrades.tuc_hue ?? 0) // Túc Huệ
       this.campaign = { best: 0, record: this.campaign.record, grit: 0, farm: null, milestone: this.campaign.milestone } // ải cao nhất mất, kỷ lục và rương mốc giữ lại
+      this.challenge = CHALLENGES[challengeId] ? challengeId : null // Kiếp Thử Thách của kiếp mới
       this.quests = [] // nhiệm vụ cũ đo theo thống kê của kiếp trước
       this.refillQuests()
       this.fullNotified = false
       this.event = null
       this.addLog(`Luân hồi từ ${from}: +${gain} Đạo Vận. Kiếp mới: ${this.spiritRoot.name}, hệ ${this.element}.`, 'event')
+      if (this.challenge) this.addLog(`Kiếp Thử Thách ${CHALLENGES[this.challenge].name}: ${CHALLENGES[this.challenge].desc}`, 'event')
       this.save()
       return gain
     },
@@ -1026,7 +1132,7 @@ export const useGameStore = defineStore('game', {
     /** Gia nhập (hoặc đổi) tông môn. Đổi tông môn mất 50% Cống Hiến và cấp bậc. */
     joinSect(id) {
       const def = sectById(id)
-      if (!def || this.sect.id === id) return false
+      if (!def || this.sect.id === id || this.challenge === 'doc_hanh') return false
       if (this.sect.id) {
         this.sect.contribution = Math.floor(this.sect.contribution * (1 - SWITCH_PENALTY))
         this.sect.total = Math.floor(this.sect.total * (1 - SWITCH_PENALTY))
@@ -1109,7 +1215,7 @@ export const useGameStore = defineStore('game', {
 
     /** Thu nhận đệ tử mới (tốn linh thạch, giới hạn theo cấp bậc tông môn). */
     recruit() {
-      if (this.disciples.length >= this.discipleLimit) return null
+      if (this.disciples.length >= this.discipleLimit || this.challenge === 'doc_hanh') return null
       const cost = recruitCost(this.stageIdx, this.disciples.length)
       if (this.spiritStones.lt(cost)) return null
       this.spiritStones = this.spiritStones.sub(cost)

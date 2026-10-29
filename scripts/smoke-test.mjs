@@ -1862,6 +1862,313 @@ ok('giao diện: màn đã ghé được ghi nhớ; lần đầu coi màn đang 
 })
 
 // =====================================================================
+// Tự động hoá mở khoá dần, cường hoá luân hồi mới, Kiếp Thử Thách
+// =====================================================================
+const AUTO7 = await import('../src/game/automation.js')
+const CH7 = await import('../src/game/challenges.js')
+const RB7 = await import('../src/game/reincarnation.js')
+
+ok('tự động hoá: dữ liệu hợp lệ, mặc định tắt, chỉ chạy khi đã mở khoá', () => {
+  assert.equal(AUTO7.AUTOMATIONS.length, 6)
+  for (const a of AUTO7.AUTOMATIONS) assert.ok(a.name && a.desc && a.text && a.need.value > 0, a.id)
+  const s = freshStore()
+  s.init()
+  assert.deepEqual(Object.keys(s.settings.auto).sort(), [...AUTO7.AUTOMATION_IDS].sort())
+  assert.ok(Object.values(s.settings.auto).every((v) => v === false))
+  assert.ok(AUTO7.AUTOMATIONS.every((a) => !s.automationUnlocked(a.id)))
+  // bật khi chưa mở khoá thì không chạy
+  s.settings.auto.array = true
+  s.stageIdx = 2
+  s.spiritStones = new Decimal(1e12)
+  s.runAutomation()
+  assert.equal(s.arrayLevel, 0)
+  // mở khoá (bậc 5) thì chạy
+  s.stageIdx = 5
+  s.runAutomation()
+  assert.ok(s.arrayLevel > 0)
+  assert.ok(s.spiritStones.gt(0), 'giữ lại khoảng nửa linh thạch')
+})
+
+ok('tự động hoá: điều kiện mở khoá theo ải, nhiệm vụ, bậc, thu hoạch, đan', () => {
+  const s = freshStore()
+  s.init()
+  const A = (id) => AUTO7.automationById(id)
+  s.campaign.record = 19
+  assert.equal(AUTO7.automationUnlocked(A('equip'), s), false)
+  s.campaign.record = 20
+  assert.equal(AUTO7.automationUnlocked(A('equip'), s), true)
+  s.campaign.record = 40
+  assert.equal(AUTO7.automationUnlocked(A('salvage'), s), true)
+  s.stats.questsDone = 10
+  assert.equal(AUTO7.automationUnlocked(A('claim'), s), true)
+  s.stats.harvests = 10
+  assert.equal(AUTO7.automationUnlocked(A('collect'), s), true)
+  s.stats.crafted = 25
+  assert.equal(AUTO7.automationUnlocked(A('craft'), s), true)
+  assert.equal(AUTO7.automationValue(A('craft'), s), 25)
+  // luân hồi (bậc về 0) vẫn giữ mở khoá vì tính theo bậc cao nhất / ải kỷ lục
+  s.stats.maxStage = 8
+  s.stageIdx = 0
+  assert.equal(AUTO7.automationUnlocked(A('array'), s), true)
+})
+
+ok('tự mặc đồ tốt nhất: chọn món điểm cao nhất mỗi ô, không đổi nếu đã tốt nhất', () => {
+  const s = freshStore()
+  s.init()
+  s.campaign.record = 20
+  s.settings.auto.equip = true
+  const mk = (uid, slot, tier, rarity, enh = 0, affixes = []) => ({ uid, slot, tier, rarity, enh, affixes })
+  s.addGear(mk('w1', 'weapon', 0, 0))
+  s.addGear(mk('w2', 'weapon', 2, 1))
+  s.addGear(mk('w3', 'weapon', 2, 3))
+  s.addGear(mk('a1', 'armor', 1, 1))
+  assert.equal(s.autoEquipBest(), 2)
+  assert.equal(s.gear.equipped.weapon, 'w3')
+  assert.equal(s.gear.equipped.armor, 'a1')
+  assert.equal(s.gear.equipped.trinket, null)
+  assert.equal(s.autoEquipBest(), 0)
+  s.addGear(EQ.generateLegend('weapon', 0))
+  assert.equal(s.autoEquipBest(), 1, 'Huyền Thoại vượt mọi thứ')
+  assert.ok(EQ.gearScore(EQ.generateLegend('weapon', 0)) > EQ.gearScore(mk('x', 'weapon', 7, 3, 10, [1, 2, 3])))
+  // chạy qua vòng tick tự động
+  const t = freshStore()
+  t.init()
+  t.campaign.record = 20
+  t.settings.auto.equip = true
+  t.addGear(mk('g1', 'armor', 3, 2))
+  runFor(t, 3)
+  assert.equal(t.gear.equipped.armor, 'g1')
+})
+
+ok('tự nhận thưởng: nhiệm vụ xong, thành tựu, rương mốc; tự thu hoạch: Linh Điền, khoáng mạch', () => {
+  const s = freshStore()
+  s.init()
+  s.stats.questsDone = 10
+  s.settings.auto.claim = true
+  const q = s.quests[0]
+  const key = QS6.templateById(q.tpl).key
+  if (key === 'aiRecord') s.campaign.record = q.target + 5
+  else s.stats[key] = (s.stats[key] ?? 0) + q.target + 5
+  s.campaign.record = Math.max(s.campaign.record, 30)
+  s.stats.kills = 60
+  const done = s.stats.questsDone
+  s.runAutomation()
+  assert.ok(s.stats.questsDone > done, 'nhiệm vụ đã nhận')
+  assert.ok((s.achTier.kills ?? 0) >= 2, 'thành tựu đã nhận')
+  assert.equal(s.campaign.milestone, 2, 'mốc ải 10 và 25 đã nhận')
+  // thu hoạch
+  const t = freshStore()
+  t.init()
+  t.stageIdx = 3
+  t.stats.harvests = 10
+  t.settings.auto.collect = true
+  t.spiritStones = new Decimal(1e9)
+  t.runAutomation() // gieo
+  assert.ok(t.garden.plots.some((p) => p))
+  t.garden.plots = t.garden.plots.map((p) => (p ? { ...p, readyAt: 0 } : p))
+  const herbs = t.itemCount('linh_thao') + t.itemCount('huyet_sam')
+  t.runAutomation() // thu, gieo lại
+  assert.ok(t.itemCount('linh_thao') + t.itemCount('huyet_sam') > herbs)
+  assert.ok(t.garden.plots.some((p) => p), 'gieo lại')
+})
+
+ok('tự luyện đan chọn công thức; tự phân giải chỉ đồ Phàm không mặc khi túi quá 30', () => {
+  const s = freshStore()
+  s.init()
+  s.stats.crafted = 25
+  s.settings.auto.craft = true
+  s.settings.autoCraft = 'tu_khi_dan'
+  s.addItem('herbs', 'linh_thao', 20)
+  s.spiritStones = new Decimal(1e6)
+  s.runAutomation()
+  assert.ok(s.itemCount('tu_khi_dan') >= 1)
+  s.settings.autoCraft = null
+  const n = s.itemCount('tu_khi_dan')
+  s.runAutomation()
+  assert.equal(s.itemCount('tu_khi_dan'), n, 'chưa chọn công thức thì không luyện')
+  const t = freshStore()
+  t.init()
+  t.campaign.record = 40
+  t.settings.auto.salvage = true
+  for (let i = 0; i < 35; i++) t.gear.bag.push({ uid: 'p' + i, slot: 'weapon', tier: 0, rarity: 0, enh: 0, affixes: [] })
+  t.gear.bag.push({ uid: 'good', slot: 'weapon', tier: 0, rarity: 2, enh: 0, affixes: [] })
+  t.gear.bag.push({ ...EQ.generateLegend('weapon', 0), uid: 'legend' })
+  t.gear.equipped.weapon = 'p0'
+  t.runAutomation()
+  assert.equal(t.gear.bag.length, 30)
+  assert.ok(t.gear.bag.some((x) => x.uid === 'p0'), 'đồ đang mặc được giữ')
+  assert.ok(t.gear.bag.some((x) => x.uid === 'good') && t.gear.bag.some((x) => x.uid === 'legend'))
+})
+
+ok('save/load giữ cài đặt tự động hoá; bỏ khoá lạ và công thức lạ', () => {
+  const s = freshStore()
+  s.init()
+  s.settings.auto.equip = true
+  s.settings.auto.array = true
+  s.settings.autoCraft = 'tu_khi_dan'
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.settings.auto.equip, true)
+  assert.equal(s2.settings.auto.claim, false)
+  assert.equal(s2.settings.autoCraft, 'tu_khi_dan')
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.settings.auto = { equip: 'yes', hack: true }
+  raw.data.settings.autoCraft = 'khong_co'
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.ok(Object.values(s3.settings.auto).every((v) => v === false))
+  assert.equal(s3.settings.autoCraft, null)
+  assert.ok(!('hack' in s3.settings.auto))
+})
+
+ok('cường hoá luân hồi mới: Ải Lộ, Pháp Duyên, Võ Đạo, Khai Thiên có hiệu lực', () => {
+  assert.ok(['ai_loc', 'cong_phap', 'vo_ky', 'khai_thien'].every((id) => RB7.perkById(id)))
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 0
+  s.campaign.best = 100
+  const base = s.expRate
+  s.reincarnation.upgrades.ai_loc = 4
+  assert.equal(s.incomeCapBonus, 20)
+  assert.ok(s.expRate.gt(base), 'trần thu nhập cao hơn thì thu nhập cao hơn')
+  assert.equal(C.incomeAi(100, 0, 20), C.INCOME_AI_BASE + 20)
+  // Pháp Duyên
+  s.stageIdx = 12
+  s.arts.owned.pha_quan = 5
+  s.arts.slots[0] = 'pha_quan'
+  const a0 = s.artBonus.atk
+  s.reincarnation.upgrades.cong_phap = 4
+  assert.ok(Math.abs(s.artBonus.atk / a0 - 1.2) < 1e-9)
+  // Võ Đạo
+  const sd0 = s.battlePerk.skillDmg
+  s.reincarnation.upgrades.vo_ky = 6
+  assert.ok(Math.abs(s.battlePerk.skillDmg - sd0 - 0.3) < 1e-9)
+  // Khai Thiên
+  const dao0 = s.daoPreview
+  s.reincarnation.upgrades.khai_thien = 5
+  assert.ok(s.daoPreview > dao0 * 1.4 && s.daoPreview < dao0 * 1.6)
+  // các cường hoá có thể mua và lưu
+  s.reincarnation.upgrades = {}
+  s.reincarnation.dao = 1e6
+  for (const id of ['ai_loc', 'cong_phap', 'vo_ky', 'khai_thien']) assert.equal(s.buyPerk(id), true)
+})
+
+ok('Kiếp Thử Thách: dữ liệu, chọn khi luân hồi, hoàn thành nhận Đạo Vận một lần mỗi kiếp, lần sau thưởng nhiều hơn', () => {
+  for (const [id, c] of Object.entries(CH7.CHALLENGES)) assert.ok(c.name && c.desc && c.goalStage >= 9 && c.reward > 0, id)
+  assert.equal(CH7.challengeReward('tinh_tam', 1), 200)
+  assert.equal(CH7.challengeReward('tinh_tam', 3), 400)
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  s.reincarnate('tay_khong')
+  assert.equal(s.challenge, 'tay_khong')
+  assert.equal(s.challengeDone, false)
+  const dao = s.reincarnation.dao
+  s.stageIdx = 14
+  assert.equal(s.checkChallenge(), false, 'chưa tới bậc mục tiêu')
+  s.stageIdx = 15
+  assert.equal(s.checkChallenge(), true)
+  assert.equal(s.reincarnation.dao, dao + 150)
+  assert.equal(s.reincarnation.challenges.tay_khong, 1)
+  assert.equal(s.checkChallenge(), false, 'một lần mỗi kiếp')
+  assert.equal(s.achievementValue('challengesDone'), 1)
+  // kiếp sau cùng thử thách: thưởng +50%
+  s.reincarnate('tay_khong')
+  assert.equal(s.challengeDone, false)
+  s.stageIdx = 15
+  const dao2 = s.reincarnation.dao
+  s.checkChallenge()
+  assert.equal(s.reincarnation.dao, dao2 + 225)
+  assert.equal(s.reincarnation.challenges.tay_khong, 2)
+  // luân hồi không chọn: kiếp thường
+  s.stageIdx = 12
+  s.reincarnate()
+  assert.equal(s.challenge, null)
+  s.stageIdx = 12
+  s.reincarnate('khong_co')
+  assert.equal(s.challenge, null, 'id lạ bị bỏ')
+})
+
+ok('Kiếp Thử Thách Tịnh Tâm: không dùng được đan, tàn quyển lĩnh ngộ, đan hồi huyết', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  s.addItem('pills', 'cuong_can_dan', 2)
+  s.addItem('pills', 'hoi_huyet_dan', 2)
+  s.challenge = 'tinh_tam'
+  assert.equal(s.useItem('cuong_can_dan', 1), 0)
+  assert.equal(s.bonus.atk, 0)
+  assert.equal(s.itemCount('cuong_can_dan'), 2)
+  const b = useBattleStore()
+  b.start()
+  b.hp = 1
+  assert.equal(b.useHealPill(), false)
+  assert.equal(s.itemCount('hoi_huyet_dan'), 2)
+  s.challenge = null
+  assert.equal(s.useItem('cuong_can_dan', 1), 1)
+})
+
+ok('Kiếp Thử Thách Độc Hành: không tông môn, không đệ tử, công pháp vô hiệu', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 6
+  s.spiritStones = new Decimal(1e12)
+  s.joinSect('van_moc')
+  s.arts.owned.pha_quan = 5
+  s.arts.slots[0] = 'pha_quan'
+  assert.ok(s.artBonus.atk > 0 && s.sectPerk.herb > 0)
+  s.challenge = 'doc_hanh'
+  assert.ok(Object.values(s.artBonus).every((v) => v === 0))
+  assert.ok(Object.values(s.sectPerk).every((v) => v === 0))
+  assert.equal(s.recruit(), null)
+  s.sect.id = null
+  assert.equal(s.joinSect('thien_kiem'), false)
+})
+
+ok('Kiếp Thử Thách Tay Không và Đơn Nhất: trang bị vô hiệu, chỉ một ô võ kỹ', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 18
+  const c0 = s.combat
+  s.addGear({ uid: 'x', slot: 'weapon', tier: 3, rarity: 3, enh: 5, affixes: [{ id: 'atk', v: 0.2 }] })
+  s.equipGear('x')
+  assert.ok(s.combat.atk > c0.atk)
+  assert.ok(s.gearPerk.atk > 0)
+  s.challenge = 'tay_khong'
+  assert.equal(s.combat.atk, c0.atk)
+  assert.ok(Object.values(s.gearPerk).every((v) => v === 0))
+  assert.equal(s.activeGearSets.length, 0)
+  s.challenge = 'don_nhat'
+  assert.ok(s.skillSlots >= 1 && s.skillSlots === 1)
+  s.challenge = null
+  assert.ok(s.skillSlots > 1)
+})
+
+ok('save/load giữ Kiếp Thử Thách đang theo, đã xong, số lần hoàn thành; loại thử thách lạ', () => {
+  const s = freshStore()
+  s.init()
+  s.challenge = 'don_nhat'
+  s.challengeDone = true
+  s.reincarnation.challenges = { tinh_tam: 2, don_nhat: 1 }
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.challenge, 'don_nhat')
+  assert.equal(s2.challengeDone, true)
+  assert.deepEqual({ ...s2.reincarnation.challenges }, { tinh_tam: 2, don_nhat: 1 })
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.challenge = 'hack'
+  raw.data.reincarnation.challenges = { tinh_tam: -3, khong_co: 9, doc_hanh: 'x' }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.challenge, null)
+  assert.deepEqual({ ...s3.reincarnation.challenges }, {})
+})
+
+// =====================================================================
 // Giai đoạn 3: cảnh giới mới, luân hồi, Linh Điền, khoáng mạch, farm offline
 // =====================================================================
 const RB = await import('../src/game/reincarnation.js')

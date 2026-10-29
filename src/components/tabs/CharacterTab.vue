@@ -8,7 +8,9 @@ import Icon from '../Icon.vue'
 import { useUiStore } from '../../stores/uiStore.js'
 import { SKILLS } from '../../game/skills.js'
 import { PATHS, PATH_IDS, PATH_MIN_REALM } from '../../game/paths.js'
-import { REALMS } from '../../game/constants.js'
+import { CHALLENGES } from '../../game/challenges.js'
+import { REALMS, STAGES } from '../../game/constants.js'
+const STAGES_TEXT = (i) => STAGES[i].fullName
 
 // Vòng tương khắc: Kim > Mộc > Thổ > Thủy > Hỏa > Kim
 const BEAT_TARGET = { kim: 'moc', moc: 'tho', tho: 'thuy', thuy: 'hoa', hoa: 'kim' }
@@ -41,6 +43,15 @@ const statRows = computed(() => [
       <div class="mt-1 text-xs text-slate-400">
         {{ game.spiritRoot.name }} (x{{ game.spiritRoot.mult }}) - {{ game.spiritRoot.desc }}
       </div>
+    </div>
+
+    <!-- Kiếp Thử Thách đang theo -->
+    <div v-if="game.challenge" class="card space-y-0.5 border-gold-500/60">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-gold-300">Kiếp Thử Thách: {{ CHALLENGES[game.challenge].name }}</div>
+        <div class="text-xs" :class="game.challengeDone ? 'text-jade-300' : 'text-slate-400'">{{ game.challengeDone ? 'Đã hoàn thành' : `Mục tiêu: ${STAGES_TEXT(CHALLENGES[game.challenge].goalStage)}` }}</div>
+      </div>
+      <p class="text-[11px] text-slate-400">{{ CHALLENGES[game.challenge].desc }}</p>
     </div>
 
     <!-- Đạo Lộ: chọn một lần từ Trúc Cơ -->

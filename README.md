@@ -218,3 +218,9 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Bộ trang bị:** 8 bộ theo phẩm cấp. Mặc 2 hoặc 3 món cùng phẩm cấp nhận thêm thưởng bộ, hiện ở đầu tab Trang Bị.
 - **Huyền Thoại:** chỉ rơi từ **Chúa Tể** (60%), mỗi ô một món, đặc hiệu cố định: Thanh Minh Thần Kiếm (25% đánh thêm một đòn), Vạn Cổ Chiến Giáp (phản 15% sát thương), Hồng Mông Thần Châu (linh khí, rơi đồ, giảm hồi chiêu, sát thương võ kỹ).
 - Thưởng từ trang bị cộng chung với Đạo Lộ ở một chỗ (`battlePerk`), hồi chiêu giảm tối đa 50%.
+
+## Tự động hoá, cường hoá luân hồi mới, Kiếp Thử Thách
+
+- **Tự động hoá mở khoá dần** (`src/game/automation.js`, mục "Tự động hoá" ở Cài Đặt, mặc định tắt): tự mặc đồ tốt nhất (ải 20), tự nhận thưởng nhiệm vụ / thành tựu / rương mốc (10 nhiệm vụ), tự nâng Tụ Linh Trận (Luyện Khí Tầng 6), tự thu hoạch Linh Điền / khoáng mạch / đệ tử (10 lần thu hoạch), tự luyện loại đan đã chọn (25 đan), tự phân giải đồ Phàm khi túi quá 30 món (ải 40). Việc vặt trở thành phần thưởng của tiến độ.
+- **Cường hoá luân hồi mới:** Ải Lộ (+5 ải trần thu nhập mỗi cấp), Pháp Duyên (+5% công pháp), Võ Đạo (+5% sát thương võ kỹ), Khai Thiên (+10% Đạo Vận). Tu Chất và Thân Thể nâng trần lên 30 cấp.
+- **Kiếp Thử Thách** (`src/game/challenges.js`, tab Luân Hồi): chọn một ràng buộc cho kiếp sau, đạt bậc mục tiêu thì nhận thêm Đạo Vận (lần sau cùng thử thách thưởng nhiều hơn 50% mỗi lượt): **Tịnh Tâm** (không dùng đan), **Độc Hành** (không tông môn, đệ tử, công pháp), **Tay Không** (trang bị vô hiệu), **Đơn Nhất** (chỉ một võ kỹ). Có thành tựu "Vượt Thử Thách".

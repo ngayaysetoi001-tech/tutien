@@ -191,14 +191,14 @@ export const INCOME_AI_BASE = 10 // trần ải được tính thu nhập = BASE
 export const INCOME_AI_PER_STAGE = 8 // nhờ vậy kiếp mới có trang bị cũ cũng không hưởng thu nhập ải cao ngay từ bậc đầu
 
 /** Ải được tính thu nhập: ải cao nhất đã vượt, nhưng không quá trần theo bậc tu vi. */
-export const incomeAi = (best, stageIdx = Infinity) => Math.min(best, INCOME_AI_BASE + INCOME_AI_PER_STAGE * stageIdx)
+export const incomeAi = (best, stageIdx = Infinity, capBonus = 0) => Math.min(best, INCOME_AI_BASE + capBonus + INCOME_AI_PER_STAGE * stageIdx)
 
 /** Hệ số cộng vào tốc độ linh khí (phân số, cộng chung với các thưởng % khác). */
-export const campaignExpBonus = (best, stageIdx = Infinity, mult = 1) => AI_EXP_PER_CLEAR * incomeAi(best, stageIdx) * mult
+export const campaignExpBonus = (best, stageIdx = Infinity, mult = 1, capBonus = 0) => AI_EXP_PER_CLEAR * incomeAi(best, stageIdx, capBonus) * mult
 
 /** Linh thạch/giây cộng thêm (Decimal). */
-export const campaignStonesPerSecond = (best, stageIdx = Infinity, mult = 1) => {
-  const n = incomeAi(best, stageIdx)
+export const campaignStonesPerSecond = (best, stageIdx = Infinity, mult = 1, capBonus = 0) => {
+  const n = incomeAi(best, stageIdx, capBonus)
   return n <= 0 ? new Decimal(0) : new Decimal(1.45).pow(equivStage(n)).mul(AI_STONE_PER_CLEAR * n * mult)
 }
 
@@ -206,8 +206,8 @@ export const campaignStonesPerSecond = (best, stageIdx = Infinity, mult = 1) => 
  * Nguyên liệu nhận mỗi giờ theo chương hiện tại: lấy thảo dược/khoáng thạch trong bảng rơi
  * của bối cảnh ải `best`, số lượng tăng theo ải. Trả về [{ id, perHour }].
  */
-export function campaignItemsPerHour(rawBest, stageIdx = Infinity, mult = 1) {
-  const best = incomeAi(rawBest, stageIdx)
+export function campaignItemsPerHour(rawBest, stageIdx = Infinity, mult = 1, capBonus = 0) {
+  const best = incomeAi(rawBest, stageIdx, capBonus)
   if (best <= 0) return []
   const scale = 1 + best / 25
   const out = []

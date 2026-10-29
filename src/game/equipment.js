@@ -177,6 +177,9 @@ export function rerollItemAffixes(item, rng = Math.random) {
 /** Linh thạch đổi dòng phụ. */
 export const rerollCost = (item) => new Decimal(2.1).pow(item.tier).mul(60 * (item.rarity + 1))
 
+/** Điểm so sánh trang bị để tự mặc: Huyền Thoại > phẩm cấp > độ hiếm > cường hoá > số dòng phụ. */
+export const gearScore = (item) => (item.legend ? 1000 : 0) + item.tier * 100 + item.rarity * 10 + item.enh + (item.affixes?.length ?? 0) * 3
+
 export const itemName = (item) => (item.legend ? LEGENDS[item.legend].name : TIERS[item.tier].names[item.slot])
 export const itemFullName = (item) => (item.legend ? `[Huyền Thoại] ${itemName(item)}${item.enh ? ` +${item.enh}` : ''}` : `${RARITIES[item.rarity].name} ${itemName(item)}${item.enh ? ` +${item.enh}` : ''}`)
 export const itemColor = (item) => (item.legend ? LEGEND_COLOR : RARITIES[item.rarity].css)
