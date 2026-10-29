@@ -23,6 +23,8 @@ const { SAVE_KEY, OFFLINE_CAP_SECONDS } = await import('../src/game/constants.js
 const { deserialize } = await import('../src/services/saveService.js')
 const { fmt } = await import('../src/game/format.js')
 const F = await import('../src/game/formulas.js')
+const { ITEMS: ALL_ITEMS, MONSTERS: ALL_MONSTERS, DUNGEONS: ALL_DUNGEONS } = await import('../src/game/data.js')
+const C = await import('../src/game/campaign.js')
 const Decimal = (await import('break_infinity.js')).default
 
 let passed = 0
@@ -187,6 +189,7 @@ ok('deserialize từ chối dữ liệu hỏng', () => {
 
 // 9b. Túi đồ, dùng đan, bán, luyện đan
 const { useBattleStore } = await import('../src/stores/battleStore.js')
+const { useUiStore: useUiStoreEarly } = await import('../src/stores/uiStore.js')
 ok('luyện đan tiêu nguyên liệu, tạo đan, tăng kinh nghiệm', () => {
   const s = freshStore()
   s.init()
@@ -241,80 +244,126 @@ ok('Phá Cảnh Đan tăng tỉ lệ một lần; Hộ Kiếp Đan không cộng
   Math.random = realRandom
 })
 
-// 9c. Bí Cảnh auto-battle
-const runBattle = (s, b, maxSeconds = 600) => {
-  for (let t = 0; t < maxSeconds * 10 && b.phase !== 'resting' && b.phase !== 'idle'; t++) s.tick(0.1)
-}
-ok('bí cảnh bị khoá khi chưa đủ bậc', () => {
+// 9c. Vượt Ải auto-battle
+const runFor = (s, seconds) => { for (let t = 0; t < seconds * 10; t++) s.tick(0.1) }
+ok('vượt ải: tự chiến đấu ngay ở ải 1, thắng liên tiếp thì tiến độ và thu hoạch tăng', () => {
   const s = freshStore()
   s.init()
-  const b = useBattleStore()
-  assert.equal(b.enter('huyet_sat'), false)
-  assert.equal(b.active, false)
-})
-ok('vào Hắc Phong Cốc, thông quan, nhận linh thạch & vật phẩm & ghi tiến độ', () => {
-  const s = freshStore()
-  s.init()
-  s.stageIdx = 6 // mạnh hơn nhiều so với bậc chuẩn -> chắc thắng
+  s.stageIdx = 10 // mạnh hơn nhiều so với ải đầu
   const b = useBattleStore()
   const stones = s.spiritStones
-  assert.equal(b.enter('hac_phong'), true)
-  assert.equal(b.phase, 'fighting')
-  runBattle(s, b)
-  assert.equal(b.phase, 'resting')
-  assert.equal(b.lastResult, 'clear')
-  assert.equal(b.run.kills, 6)
+  runFor(s, 120)
+  assert.ok(s.campaign.best >= 3, 'ải cao nhất ' + s.campaign.best)
+  assert.equal(s.campaign.record, s.campaign.best)
+  assert.ok(b.run.kills >= 3)
   assert.ok(s.spiritStones.gt(stones))
-  assert.equal(s.dungeons.hac_phong.best, 6)
-  assert.equal(s.dungeons.hac_phong.clears, 1)
-  assert.ok(Object.keys(b.run.items).length > 0)
+  assert.ok(s.stats.kills >= 3)
 })
-ok('tự động lặp vào lại sau khi nghỉ; tắt thì về idle', () => {
+ok('tắt "Tự chiến đấu" thì không vào ải', () => {
   const s = freshStore()
   s.init()
-  s.stageIdx = 6
-  const b = useBattleStore()
-  b.enter('hac_phong')
-  runBattle(s, b)
-  for (let t = 0; t < 100 && b.phase === 'resting'; t++) s.tick(0.1) // hết thời gian nghỉ
-  assert.equal(b.phase, 'fighting') // autoRepeat mặc định bật
-  b.retreat()
-  assert.equal(b.phase, 'idle')
   s.settings.autoRepeat = false
-  b.enter('hac_phong')
-  runBattle(s, b)
-  for (let t = 0; t < 100 && b.phase === 'resting'; t++) s.tick(0.1)
+  const b = useBattleStore()
+  runFor(s, 20)
   assert.equal(b.phase, 'idle')
+  assert.equal(s.campaign.best, 0)
+  s.settings.autoRepeat = true
+  runFor(s, 1)
+  assert.notEqual(b.phase, 'idle')
 })
-ok('yếu hơn bí cảnh -> tử trận, không mất vật phẩm đã nhặt', () => {
+ok('yếu hơn ải -> thua, tích Kiên Trì, thử lại đúng ải đó và không tiến độ', () => {
   const s = freshStore()
   s.init()
-  s.stageIdx = 4
-  s.bonus.hp = -300 // gần như không chịu nổi đòn nào
+  s.bonus.hp = -99 // chỉ còn 1 khí huyết: không chịu nổi đòn nào
   const b = useBattleStore()
-  b.enter('linh_duoc')
-  runBattle(s, b)
-  assert.equal(b.lastResult, 'dead')
-  assert.equal(s.dungeons.linh_duoc.clears ?? 0, 0)
+  runFor(s, 60)
+  assert.equal(s.campaign.best, 0)
+  assert.equal(s.campaign.grit, 6, 'Kiên Trì tối đa sau nhiều lần thua')
+  assert.equal(b.ai, 1)
+  assert.ok(s.log.some((l) => l.text.includes('đánh bại')))
+})
+ok('Kiên Trì cộng chỉ số, xoá khi vượt ải mới', () => {
+  const s = freshStore()
+  s.init()
+  const b = useBattleStore()
+  assert.equal(b.gritMult(), 1)
+  for (let i = 0; i < 10; i++) s.addGrit()
+  assert.equal(s.campaign.grit, C.GRIT_MAX)
+  assert.ok(Math.abs(b.gritMult() - (1 + C.GRIT_STEP * C.GRIT_MAX)) < 1e-9)
+  assert.ok(b.playerStats().atk > s.combat.atk)
+  s.recordAi(1)
+  assert.equal(s.campaign.grit, 0)
+  assert.equal(b.gritMult(), 1)
+})
+ok('vượt boss: tiến độ, kỷ lục và thưởng lần đầu; ải thường không thưởng thêm', () => {
+  const s = freshStore()
+  s.init()
+  const stones = s.spiritStones
+  assert.equal(s.recordAi(1), null)
+  assert.ok(s.spiritStones.eq(stones))
+  const bonus = s.recordAi(5)
+  assert.ok(bonus && bonus.gt(0))
+  assert.ok(s.spiritStones.gt(stones))
+  assert.equal(s.campaign.best, 5)
+  assert.equal(s.campaign.record, 5)
+})
+ok('thu nhập thụ động tăng theo ải cao nhất (linh khí và linh thạch)', () => {
+  const s = freshStore()
+  s.init()
+  const exp0 = s.expRate
+  const st0 = s.stonesRate
+  s.campaign.best = 20
+  assert.ok(s.expRate.gt(exp0))
+  assert.ok(s.stonesRate.gt(st0))
+  s.campaign.best = 40
+  assert.ok(s.expRate.gt(exp0.mul(2)))
+})
+ok('nguyên liệu thụ động theo ải: ải 0 không có, có ải thì nhận được đúng nhóm', () => {
+  const s = freshStore()
+  s.init()
+  assert.deepEqual(s.grantCampaignItems(3600), {})
+  s.campaign.best = 35
+  const got = s.grantCampaignItems(36000)
+  assert.ok(Object.keys(got).length > 0)
+  for (const id of Object.keys(got)) assert.ok(['herbs', 'ores'].includes(ALL_ITEMS[id].group))
+})
+ok('cày ải: chỉ chọn được ải đã vượt; thắng không tăng tiến độ', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  s.campaign.best = 3
+  s.campaign.record = 3
+  const b = useBattleStore()
+  b.setFarm(9) // chưa vượt
+  assert.equal(s.campaign.farm, null)
+  assert.equal(b.targetAi(), 4)
+  b.setFarm(2)
+  assert.equal(b.targetAi(), 2)
+  runFor(s, 40)
+  assert.equal(s.campaign.best, 3)
+  assert.equal(b.ai, 2)
+  assert.ok(b.run.kills >= 2)
+  b.setFarm(null)
+  assert.equal(b.targetAi(), 4)
 })
 ok('Hồi Huyết Đan hồi khí huyết trong trận', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 4
   const b = useBattleStore()
-  b.enter('linh_duoc')
+  b.start()
   b.hp = 10
   s.addItem('pills', 'hoi_huyet_dan', 1)
   assert.equal(b.useHealPill(), true)
   assert.ok(b.hp > 10)
   assert.equal(s.itemCount('hoi_huyet_dan'), 0)
 })
-ok('độ kiếp tự rút lui khỏi bí cảnh', () => {
+ok('độ kiếp dừng trận, qua độ kiếp thì tự đánh tiếp', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 11
   const b = useBattleStore()
-  b.enter('hac_phong')
+  b.start()
   assert.equal(b.active, true)
   s.exp = s.requirement
   Math.random = () => 0
@@ -323,22 +372,72 @@ ok('độ kiếp tự rút lui khỏi bí cảnh', () => {
   assert.equal(b.active, false)
   drainTimers()
   Math.random = realRandom
+  runFor(s, 2)
+  assert.equal(b.active, true)
 })
-ok('save/load giữ túi đồ, tiến độ bí cảnh, cấp luyện đan, kháng đan', () => {
+ok('save/load giữ ải cao nhất, kỷ lục, Kiên Trì, ải đang cày; túi đồ, cấp luyện đan, kháng đan', () => {
   const s = freshStore()
   s.init()
   s.addItem('pills', 'duong_the_dan', 2)
   s.useItem('duong_the_dan', 1)
   s.alchemy.level = 4
-  s.recordFloor('hac_phong', 5)
+  s.campaign = { best: 12, record: 15, grit: 2, farm: 7 }
   s.save()
   const s2 = freshStore(true)
   s2.init()
   assert.equal(s2.itemCount('duong_the_dan'), 1)
   assert.equal(s2.alchemy.level, 4)
-  assert.equal(s2.dungeons.hac_phong.best, 5)
+  assert.deepEqual({ ...s2.campaign }, { best: 12, record: 15, grit: 2, farm: 7 })
   assert.equal(s2.usage.duong_the_dan, 1)
   assert.ok(s2.bonus.hp > 0)
+})
+ok('save cũ (bí cảnh chọn tay) chuyển thành ải: thông quan = đủ chương, dở dang = số tầng', () => {
+  const s = freshStore()
+  s.init()
+  s.save()
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  delete raw.data.campaign
+  raw.data.dungeons = { hac_phong: { best: 6, clears: 3, grit: 0 }, linh_duoc: { best: 6, clears: 1, grit: 0 }, huyet_sat: { best: 4, clears: 0, grit: 2 } }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.campaign.best, 24) // Huyết Sát (chương 3) tầng 4
+  assert.equal(s2.campaign.record, 24)
+  assert.equal(s2.campaign.farm, null)
+  // dữ liệu ải hỏng bị chặn
+  raw.data.campaign = { best: 'x', record: -5, grit: 99, farm: 1000 }
+  delete raw.data.dungeons
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.campaign.best, 0)
+  assert.equal(s3.campaign.grit, C.GRIT_MAX)
+  assert.equal(s3.campaign.farm, null)
+})
+ok('offline: tiếp tục thử ải kế tiếp, báo cáo ải, nguyên liệu; tắt tự chiến đấu thì không leo', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 10
+  s.campaign.best = 5
+  s.save()
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.savedAt = Date.now() - 2 * 3600 * 1000
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s2 = freshStore(true)
+  s2.init()
+  const rep = s2.offlineReport.campaign
+  assert.ok(rep, 'có báo cáo ải')
+  assert.ok(rep.to > rep.from, 'leo được ải trong 2 giờ vắng mặt')
+  assert.equal(s2.campaign.best, rep.to)
+  assert.ok(s2.campaign.record >= rep.to)
+  assert.ok(Object.keys(rep.items).length > 0)
+  assert.ok(s2.stats.kills > 0)
+  s2.settings.autoRepeat = false
+  s2.offlineReport = null
+  const before = s2.campaign.best
+  s2.applyOffline(3600)
+  assert.equal(s2.campaign.best, before)
+  assert.equal(s2.offlineReport.campaign.to, before)
 })
 
 // =====================================================================
@@ -349,8 +448,6 @@ const SK = await import('../src/game/skills.js')
 const EQ = await import('../src/game/equipment.js')
 const { on } = await import('../src/game/events.js')
 const { ACHIEVEMENTS, achievementReward } = await import('../src/game/achievements.js')
-const { ITEMS: ALL_ITEMS, MONSTERS: ALL_MONSTERS, DUNGEONS: ALL_DUNGEONS } = await import('../src/game/data.js')
-const C = await import('../src/game/campaign.js')
 const { RANDOM_EVENTS } = await import('../src/game/randomEvents.js')
 const { serialize } = await import('../src/services/saveService.js')
 
@@ -436,6 +533,7 @@ ok('trận đánh: công pháp được thi triển, boss rơi trang bị, thố
   s.skills.owned.ngu_kiem = 3
   s.skills.owned.thanh_moc = 1
   s.skills.slots[0] = 'ngu_kiem'
+  useUiStoreEarly().tab = 'battle' // hiệu ứng chỉ phát khi đang xem màn Vượt Ải
   const casts = []
   const edges = new Set()
   const off1 = on('battle-skill', (e) => casts.push(e.name))
@@ -443,16 +541,17 @@ ok('trận đánh: công pháp được thi triển, boss rơi trang bị, thố
   const b = useBattleStore()
   const realRnd = Math.random
   Math.random = () => 0.01 // luôn rơi trang bị ở boss
-  b.enter('hac_phong')
-  runBattle(s, b)
+  s.campaign.best = 4 // ải kế tiếp là ải 5 (Tiểu Boss)
+  s.campaign.record = 4
+  runFor(s, 20)
   Math.random = realRnd
   off1()
   off2()
   assert.ok(casts.length >= 1, 'công pháp phải được thi triển')
   assert.ok(casts.every((n) => n === 'Ngự Kiếm Thuật'))
-  assert.equal(b.lastResult, 'clear')
+  assert.ok(s.campaign.best >= 5, 'phải vượt được ải 5')
   assert.ok(s.gear.bag.length >= 1, 'boss rơi trang bị')
-  assert.ok(s.stats.kills >= 6 && s.stats.bossKills === 1)
+  assert.ok(s.stats.kills >= 1 && s.stats.bossKills >= 1)
 })
 
 ok('lá chắn hấp thụ sát thương', () => {
@@ -462,7 +561,7 @@ ok('lá chắn hấp thụ sát thương', () => {
   s.skills.owned.hau_tho = 1
   s.skills.slots[0] = 'hau_tho'
   const b = useBattleStore()
-  b.enter('linh_duoc')
+  b.start()
   b.castSkill('hau_tho', s.combat)
   assert.ok(b.shield > 0)
   const hp = b.hp
@@ -478,7 +577,7 @@ ok('kỳ ngộ: hiện hộp thoại, không dừng chiến đấu, chọn phư�
   s.init()
   s.stageIdx = 8
   const b = useBattleStore()
-  b.enter('hac_phong')
+  b.start()
   s.triggerEvent()
   assert.ok(s.event)
   assert.equal(s.event.phase, 'choose')
@@ -820,32 +919,6 @@ ok('farm offline: mô phỏng thu hoạch kỳ vọng, không vượt quá giớ
   assert.equal(none.bossKills, 0)
 })
 
-ok('offline: đang farm khi thoát thì được cộng thu hoạch farm vào báo cáo', () => {
-  const s = freshStore()
-  s.init()
-  s.stageIdx = 6
-  const b = useBattleStore()
-  assert.equal(b.enter('hac_phong'), true)
-  s.save() // lưu cờ farming = true
-  const raw = JSON.parse(mem.get(SAVE_KEY))
-  assert.equal(raw.data.farming, true)
-  raw.savedAt = Date.now() - 2 * 3600 * 1000
-  mem.set(SAVE_KEY, JSON.stringify(raw))
-  const stones = new Decimal(raw.data.spiritStones)
-  const s2 = freshStore(true)
-  s2.init()
-  assert.ok(s2.offlineReport.farm, 'có báo cáo farm')
-  assert.ok(s2.offlineReport.farm.kills > 0)
-  assert.ok(s2.spiritStones.gt(stones))
-  assert.ok(s2.stats.kills > 0)
-  // tắt tự động lặp thì không farm
-  s2.settings.autoRepeat = false
-  s2.farming = true
-  s2.offlineReport = null
-  s2.applyOffline(3600)
-  assert.equal(s2.offlineReport.farm, null)
-})
-
 ok('save/load giữ Đạo Vận, cường hoá, Linh Điền, mốc khoáng mạch, bậc cao nhất', () => {
   const s = freshStore()
   s.init()
@@ -870,43 +943,6 @@ ok('save/load giữ Đạo Vận, cường hoá, Linh Điền, mốc khoáng m�
 // Làm mềm độ khó: Kiên Trì, độ lệch chỉ số yêu thú
 // =====================================================================
 const BT = await import('../src/game/battle.js')
-
-ok('Kiên Trì: mỗi lần tử trận +1 điểm (tối đa), tăng chỉ số trong trận, hạ boss thì xoá', () => {
-  const s = freshStore()
-  s.init()
-  s.stageIdx = 4
-  const b = useBattleStore()
-  b.dungeonId = 'linh_duoc'
-  const base = s.combat
-  assert.equal(b.gritMult(), 1)
-  for (let i = 1; i <= 10; i++) s.addGrit('linh_duoc')
-  assert.equal(s.dungeons.linh_duoc.grit, BT.GRIT_MAX)
-  const k = 1 + BT.GRIT_STEP * BT.GRIT_MAX
-  assert.ok(Math.abs(b.gritMult() - k) < 1e-9)
-  const eff = b.playerStats()
-  assert.equal(eff.atk, Math.round(base.atk * k))
-  assert.equal(eff.hp, Math.round(base.hp * k))
-  assert.equal(eff.speed, base.speed)
-  s.recordClear('linh_duoc')
-  assert.equal(s.dungeons.linh_duoc.grit, 0)
-  assert.equal(b.gritMult(), 1)
-})
-
-ok('tử trận trong bí cảnh cộng Kiên Trì và lưu vào save', () => {
-  const s = freshStore()
-  s.init()
-  s.stageIdx = 4
-  s.bonus.hp = -300
-  const b = useBattleStore()
-  b.enter('linh_duoc')
-  runBattle(s, b)
-  assert.equal(b.lastResult, 'dead')
-  assert.equal(s.dungeons.linh_duoc.grit, 1)
-  s.save()
-  const s2 = freshStore(true)
-  s2.init()
-  assert.equal(s2.dungeons.linh_duoc.grit, 1)
-})
 
 ok('chỉ số yêu thú: không rng thì cố định, có rng thì lệch trong ±ENEMY_SPREAD', () => {
   const d = DUNGEONS[1]
@@ -1029,7 +1065,7 @@ ok('nhiệm vụ: bảng đủ 4 nhiệm vụ khác mẫu, tiến độ đo từ
   assert.equal(s.questProgress(q), 0)
   assert.equal(s.claimQuest(q.uid), false)
   s.stats[QS.templateById(q.tpl).key] += q.target // giả lập đã làm đủ
-  if (QS.templateById(q.tpl).key === 'clears') s.dungeons.hac_phong = { best: 6, clears: q.target + 5, grit: 0 }
+  if (QS.templateById(q.tpl).key === 'clears') s.campaign.record = (q.target + 5) * 10
   assert.equal(s.questDone(q), true)
   const stones = s.spiritStones
   assert.equal(s.claimQuest(q.uid), true)
@@ -1045,12 +1081,12 @@ ok('nhiệm vụ: thưởng Cống Hiến cho người có tông môn; làm mớ
   s.joinSect('van_moc')
   const q = s.quests[0]
   s.stats[QS.templateById(q.tpl).key] += q.target
-  if (QS.templateById(q.tpl).key === 'clears') s.dungeons.hac_phong = { best: 6, clears: q.target + 5, grit: 0 }
+  if (QS.templateById(q.tpl).key === 'clears') s.campaign.record = (q.target + 5) * 10
   s.claimQuest(q.uid)
   assert.ok(s.sect.contribution > 0)
   const done = s.quests[1]
   s.stats[QS.templateById(done.tpl).key] += done.target
-  if (QS.templateById(done.tpl).key === 'clears') s.dungeons.hac_phong = { best: 6, clears: done.target + 50, grit: 0 }
+  if (QS.templateById(done.tpl).key === 'clears') s.campaign.record = (done.target + 50) * 10
   s.spiritStones = new Decimal(0)
   assert.equal(s.refreshQuests(), false) // chưa đủ linh thạch
   s.spiritStones = new Decimal(1e6)
@@ -1204,12 +1240,12 @@ ok('hạ boss cộng Cống Hiến cho tông môn; công pháp sát thương m�
   s.joinSect('xich_viem')
   s.skills.owned.liet_hoa = 1
   s.skills.slots[0] = 'liet_hoa'
-  const b = useBattleStore()
-  b.enter('hac_phong')
-  runBattle(s, b)
-  assert.equal(b.lastResult, 'clear')
+  s.campaign.best = 4
+  s.campaign.record = 4
+  runFor(s, 20)
+  assert.ok(s.campaign.best >= 5)
   assert.ok(s.sect.contribution > 0)
-  assert.equal(s.stats.bossKills, 1)
+  assert.ok(s.stats.bossKills >= 1)
 })
 
 // =====================================================================
@@ -1311,10 +1347,10 @@ ok('cổng chương: cần đủ bậc; chương bí cảnh cần thông quan', 
   s.stageIdx = 5
   assert.equal(s.chapterAvailable(STORY.CHAPTERS[2]), false)
   assert.match(s.chapterLock(STORY.CHAPTERS[2]), /Hắc Phong/)
-  s.dungeons.hac_phong = { best: 6, clears: 1, grit: 0 }
+  s.campaign.record = 10 // vượt chương 1 (Hắc Phong Cốc)
   assert.equal(s.chapterAvailable(STORY.CHAPTERS[2]), true)
   // sau luân hồi, bí cảnh bị xoá nhưng tu vi tối đa đã vượt xa thì không kẹt truyện
-  s.dungeons = {}
+  s.campaign.record = 0
   s.stats.maxStage = 12
   assert.equal(s.chapterAvailable(STORY.CHAPTERS[2]), false, 'chưa luân hồi thì vẫn phải thông quan')
   s.stats.reincarnations = 1
@@ -1371,7 +1407,7 @@ ok('chơi trọn 11 chương (mở đầu + 10): kết cục, danh hiệu, đi�
   enableStory(s)
   s.stageIdx = 26
   s.stats.maxStage = 26
-  for (const d of DUNGEONS) s.dungeons[d.id] = { best: 6, clears: 1, grit: 0 }
+  s.campaign.record = DUNGEONS.length * 10
   for (let i = 0; i < 14 && s.story.done < 11; i++) {
     s.checkStory()
     assert.ok(s.storyView, 'chương ' + s.story.done + ' phải tự mở')
@@ -1440,7 +1476,7 @@ ok('truyện đang mở tạm dừng chiến đấu và kỳ ngộ; xong thì ch
   s.init()
   s.stageIdx = 8
   const b = useBattleStore()
-  b.enter('hac_phong')
+  b.start()
   const clock = b.clock
   s.startStory('ch0')
   for (let i = 0; i < 50; i++) s.tick(0.1)
@@ -1792,12 +1828,14 @@ ok('gợi ý: game mới chưa có gợi ý thừa; đủ linh khí thì nhắc 
   assert.equal(nextHints(s)[0].tab, 'inventory')
 })
 
-ok('gợi ý: bí cảnh, Tụ Linh Trận, luyện đan, Linh Điền biến mất khi người chơi đã làm', () => {
+ok('gợi ý: Vượt Ải, Tụ Linh Trận, luyện đan, Linh Điền biến mất khi người chơi đã làm', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 1
+  assert.ok(!ids(s).includes('dungeon'), 'Tự chiến đấu mặc định bật nên không cần nhắc')
+  s.settings.autoRepeat = false
   assert.ok(ids(s).includes('dungeon'))
-  s.dungeons.hac_phong = { best: 1, clears: 0, grit: 0 }
+  s.settings.autoRepeat = true
   assert.ok(!ids(s).includes('dungeon'))
   s.spiritStones = new Decimal(500)
   assert.ok(ids(s).includes('array'))
@@ -1817,7 +1855,6 @@ ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang b�
   s.init()
   s.stats.maxStage = 4
   s.stageIdx = 4
-  s.dungeons.hac_phong = { best: 1, clears: 0, grit: 0 }
   assert.ok(ids(s).includes('sect'))
   s.joinSect('van_moc')
   assert.ok(!ids(s).includes('sect'))
@@ -1839,7 +1876,7 @@ ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang b�
   s.stats.kills = 10
   const q = s.quests[0]
   s.stats[QS.templateById(q.tpl).key] += q.target
-  if (QS.templateById(q.tpl).key === 'clears') s.dungeons.hac_phong = { best: 6, clears: q.target + 5, grit: 0 }
+  if (QS.templateById(q.tpl).key === 'clears') s.campaign.record = (q.target + 5) * 10
   assert.ok(ids(s).includes('quest'))
   s.stageIdx = 26
   s.exp = s.requirement

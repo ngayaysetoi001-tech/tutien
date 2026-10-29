@@ -26,9 +26,9 @@ export function nextHints(g) {
     }
   }
 
-  // 2. Nhập môn: bí cảnh, Tụ Linh Trận, luyện đan
-  if (g.stageIdx >= 1 && g.stats.kills === 0 && Object.keys(g.dungeons).length === 0) {
-    add('dungeon', 'Vào Bí Cảnh để săn yêu thú, lấy linh thạch và thảo dược.', 'battle')
+  // 2. Nhập môn: Vượt Ải, Tụ Linh Trận, luyện đan
+  if (g.stageIdx >= 1 && g.campaign.record === 0 && !g.settings.autoRepeat) {
+    add('dungeon', 'Bật "Tự chiến đấu" ở màn Vượt Ải: ải càng cao, thu nhập thụ động càng lớn.', 'battle')
   }
   if (g.arrayLevel === 0 && g.spiritStones.gte(g.arrayCost)) {
     add('array', 'Dùng linh thạch nâng Tụ Linh Trận để tu luyện nhanh hơn.', 'dwelling')

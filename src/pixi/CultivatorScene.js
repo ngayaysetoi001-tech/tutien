@@ -610,33 +610,31 @@ export class CultivatorScene {
         this.burst(18)
         if (hpRatio <= 0) this.smoke(30)
       }),
-      on('battle-start', ({ dungeonId }) => {
-        this.themeId = dungeonId
-        this.mode = 'battle'
-        this.setPose('sword')
-        this.setTheme(dungeonId)
+      // Vượt Ải đánh liên tục kể cả khi đang ở màn khác: cảnh chỉ vẽ trận khi ở chế độ battle (do syncBattle bật theo màn hình)
+      on('battle-enemy-spawn', (e) => this.mode === 'battle' && this.spawnEnemy(e)),
+      on('battle-hit', (hit) => {
+        if (this.mode !== 'battle') return
+        if (hit.target === 'enemy') this.vfx.defer(() => this.onBattleHit(hit))
+        else this.onBattleHit(hit)
       }),
-      on('battle-enemy-spawn', (e) => this.spawnEnemy(e)),
-      on('battle-hit', (hit) => (hit.target === 'enemy' ? this.vfx.defer(() => this.onBattleHit(hit)) : this.onBattleHit(hit))),
       on('battle-skill', (ev) => {
+        if (this.mode !== 'battle') return
         if (ev.kind === 'damage') this.playerLunge = 1
         this.spawnText(ev.name, this.px, this.groundY - 165 * this.u, css(ev.color), 16)
         this.vfx.castSkill(ev)
       }),
-      on('battle-enemy-die', ({ boss }) => this.vfx.defer(() => this.killEnemy(boss))),
+      on('battle-enemy-die', ({ boss }) => this.mode === 'battle' && this.vfx.defer(() => this.killEnemy(boss))),
       on('battle-heal', ({ amount }) => {
+        if (this.mode !== 'battle') return
         this.spawnText('+' + amount, this.px, this.groundY - 150 * this.u, '#6dffb0', 20)
         this.burst(14, this.px, this.groundY - 70 * this.u, 0x6dffb0)
       }),
       on('battle-end', () => {
-        this.themeId = null
-        this.mode = 'idle'
-        this.setTheme(null)
-        if (this.hasEnemy) {
+        // Thua hoặc tạm dừng: quái còn lại tan biến, vẫn ở cảnh chiến đấu nếu đang xem màn Vượt Ải
+        if (this.mode === 'battle' && this.hasEnemy) {
           this.hasEnemy = false
-          this.enemyDying = 1 // quái tan biến khi rút lui
+          this.enemyDying = 1
         }
-        this.setPose('meditate')
       }),
       on('tribulation-end', ({ survived }) => {
         this.stormTarget = 0

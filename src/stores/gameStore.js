@@ -24,7 +24,8 @@ import { ITEMS, MONSTERS, RECIPES, dungeonById, DUNGEONS, itemName } from '../ga
 import { ELEMENT_IDS } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as EQ from '../game/equipment.js'
-import { GRIT_MAX, enemyStats, simulateFight, simulateOfflineFarm } from '../game/battle.js'
+import { enemyStats, simulateFight } from '../game/battle.js'
+import * as C from '../game/campaign.js'
 import { MIN_STAGE, daoGain, perkById, perkCost } from '../game/reincarnation.js'
 import { cropById, mineAmount, mineInfo, plotCount, seedCost, MAX_PLOTS } from '../game/garden.js'
 import { RANKS, RANK_PERK_STEP, SHOP, SWITCH_PENALTY, discipleCap, rankIndex, sectById } from '../game/sect.js'
@@ -98,12 +99,12 @@ function createPlayerState(minRoot = 0) {
     buffs: { success: 0, guard: 0 }, // hiệu ứng đan dược dùng một lần
     alchemy: { level: 1, exp: 0 }, // cấp Luyện Đan
     usage: {}, // số lần đã dùng mỗi vật phẩm (kháng đan)
-    dungeons: {}, // { [id]: { best: tầng cao nhất, clears: số lần thông quan } }
+    // Vượt Ải: best = ải cao nhất đã vượt (mất khi luân hồi), record = cao nhất mọi kiếp, grit = Kiên Trì, farm = ải đang cày
+    campaign: { best: 0, record: 0, grit: 0, farm: null },
     reincarnation: { count: 0, dao: 0, totalDao: 0, upgrades: {} }, // Luân Hồi: Đạo Vận và cường hoá vĩnh viễn
     garden: { plots: Array(MAX_PLOTS).fill(null) }, // Linh Điền: { crop, readyAt(ms) } hoặc null
     mineAt: Date.now(), // mốc thu khoáng mạch lần cuối (ms)
     expPillUses: 0, // số Tụ Khí Đan đã dùng trong bậc hiện tại (giảm hiệu quả liên tiếp)
-    farming: false, // đang farm bí cảnh lúc lưu -> tiếp tục farm khi offline
     sect: { id: null, contribution: 0, total: 0 }, // Tông Môn (giữ nguyên khi luân hồi)
     quests: [], // bảng nhiệm vụ: { uid, tpl, tier, target, start }
     disciples: [], // đệ tử: { uid, name, element, grade, level, job, since }
@@ -142,7 +143,7 @@ export const useGameStore = defineStore('game', {
         arrayLevel: this.arrayLevel,
         rootMult: this.spiritRoot.mult,
         stageIdx: this.stageIdx,
-        expBonus: this.bonus.exp + this.gearStats.exp,
+        expBonus: this.bonus.exp + this.gearStats.exp + C.campaignExpBonus(this.campaign.best),
       }).mul(1 + 0.1 * (this.reincarnation.upgrades.tu_chat ?? 0)) // Tu Chất
         .mul(1 + this.sectPerk.exp) // đặc quyền tông môn
     },
@@ -204,7 +205,7 @@ export const useGameStore = defineStore('game', {
     claimableCount() {
       return ACHIEVEMENTS.filter((a) => this.achievementClaimable(a)).length
     },
-    stonesRate: (s) => F.stonesPerSecond(s.stageIdx),
+    stonesRate: (s) => F.stonesPerSecond(s.stageIdx).add(C.campaignStonesPerSecond(s.campaign.best)),
     /** Tiến độ tu vi 0..1 */
     progress() {
       return Math.min(1, this.exp.div(this.requirement).toNumber())
@@ -309,6 +310,7 @@ export const useGameStore = defineStore('game', {
       if (this.tribulation.active) return // đang độ kiếp: tạm dừng tu luyện
       this.spiritStones = this.spiritStones.add(this.stonesRate.mul(dt))
       this.gainExp(this.expRate.mul(dt))
+      this.grantCampaignItems(dt)
       // Tự động đột phá các bậc nhỏ (bậc có thiên kiếp luôn phải tự bấm để chuẩn bị đan)
       if (this.settings.autoBreak && this.canBreakthrough && !this.nextTribulation && !this.storyView && !this.event) this.breakthrough()
       this.storyTimer += dt
@@ -375,9 +377,9 @@ export const useGameStore = defineStore('game', {
         stones: gain.stones,
         capped: elapsedSeconds > cap,
         full: this.isFull,
-        farm: null,
+        campaign: null,
       }
-      this.farmOffline(seconds)
+      this.climbOffline(seconds)
       this.addLog(
         `Bế quan ${Math.floor(seconds / 60)} phút: +${fmt(gain.exp)} linh khí, +${fmt(gain.stones)} linh thạch.`,
         'event',
@@ -744,7 +746,7 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     achievementValue(key) {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
-      if (key === 'clears') return Object.values(this.dungeons).reduce((n, d) => n + d.clears, 0)
+      if (key === 'clears') return Math.floor(this.campaign.record / C.AIS_PER_CHAPTER) // chương ải đã vượt
       if (key === 'skills') return Object.keys(this.skills.owned).length
       if (key === 'playHours') return Math.floor(this.stats.playSeconds / 3600)
       if (key === 'pillsUsed') return Object.values(this.usage).reduce((n, v) => n + v, 0)
@@ -769,33 +771,45 @@ export const useGameStore = defineStore('game', {
     },
 
     // ------------------------------------------------------------
-    // Farm bí cảnh khi offline (ước lượng bằng mô phỏng, hiệu suất 50%)
+    // Vượt Ải: nguyên liệu thụ động và leo ải khi offline
     // ------------------------------------------------------------
-    farmOffline(seconds) {
-      if (!(useBattleStore().active || this.farming) || !this.settings.autoRepeat) return
-      const dungeon = dungeonById(this.settings.lastDungeon)
-      if (!dungeon || this.stageIdx < dungeon.minStage) return
-      const res = simulateOfflineFarm({ stats: this.combat, dungeon, seconds, luck: this.lootLuck, stageIdx: this.stageIdx })
-      if (res.runs <= 0) return
-      this.spiritStones = this.spiritStones.add(res.stones)
-      this.gainExp(this.expRate.mul(res.expSeconds))
-      for (const [id, n] of Object.entries(res.items)) this.addItem(ITEMS[id].group, id, n)
-      const tier = DUNGEONS.indexOf(dungeon)
-      const gearShown = Math.min(res.gearDrops, 20) // mô phỏng tối đa 20 món để tránh tràn túi
-      for (let i = 0; i < gearShown; i++) {
-        this.addGear(EQ.generateItem(EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)], tier, EQ.DROP_RARITY_WEIGHTS))
+    /** Nguyên liệu nhận được từ ải cao nhất: số lượng kỳ vọng theo `seconds`, làm tròn ngẫu nhiên. Trả về { id: n }. */
+    grantCampaignItems(seconds) {
+      const got = {}
+      for (const { id, perHour } of C.campaignItemsPerHour(this.campaign.best)) {
+        const x = (perHour * seconds) / 3600
+        const n = Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0)
+        if (n > 0) {
+          this.addItem(ITEMS[id].group, id, n)
+          got[id] = n
+        }
       }
-      this.stats.kills += res.kills
-      this.stats.bossKills += res.bossKills
-      if (res.bossKills > 0) {
-        this.recordFloor(dungeon.id, dungeon.floors)
-        for (let i = 0; i < res.bossKills; i++) this.recordClear(dungeon.id)
+      return got
+    },
+
+    /** Vắng mặt: nguyên liệu thụ động + tiếp tục thử ải kế tiếp (hiệu suất 50%). Ghi vào báo cáo xuất quan. */
+    climbOffline(seconds) {
+      const items = this.grantCampaignItems(seconds)
+      const from = this.campaign.best
+      let climb = null
+      if (this.settings.autoRepeat) {
+        climb = C.simulateOfflineClimb({
+          stats: this.combat, best: from, grit: this.campaign.grit, seconds, stageIdx: this.stageIdx,
+        })
+        if (climb.wins > 0) {
+          this.spiritStones = this.spiritStones.add(climb.stones)
+          for (const tier of climb.gear) {
+            this.addGear(EQ.generateItem(EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)], tier, EQ.DROP_RARITY_WEIGHTS))
+          }
+          for (let n = from + 1; n <= climb.best; n++) if (C.aiKind(n) !== 'normal') this.stats.bossKills += 1
+          this.stats.kills += climb.wins
+          this.campaign.best = climb.best
+          this.campaign.record = Math.max(this.campaign.record, climb.best)
+        }
+        this.campaign.grit = climb.grit
       }
-      this.offlineReport.farm = {
-        dungeon: dungeon.name, runs: res.runs, kills: res.kills, bossKills: res.bossKills,
-        stones: res.stones, items: res.items, gear: gearShown,
-      }
-      this.addLog(`Farm ${dungeon.name} khi vắng mặt: ${res.runs} lượt, hạ ${res.kills} yêu thú, +${fmt(res.stones)} linh thạch.`, 'event')
+      this.offlineReport.campaign = { from, to: this.campaign.best, items, stones: climb?.stones ?? new Decimal(0), gear: climb?.gear.length ?? 0 }
+      if (this.campaign.best > from) this.addLog(`Vắng mặt vượt thêm ${this.campaign.best - from} ải (ải ${from} -> ${this.campaign.best}).`, 'event')
     },
 
     // ------------------------------------------------------------
@@ -813,10 +827,11 @@ export const useGameStore = defineStore('game', {
       rb.count += 1
       this.stats.reincarnations += 1
       const fresh = createPlayerState(rb.upgrades.thien_menh ?? 0)
-      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'dungeons', 'spiritRoot', 'element', 'garden', 'mineAt']) {
+      for (const key of ['stageIdx', 'exp', 'spiritStones', 'bonus', 'inventory', 'usage', 'buffs', 'spiritRoot', 'element', 'garden', 'mineAt']) {
         this[key] = fresh[key]
       }
       this.arrayLevel = 3 * (rb.upgrades.tuc_hue ?? 0) // Túc Huệ
+      this.campaign = { best: 0, record: this.campaign.record, grit: 0, farm: null } // ải cao nhất mất, kỷ lục giữ lại
       this.quests = [] // nhiệm vụ cũ đo theo thống kê của kiếp trước
       this.refillQuests()
       this.fullNotified = false
@@ -1045,12 +1060,12 @@ export const useGameStore = defineStore('game', {
       return String(text ?? '').replaceAll('{name}', this.name)
     },
 
-    /** Bí cảnh đã vượt qua (hoặc tu vi đã vượt xa) để không kẹt cốt truyện sau luân hồi. */
+    /** Chương ải của bí cảnh `id` đã vượt (đánh bại Đại Boss của chương) hoặc tu vi đã vượt xa. */
     clearedDungeon(id) {
       const d = dungeonById(id)
       if (!d) return true
-      if ((this.dungeons[id]?.clears ?? 0) > 0) return true
-      // Sau luân hồi tiến độ bí cảnh bị xoá: coi như đã qua nếu tu vi tối đa vượt xa bậc chuẩn
+      if (this.campaign.record >= (DUNGEONS.indexOf(d) + 1) * C.AIS_PER_CHAPTER) return true
+      // Sau luân hồi ải cao nhất bị xoá nhưng kỷ lục còn; vẫn cho qua nếu tu vi tối đa vượt xa bậc chuẩn
       return this.stats.reincarnations > 0 && Math.max(this.stageIdx, this.stats.maxStage) >= d.minStage + 4
     },
 
@@ -1197,7 +1212,7 @@ export const useGameStore = defineStore('game', {
       if (auto.stage !== undefined) return maxStage >= auto.stage
       if (auto.dungeon) {
         const d = dungeonById(auto.dungeon)
-        return (this.dungeons[auto.dungeon]?.best ?? 0) > 0 || maxStage >= d.minStage + 4
+        return this.campaign.record > DUNGEONS.indexOf(d) * C.AIS_PER_CHAPTER || maxStage >= d.minStage + 4
       }
       if (auto.sect) return auto.sect === true ? !!this.sect.id : this.sect.id === auto.sect
       if (auto.flag) return !!this.story.flags[auto.flag]
@@ -1214,24 +1229,26 @@ export const useGameStore = defineStore('game', {
     },
 
     // ------------------------------------------------------------
-    // Tiến độ bí cảnh (battleStore gọi)
+    // Tiến độ Vượt Ải (battleStore gọi)
     // ------------------------------------------------------------
-    recordFloor(dungeonId, floor) {
-      const rec = (this.dungeons[dungeonId] ??= { best: 0, clears: 0, grit: 0 })
-      rec.best = Math.max(rec.best, floor)
+    /** Vượt ải mới `n`: cập nhật ải cao nhất và kỷ lục, xoá Kiên Trì, thưởng lần đầu cho boss. Trả về linh thạch thưởng thêm (hoặc null). */
+    recordAi(n) {
+      const c = this.campaign
+      c.best = Math.max(c.best, n)
+      c.record = Math.max(c.record, n)
+      c.grit = 0
+      const kind = C.aiKind(n)
+      if (kind === 'normal') return null
+      const bonus = C.firstClearStones(n)
+      this.spiritStones = this.spiritStones.add(bonus)
+      this.addLog(`Vượt ải ${n} (${C.AI_KINDS[kind].name})! Thưởng thêm ${fmt(bonus)} linh thạch. Thu nhập thụ động tăng.`, 'good')
+      return bonus
     },
 
-    recordClear(dungeonId) {
-      const rec = (this.dungeons[dungeonId] ??= { best: 0, clears: 0, grit: 0 })
-      rec.clears += 1
-      rec.grit = 0 // hạ được boss: hết "Kiên Trì"
-    },
-
-    /** Tử trận: cộng 1 điểm Kiên Trì cho bí cảnh (tối đa GRIT_MAX). Trả về số điểm hiện tại. */
-    addGrit(dungeonId) {
-      const rec = (this.dungeons[dungeonId] ??= { best: 0, clears: 0, grit: 0 })
-      rec.grit = Math.min(GRIT_MAX, (rec.grit ?? 0) + 1)
-      return rec.grit
+    /** Thua: cộng 1 điểm Kiên Trì (tối đa GRIT_MAX). Trả về số điểm hiện tại. */
+    addGrit() {
+      this.campaign.grit = Math.min(C.GRIT_MAX, (this.campaign.grit ?? 0) + 1)
+      return this.campaign.grit
     },
 
     // ------------------------------------------------------------
@@ -1290,7 +1307,6 @@ export const useGameStore = defineStore('game', {
     /** Ghi savegame vào LocalStorage. */
     save() {
       this.lastSaveTime = Date.now()
-      this.farming = useBattleStore().active // còn đang trong bí cảnh khi lưu -> farm tiếp lúc offline
       return writeLocal(serialize(this, this.lastSaveTime))
     },
 

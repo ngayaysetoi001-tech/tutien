@@ -6,8 +6,7 @@ import { CultivatorScene } from '../pixi/CultivatorScene.js'
 import { useGameStore } from '../stores/gameStore.js'
 import { useBattleStore } from '../stores/battleStore.js'
 import { useUiStore } from '../stores/uiStore.js'
-import { DUNGEONS } from '../game/data.js'
-import * as B from '../game/battle.js'
+import * as C from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { fmt } from '../game/format.js'
 import Icon from './Icon.vue'
@@ -56,19 +55,19 @@ watch(
  * (bí cảnh đánh gần nhất, hoặc bí cảnh đầu tiên đã mở) với yêu thú đầu tiên và khí huyết đầy.
  */
 const view = computed(() => {
+  if (ui.tab !== 'battle') return null // Vượt Ải đánh liên tục nhưng chỉ vẽ ở màn này
   if (battle.inFight) {
     return { preview: false, dungeon: battle.dungeon, enemy: battle.enemy, hp: battle.hp, maxHp: battle.maxHp }
   }
-  if (ui.tab !== 'battle') return null
-  const last = DUNGEONS.find((d) => d.id === game.settings.lastDungeon)
-  const dungeon = last && game.stageIdx >= last.minStage ? last : (DUNGEONS.find((d) => game.stageIdx >= d.minStage) ?? DUNGEONS[0])
-  const [id, tmpl] = B.pickMonster(dungeon, 1, () => 0)
-  const stats = B.enemyStats(dungeon, tmpl, 1)
+  // Đang nghỉ / tạm dừng: xem trước ải mục tiêu với yêu thú đầu tiên và khí huyết đầy
+  const n = battle.targetAi()
+  const { id, tmpl, kind } = C.pickAiMonster(n, () => 0)
+  const stats = C.aiEnemyStats(n, tmpl, kind)
   const maxHp = battle.playerStats().hp
   return {
     preview: true,
-    dungeon,
-    enemy: { id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss: !!tmpl.boss, hp: stats.hp, maxHp: stats.hp },
+    dungeon: C.themeOf(n).dungeon,
+    enemy: { id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss: kind !== 'normal', hp: stats.hp, maxHp: stats.hp },
     hp: maxHp,
     maxHp,
   }
@@ -104,8 +103,8 @@ onBeforeUnmount(() => {
         <Icon name="dungeon" :size="13" class="text-gold-400" />
         <span class="max-w-[8.5rem] truncate">{{ view.dungeon?.name }}</span>
         <span class="text-gold-300">
-          <template v-if="view.preview">{{ battle.phase === 'resting' ? (battle.lastResult === 'clear' ? 'Thông quan' : 'Hồi phục') : 'Sẵn sàng' }}</template>
-          <template v-else>{{ battle.floor }}/{{ view.dungeon?.floors }}</template>
+          <template v-if="view.preview">{{ battle.phase === 'resting' ? 'Hồi phục' : 'Tạm dừng' }} · ải {{ battle.targetAi() }}</template>
+          <template v-else>Ải {{ battle.ai }}</template>
         </span>
       </div>
     </div>

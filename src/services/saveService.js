@@ -7,7 +7,7 @@
 import Decimal from 'break_infinity.js'
 import { MAX_STAGE_IDX, SAVE_KEY, SAVE_VERSION, SPIRIT_ROOTS } from '../game/constants.js'
 import { DUNGEONS, ITEMS } from '../game/data.js'
-import { GRIT_MAX } from '../game/battle.js'
+import { AIS_PER_CHAPTER, GRIT_MAX } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { BAG_LIMIT, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
@@ -40,7 +40,7 @@ export function serialize(state, now = Date.now()) {
       buffs: { ...state.buffs },
       alchemy: { ...state.alchemy },
       usage: { ...state.usage },
-      dungeons: JSON.parse(JSON.stringify(state.dungeons)),
+      campaign: { ...state.campaign },
       element: state.element,
       skills: JSON.parse(JSON.stringify(state.skills)),
       gear: JSON.parse(JSON.stringify(state.gear)),
@@ -48,7 +48,6 @@ export function serialize(state, now = Date.now()) {
       reincarnation: JSON.parse(JSON.stringify(state.reincarnation)),
       garden: JSON.parse(JSON.stringify(state.garden)),
       mineAt: state.mineAt,
-      farming: !!state.farming,
       sect: { ...state.sect },
       quests: JSON.parse(JSON.stringify(state.quests)),
       disciples: JSON.parse(JSON.stringify(state.disciples)),
@@ -91,14 +90,21 @@ export function deserialize(save, defaults) {
         .map(([k, v]) => [k, Math.floor(num(v, 0))])
         .filter(([, v]) => v > 0),
     )
-  const dungeons = {}
-  for (const dg of DUNGEONS) {
+  // Vượt Ải. Save cũ (bí cảnh chọn tay) chuyển thành ải: mỗi bí cảnh = một chương 10 ải; đã thông quan thì tính đủ chương
+  let migrated = 0
+  DUNGEONS.forEach((dg, i) => {
     const rec = d.dungeons?.[dg.id]
-    if (rec) dungeons[dg.id] = {
-      best: Math.floor(num(rec.best, 0, 0, dg.floors)),
-      clears: Math.floor(num(rec.clears, 0)),
-      grit: Math.floor(num(rec.grit, 0, 0, GRIT_MAX)),
-    }
+    if (!rec) return
+    const reached = num(rec.clears, 0) > 0 ? AIS_PER_CHAPTER : Math.min(AIS_PER_CHAPTER - 1, Math.floor(num(rec.best, 0, 0, dg.floors)))
+    if (reached > 0) migrated = Math.max(migrated, i * AIS_PER_CHAPTER + reached)
+  })
+  const cam = d.campaign && typeof d.campaign === 'object' ? d.campaign : { best: migrated, record: migrated }
+  const best = Math.floor(num(cam.best, 0, 0, 100000))
+  const campaign = {
+    best,
+    record: Math.max(best, Math.floor(num(cam.record, 0, 0, 100000))),
+    grit: Math.floor(num(cam.grit, 0, 0, GRIT_MAX)),
+    farm: Number.isFinite(cam.farm) && cam.farm >= 1 && cam.farm <= best ? Math.floor(cam.farm) : null,
   }
   const usage = {}
   for (const [k, v] of Object.entries(d.usage && typeof d.usage === 'object' ? d.usage : {})) {
@@ -200,7 +206,6 @@ export function deserialize(save, defaults) {
     },
     garden: { plots },
     mineAt: num(d.mineAt, Date.now(), 0, Date.now()),
-    farming: d.farming === true,
     element: ELEMENTS[d.element] ? d.element : defaults.element,
     skills: { owned, slots },
     gear: { bag, equipped },
@@ -235,7 +240,7 @@ export function deserialize(save, defaults) {
       exp: num(d.alchemy?.exp, 0),
     },
     usage,
-    dungeons,
+    campaign,
     stats: {
       breakthroughs: num(d.stats?.breakthroughs, 0),
       failures: num(d.stats?.failures, 0),
@@ -254,7 +259,7 @@ export function deserialize(save, defaults) {
     settings: {
       particles: d.settings?.particles !== false,
       autoSave: d.settings?.autoSave !== false,
-      autoRepeat: d.settings?.autoRepeat !== false,
+      autoRepeat: !d.campaign || d.settings?.autoRepeat !== false, // save cũ: "tự động lặp bí cảnh" nay là "Tự chiến đấu", bật lại cho mọi người
       autoHeal: d.settings?.autoHeal !== false,
       sound: d.settings?.sound !== false,
       music: d.settings?.music !== false,

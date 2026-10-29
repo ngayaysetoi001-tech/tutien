@@ -29,8 +29,6 @@ export function bindAudio() {
     on('battle-skill', ({ kind }) => sfx.skill(kind)),
     on('battle-heal', () => sfx.heal()),
     on('battle-enemy-die', ({ boss }) => setTimeout(() => sfx.die(boss), 120)),
-    on('battle-start', () => setMusicMode('battle')),
-    on('battle-end', () => setMusicMode('calm')),
     on('breakthrough-success', ({ realmChanged }) => sfx.breakthrough(realmChanged)),
     on('breakthrough-fail', () => sfx.fail()),
     on('tribulation-start', () => {

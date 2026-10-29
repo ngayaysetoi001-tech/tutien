@@ -9,6 +9,7 @@ import Decimal from 'break_infinity.js'
 import { combatStats } from './formulas.js'
 import { DUNGEONS, ITEMS, MONSTERS } from './data.js'
 import { actionInterval, CRIT_CHANCE, rollHit, simulateFight } from './battle.js'
+import { BALANCE } from './constants.js'
 
 const ZERO_BONUS = { hp: 0, atk: 0, def: 0, speed: 0 }
 
@@ -84,13 +85,19 @@ export function winChance(player, n, samples = 40, rng = Math.random, edge = { o
 // ---------------------------------------------------------------------
 // Phần thưởng khi hạ yêu thú ở ải n
 // ---------------------------------------------------------------------
+export const OVERLEVEL_GRACE = 6 // tu vi vượt ải quá 6 bậc thì thưởng bắt đầu giảm (cày ải quá yếu)
+
+/** Hệ số giảm thưởng khi cày ải yếu hơn hẳn tu vi hiện tại. */
+export const overlevel = (stageIdx, n, decay) => Math.pow(decay, Math.max(0, stageIdx - equivStage(n) - OVERLEVEL_GRACE))
+
 /** Linh thạch rơi khi hạ yêu thú ải n. */
-export function aiStoneReward(n, kind) {
-  return new Decimal(1.45).pow(equivStage(n)).mul(2 * AI_KINDS[kind].reward * (1 + 0.02 * (n - 1)))
+export function aiStoneReward(n, kind, stageIdx = 0) {
+  return new Decimal(1.45).pow(equivStage(n)).mul(2 * AI_KINDS[kind].reward * (1 + 0.02 * (n - 1)) * overlevel(stageIdx, n, BALANCE.killStoneDecay))
 }
 
-/** Thưởng linh khí: số giây sản lượng. */
-export const aiExpSeconds = (n, kind) => (2.5 + 0.1 * n) * AI_KINDS[kind].reward
+/** Thưởng linh khí khi hạ yêu thú: số giây sản lượng (nhỏ, vì thu nhập chính là thụ động theo ải). */
+export const aiExpSeconds = (n, kind, stageIdx = 0) =>
+  (1.5 + 0.03 * Math.min(n, 200)) * AI_KINDS[kind].reward * overlevel(stageIdx, n, BALANCE.killExpDecay)
 
 /** Thưởng một lần khi lần đầu vượt ải n (Tiểu Boss trở lên): linh thạch cộng thêm. */
 export function firstClearStones(n) {
@@ -154,3 +161,45 @@ export function expectedFightSeconds(player, n) {
   return Math.min(120, enemy.hp / Math.max(1, dealt * (1 + CRIT_CHANCE * 0.5)))
 }
 
+
+// ---------------------------------------------------------------------
+// Offline: mô phỏng leo ải trong lúc vắng mặt
+// ---------------------------------------------------------------------
+export const GRIT_STEP = 0.05 // mỗi lần thua liên tiếp ở cùng một ải: +5% chỉ số cho lần thử sau
+export const GRIT_MAX = 6 // tối đa +30%, xoá khi vượt ải
+export const ATTEMPT_SECONDS = 12 // một lần thử ~ 8 giây đánh + 6 giây nghỉ nếu thua (ước lượng)
+export const OFFLINE_CLIMB_EFFICIENCY = 0.5
+const MAX_OFFLINE_ATTEMPTS = 3000
+const MAX_OFFLINE_GEAR = 20
+
+/** Nhân chỉ số theo Kiên Trì (số lần thua liên tiếp ở ải đang kẹt). */
+export const gritStats = (stats, grit) => {
+  const k = 1 + GRIT_STEP * grit
+  return { ...stats, hp: Math.round(stats.hp * k), atk: Math.round(stats.atk * k), def: Math.round(stats.def * k) }
+}
+
+/**
+ * Mô phỏng người chơi tiếp tục thử ải kế tiếp khi vắng mặt (hiệu suất 50%).
+ * Trả về { best, grit, wins, attempts, stones, gear: [tier...] }; không tính linh khí
+ * (đã có trong thu nhập thụ động).
+ */
+export function simulateOfflineClimb({ stats, best, grit = 0, seconds, stageIdx = 0, rng = Math.random }) {
+  const attempts = Math.min(MAX_OFFLINE_ATTEMPTS, Math.floor((seconds * OFFLINE_CLIMB_EFFICIENCY) / ATTEMPT_SECONDS))
+  const out = { best, grit, wins: 0, attempts, stones: new Decimal(0), gear: [] }
+  for (let i = 0; i < attempts; i++) {
+    const n = out.best + 1
+    const { tmpl, kind } = pickAiMonster(n, rng)
+    const enemy = aiEnemyStats(n, tmpl, kind, rng)
+    const hero = gritStats(stats, out.grit)
+    if (simulateFight({ ...hero }, enemy, rng).won) {
+      out.best = n
+      out.grit = 0
+      out.wins++
+      out.stones = out.stones.add(aiStoneReward(n, kind, stageIdx)).add(firstClearStones(n))
+      if (out.gear.length < MAX_OFFLINE_GEAR && rng() < AI_KINDS[kind].gear) out.gear.push(themeOf(n).idx)
+    } else {
+      out.grit = Math.min(GRIT_MAX, out.grit + 1)
+    }
+  }
+  return out
+}
