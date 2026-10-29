@@ -18,6 +18,7 @@ import { ELEMENTS, elementEdge, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as EQ from '../game/equipment.js'
 import { useGameStore } from './gameStore.js'
+import { DUNGEON_FLAVOR } from '../game/story.js'
 import { useUiStore } from './uiStore.js'
 
 const BETWEEN_DELAY = 0.9 // giây nghỉ giữa các ải
@@ -132,6 +133,10 @@ export const useBattleStore = defineStore('battle', {
       this.nextEnemy = this.clock + B.actionInterval(stats.speed) * 0.8
       this.slowUntil = 0 // làm chậm không kéo sang yêu thú mới
       fx('battle-enemy-spawn', { name: tmpl.name, kind: tmpl.kind, color: tmpl.color, boss })
+      if (n % C.AIS_PER_CHAPTER === 1 && n > game.campaign.best) {
+        game.addLog(`Bước vào ${C.chapterName(n)}, chương ${C.chapterOf(n)}.`, 'event')
+        if (C.themeOf(n).round === 0 && DUNGEON_FLAVOR[C.themeOf(n).dungeon.id]) game.addLog(DUNGEON_FLAVOR[C.themeOf(n).dungeon.id], 'info')
+      }
       if (boss) game.addLog(`${C.AI_KINDS[kind].name} xuất hiện ở ải ${n}: ${tmpl.name}!`, 'bad')
     },
 

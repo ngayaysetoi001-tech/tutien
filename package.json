@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sim": "node scripts/balance-sim.mjs",
+    "sim": "node scripts/campaign-sim.mjs",
     "check": "vite build && node scripts/smoke-test.mjs",
     "econ": "node scripts/economy-sim.mjs"
   },

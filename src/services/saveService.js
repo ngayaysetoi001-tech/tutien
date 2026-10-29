@@ -264,7 +264,6 @@ export function deserialize(save, defaults) {
       sound: d.settings?.sound !== false,
       music: d.settings?.music !== false,
       autoBreak: d.settings?.autoBreak === true,
-      lastDungeon: DUNGEONS.some((x) => x.id === d.settings?.lastDungeon) ? d.settings.lastDungeon : null,
     },
     savedAt: num(save.savedAt, Date.now()),
   }

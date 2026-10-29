@@ -754,7 +754,6 @@ const RB = await import('../src/game/reincarnation.js')
 const GD = await import('../src/game/garden.js')
 const { STAGES, MAX_STAGE_IDX, TRIBULATIONS } = await import('../src/game/constants.js')
 const { DUNGEONS, RECIPES, ITEMS, MONSTERS } = await import('../src/game/data.js')
-const { simulateOfflineFarm } = await import('../src/game/battle.js')
 
 ok('27 bậc tu vi, Hợp Thể là cuối; thiên kiếp cho từng đại cảnh giới (trừ Luyện Khí và Hợp Thể)', () => {
   assert.equal(STAGES.length, 27)
@@ -900,23 +899,6 @@ ok('khoáng mạch: tích luỹ theo giờ thật, tối đa 8 giờ, thu về t
   assert.equal(GD.mineInfo(24).ore, 'hon_don_tinh')
   s.stageIdx = 10
   assert.equal(GD.mineInfo(s.stageIdx).ore, 'huyen_thiet')
-})
-
-ok('farm offline: mô phỏng thu hoạch kỳ vọng, không vượt quá giới hạn hợp lý', () => {
-  const s = freshStore()
-  s.init()
-  s.stageIdx = 6
-  const dungeon = DUNGEONS[0]
-  const r = simulateOfflineFarm({ stats: s.combat, dungeon, seconds: 3600 })
-  assert.ok(r.runs > 0)
-  assert.ok(r.kills >= r.runs * 5 && r.kills <= r.runs * dungeon.floors + 1)
-  assert.equal(r.bossKills, r.runs) // đủ mạnh nên mỗi lượt đều hạ boss
-  assert.ok(r.stones.gt(0))
-  assert.ok(r.items.linh_thao > 0)
-  // hiệu suất 50%: một giờ không thể cho nhiều hơn số lượt chạy liên tục ngoài đời
-  assert.ok(r.runs <= 3600 / r.avgRunTime)
-  const none = simulateOfflineFarm({ stats: { ...s.combat, atk: 1, hp: 5 }, dungeon: DUNGEONS[4], seconds: 3600 })
-  assert.equal(none.bossKills, 0)
 })
 
 ok('save/load giữ Đạo Vận, cường hoá, Linh Điền, mốc khoáng mạch, bậc cao nhất', () => {
@@ -1065,7 +1047,7 @@ ok('nhiệm vụ: bảng đủ 4 nhiệm vụ khác mẫu, tiến độ đo từ
   assert.equal(s.questProgress(q), 0)
   assert.equal(s.claimQuest(q.uid), false)
   s.stats[QS.templateById(q.tpl).key] += q.target // giả lập đã làm đủ
-  if (QS.templateById(q.tpl).key === 'clears') s.campaign.record = (q.target + 5) * 10
+  if (QS.templateById(q.tpl).key === 'aiRecord') s.campaign.record = q.target + 5
   assert.equal(s.questDone(q), true)
   const stones = s.spiritStones
   assert.equal(s.claimQuest(q.uid), true)
@@ -1081,12 +1063,12 @@ ok('nhiệm vụ: thưởng Cống Hiến cho người có tông môn; làm mớ
   s.joinSect('van_moc')
   const q = s.quests[0]
   s.stats[QS.templateById(q.tpl).key] += q.target
-  if (QS.templateById(q.tpl).key === 'clears') s.campaign.record = (q.target + 5) * 10
+  if (QS.templateById(q.tpl).key === 'aiRecord') s.campaign.record = q.target + 5
   s.claimQuest(q.uid)
   assert.ok(s.sect.contribution > 0)
   const done = s.quests[1]
   s.stats[QS.templateById(done.tpl).key] += done.target
-  if (QS.templateById(done.tpl).key === 'clears') s.campaign.record = (done.target + 50) * 10
+  if (QS.templateById(done.tpl).key === 'aiRecord') s.campaign.record = done.target + 50
   s.spiritStones = new Decimal(0)
   assert.equal(s.refreshQuests(), false) // chưa đủ linh thạch
   s.spiritStones = new Decimal(1e6)
@@ -1717,25 +1699,48 @@ ok('căn cốt: biên độ tốc độ giữa kiếp may nhất và kém nhất
   assert.ok(Math.max(...ms) / Math.min(...ms) <= 2.5)
 })
 
-ok('linh khí hạ quái giảm dần khi tu vi vượt xa bí cảnh và nhỏ hơn hẳn sản lượng thụ động mỗi lượt', () => {
-  const on = BAL.expRewardSeconds(3, false, 10, 10)
-  const over3 = BAL.expRewardSeconds(3, false, 13, 10)
-  assert.ok(over3 < on * 0.4)
-  assert.ok(on <= 6, 'mỗi quái thường cho tối đa vài giây sản lượng')
-  assert.ok(BAL.expRewardSeconds(6, true, 10, 10) <= 4 * 6)
-  // tu vi thấp hơn bậc chuẩn không bị phạt
-  assert.equal(BAL.expRewardSeconds(3, false, 5, 10), on)
+ok('nhiệm vụ và thành tựu theo ải: mẫu "Vượt thêm ải" đo kỷ lục, thành tựu Vượt Ải theo kỷ lục, nhiệm vụ cũ bị loại khi tải', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.achievementValue('aiRecord'), 0)
+  s.campaign.record = 35
+  assert.equal(s.achievementValue('aiRecord'), 35)
+  const ach = ACHIEVEMENTS.find((a) => a.id === 'clears')
+  assert.equal(ach.key, 'aiRecord')
+  assert.equal(s.achievementClaimable(ach), true)
+  assert.equal(s.claimAchievement('clears'), true)
+  assert.equal(s.claimAchievement('clears'), true) // mỗi lần nhận một mốc: mốc 10 rồi mốc 30
+  assert.equal(s.achTier.clears, 2) // mốc 60 chưa đủ
+  assert.equal(s.claimAchievement('clears'), false)
+  // mẫu nhiệm vụ
+  const tpl = QS.templateById('ai')
+  assert.equal(tpl.key, 'aiRecord')
+  assert.ok(!QS.templateById('clears'), 'mẫu thông quan bí cảnh đã bỏ')
+  const quest = { uid: 'qx', tpl: 'ai', tier: 0, target: 3, start: s.achievementValue('aiRecord') }
+  s.quests = [quest]
+  assert.equal(s.questDone(quest), false)
+  s.campaign.record += 3
+  assert.equal(s.questDone(quest), true)
+  // nhiệm vụ cũ (mẫu 'clears' hoặc 'click') trong save bị lọc, bảng được bù đủ
+  s.quests = [quest, { uid: 'old1', tpl: 'clears', tier: 0, target: 1, start: 0 }, { uid: 'old2', tpl: 'click', tier: 0, target: 25, start: 0 }]
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.ok(!s2.quests.some((q) => q.tpl === 'clears' || q.tpl === 'click'))
+  assert.equal(s2.quests.length, QS.BOARD_SIZE)
 })
 
-ok('linh thạch, thưởng thông quan và Cống Hiến hạ boss đều giảm dần khi cày bí cảnh quá yếu', () => {
-  const d = DUNGEONS[3]
-  const tmpl = MONSTERS[d.monsters[0]]
-  const on = BAL.stoneReward(d, tmpl, 3, d.power)
-  const over = BAL.stoneReward(d, tmpl, 3, d.power + 4)
-  assert.ok(over.lt(on.mul(0.5)))
-  assert.ok(BAL.clearBonus(d, d.power + 4).lt(BAL.clearBonus(d, d.power).mul(0.5)))
-  assert.ok(BAL.bossContribution(d, d.power + 5) < BAL.bossContribution(d, d.power))
-  assert.ok(BAL.bossContribution(DUNGEONS[0], 0) >= 1)
+ok('Vượt Ải: thưởng linh khí và linh thạch giảm dần khi cày ải quá yếu so với tu vi, không giảm khi tu vi thấp hơn', () => {
+  const n = 13 // bậc tương đương = 3
+  const on = C.aiExpSeconds(n, 'normal', 3)
+  assert.ok(on <= 6, 'mỗi quái thường cho tối đa vài giây sản lượng')
+  assert.equal(C.aiExpSeconds(n, 'normal', 3 + C.OVERLEVEL_GRACE), on, 'chưa vượt ngưỡng ân hạn thì chưa giảm')
+  assert.ok(C.aiExpSeconds(n, 'normal', 3 + C.OVERLEVEL_GRACE + 3) < on * 0.4)
+  assert.equal(C.aiExpSeconds(n, 'normal', 0), on)
+  const stone = C.aiStoneReward(n, 'normal', 3)
+  assert.ok(C.aiStoneReward(n, 'normal', 3 + C.OVERLEVEL_GRACE + 4).lt(stone.mul(0.5)))
+  assert.ok(C.aiStoneReward(n, 'mini', 3).gt(stone.mul(2)), 'boss thưởng nhiều hơn quái thường')
+  assert.ok(C.aiContribution(1, 'normal') === 0 && C.aiContribution(5, 'mini') >= 1 && C.aiContribution(100, 'lord') > C.aiContribution(10, 'big'))
 })
 
 ok('trần phần thưởng linh khí: kỳ ngộ không vượt 0.8% yêu cầu, Tụ Khí Đan giảm dần khi dùng liên tiếp', () => {
@@ -1769,8 +1774,7 @@ ok('trần phần thưởng linh khí: kỳ ngộ không vượt 0.8% yêu cầu
 
 ok('đệ tử Trấn Thủ cho lượng linh thạch tương đương hàng chục lần hạ quái mỗi giờ (có ý nghĩa kinh tế)', () => {
   const d = DUNGEONS[2]
-  const tmpl = MONSTERS[d.monsters[0]]
-  const kill = BAL.stoneReward(d, tmpl, 1, d.power)
+  const kill = C.aiStoneReward(4 * d.power + 1, 'normal', d.power) // ải cùng bậc với bí cảnh này
   const disc = { uid: 'x', name: 'A', element: 'kim', grade: 0, level: 1, job: 'guard', since: 0 }
   const out = DS.outputPerHour(disc, d.power, {})
   assert.equal(out.kind, 'stones')
@@ -1876,7 +1880,7 @@ ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang b�
   s.stats.kills = 10
   const q = s.quests[0]
   s.stats[QS.templateById(q.tpl).key] += q.target
-  if (QS.templateById(q.tpl).key === 'clears') s.campaign.record = (q.target + 5) * 10
+  if (QS.templateById(q.tpl).key === 'aiRecord') s.campaign.record = q.target + 5
   assert.ok(ids(s).includes('quest'))
   s.stageIdx = 26
   s.exp = s.requirement

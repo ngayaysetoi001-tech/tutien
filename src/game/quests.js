@@ -12,8 +12,8 @@ export const BOARD_SIZE = 4
  */
 export const QUEST_TEMPLATES = [
   { id: 'kills', key: 'kills', label: 'Hạ yêu thú', base: 12, grow: 0.18 },
-  { id: 'bosses', key: 'bossKills', label: 'Hạ boss bí cảnh', base: 1, grow: 0 },
-  { id: 'clears', key: 'clears', label: 'Thông quan bí cảnh', base: 1, grow: 0 },
+  { id: 'bosses', key: 'bossKills', label: 'Hạ boss (Tiểu Boss trở lên)', base: 1, grow: 0 },
+  { id: 'ai', key: 'aiRecord', label: 'Vượt thêm ải', base: 3, grow: 0.15 },
   { id: 'harvest', key: 'harvests', label: 'Thu hoạch Linh Điền', base: 3, grow: 0.08 },
   { id: 'craft', key: 'crafted', label: 'Luyện đan', base: 3, grow: 0.1 },
   { id: 'forge', key: 'forged', label: 'Rèn pháp khí', base: 1, grow: 0 },

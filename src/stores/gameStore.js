@@ -95,7 +95,7 @@ function createPlayerState(minRoot = 0) {
       breakthroughs: 0, failures: 0, tribulations: 0, playSeconds: 0,
       kills: 0, bossKills: 0, crafted: 0, forged: 0, events: 0, maxStage: 0, reincarnations: 0, harvests: 0, questsDone: 0,
     },
-    settings: { particles: true, autoSave: true, autoRepeat: true, autoHeal: true, lastDungeon: null, sound: true, music: true, autoBreak: false },
+    settings: { particles: true, autoSave: true, autoRepeat: true, autoHeal: true, sound: true, music: true, autoBreak: false },
     buffs: { success: 0, guard: 0 }, // hiệu ứng đan dược dùng một lần
     alchemy: { level: 1, exp: 0 }, // cấp Luyện Đan
     usage: {}, // số lần đã dùng mỗi vật phẩm (kháng đan)
@@ -746,7 +746,7 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     achievementValue(key) {
       if (key === 'stage') return Math.max(this.stageIdx, this.stats.maxStage)
-      if (key === 'clears') return Math.floor(this.campaign.record / C.AIS_PER_CHAPTER) // chương ải đã vượt
+      if (key === 'aiRecord') return this.campaign.record
       if (key === 'skills') return Object.keys(this.skills.owned).length
       if (key === 'playHours') return Math.floor(this.stats.playSeconds / 3600)
       if (key === 'pillsUsed') return Object.values(this.usage).reduce((n, v) => n + v, 0)
