@@ -8,8 +8,12 @@ import { alchemyDoubleChance, alchemyExpNeeded } from '../../game/formulas.js'
 import { fmt, fmtPercent } from '../../game/format.js'
 import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage } from '../../game/dwelling.js'
 import Icon from '../Icon.vue'
+import ItemIcon from '../ItemIcon.vue'
+import BottomSheet from '../BottomSheet.vue'
 import { FORGE, FORGE_RARITY_WEIGHTS, RARITIES, SLOTS, SLOT_IDS, TIERS, itemFullName } from '../../game/equipment.js'
 
+const BUILDING_GLYPH = { linh_mach: 'wave', luyen_dan: 'pill', tang_kinh: 'arts', luyen_khi: 'hammer', dien_vo: 'swords' }
+const selB = ref(null) // công trình đang xem
 const forgeTier = ref(0) // phẩm cấp đang chọn ở lò rèn
 const lastForged = ref(null)
 const rarityOdds = FORGE_RARITY_WEIGHTS.map((w, i) => `${RARITIES[i].name} ${Math.round((w / FORGE_RARITY_WEIGHTS.reduce((a, b) => a + b, 0)) * 100)}%`).join(' · ')
@@ -57,20 +61,34 @@ function maxBatches(r) {
       <div class="mt-1 flex items-center justify-center gap-1 text-xs text-slate-500">Đang có <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(game.spiritStones) }}</div>
     </div>
 
-    <div class="card space-y-1.5">
-      <div class="title-rule">Công trình (giữ khi luân hồi)</div>
-      <div v-for="id in BUILDING_IDS" :key="id" class="rounded bg-ink-900 p-1.5 text-xs">
-        <div class="flex items-center justify-between">
-          <span class="font-bold text-white">{{ BUILDINGS[id].name }}</span>
-          <span class="text-gold-300">Cấp {{ game.dwelling[id] }}/{{ BUILDING_MAX_LEVEL }}</span>
-        </div>
-        <div class="text-xs text-slate-400">{{ BUILDINGS[id].text }}</div>
-        <button class="btn-gold mt-1 w-full py-1 text-xs" :disabled="!canBuild(id)" @click="game.upgradeBuilding(id)">
-          <template v-if="game.dwelling[id] >= BUILDING_MAX_LEVEL">Tối đa</template>
-          <template v-else-if="buildingLocked(id)">{{ `Cần ${STAGES[buildingNeedStage(id, game.dwelling[id])].fullName}` }}</template>
-          <template v-else>Nâng cấp <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(buildingCost(id, game.dwelling[id])) }}</template>
-        </button>
+    <div>
+      <div class="mb-1.5 text-sm font-bold text-gold-300">Công trình <span class="text-xs font-normal text-slate-500">(giữ khi luân hồi)</span></div>
+      <div class="grid grid-cols-5 gap-2">
+        <ItemIcon
+          v-for="id in BUILDING_IDS"
+          :key="id"
+          :glyph="BUILDING_GLYPH[id]"
+          :label="BUILDINGS[id].name"
+          :badge="game.dwelling[id]"
+          :locked="buildingLocked(id) && game.dwelling[id] === 0"
+          :dot="canBuild(id)"
+          :progress="game.dwelling[id] / BUILDING_MAX_LEVEL"
+          @click="selB = id"
+        />
       </div>
+      <BottomSheet :open="!!selB" :title="selB ? BUILDINGS[selB].name : ''" :glyph="selB ? BUILDING_GLYPH[selB] : ''" @close="selB = null">
+        <template v-if="selB">
+          <div class="text-xs text-gold-300">Cấp {{ game.dwelling[selB] }}/{{ BUILDING_MAX_LEVEL }}</div>
+          <p>{{ BUILDINGS[selB].text }}</p>
+        </template>
+        <template #actions>
+          <button v-if="selB" class="btn-gold" :disabled="!canBuild(selB)" @click="game.upgradeBuilding(selB)">
+            <template v-if="game.dwelling[selB] >= BUILDING_MAX_LEVEL">Tối đa</template>
+            <template v-else-if="buildingLocked(selB)">{{ `Cần ${STAGES[buildingNeedStage(selB, game.dwelling[selB])].fullName}` }}</template>
+            <template v-else>Nâng cấp <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(buildingCost(selB, game.dwelling[selB])) }}</template>
+          </button>
+        </template>
+      </BottomSheet>
     </div>
 
     <div class="card">
