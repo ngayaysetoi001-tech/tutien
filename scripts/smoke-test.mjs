@@ -1317,6 +1317,148 @@ ok('Trận Pháp Sư: Tụ Linh Trận +25%, công pháp +15%, đệ tử +20%',
 })
 
 // =====================================================================
+// Đặc tính yêu thú và kỹ năng boss
+// =====================================================================
+ok('đặc tính ải: cố định theo số ải, đúng quy tắc từng loại, hợp lệ', () => {
+  for (const n of [1, 3, 7]) assert.deepEqual(C.aiMods(n), [], 'ải đầu không có đặc tính')
+  let withTrait = 0
+  for (let n = 8; n <= 400; n++) {
+    const kind = C.aiKind(n)
+    const mods = C.aiMods(n)
+    assert.deepEqual(C.aiMods(n), mods, 'cố định theo số ải')
+    assert.equal(new Set(mods).size, mods.length, 'không trùng')
+    for (const m of mods) assert.ok(C.ENEMY_MODS[m], m)
+    const skills = mods.filter((m) => C.ENEMY_MODS[m].kind === 'boss')
+    const traits = mods.filter((m) => C.ENEMY_MODS[m].kind === 'trait')
+    if (kind === 'normal') assert.ok(skills.length === 0 && traits.length <= 1)
+    if (kind === 'mini') assert.ok(skills.length === 0 && traits.length <= 1)
+    if (kind === 'big') assert.ok(skills.length === 1 && traits.length <= 1)
+    if (kind === 'lord') assert.ok(skills.length === 2 && traits.length === 1)
+    if (kind === 'normal' && mods.length) withTrait++
+  }
+  assert.ok(withTrait > 30 && withTrait < 150, 'khoảng 25% ải thường có đặc tính: ' + withTrait)
+  assert.equal(C.aiMods(4).length, 0)
+  // mỗi đặc tính và kỹ năng boss đều xuất hiện ở đâu đó
+  const seen = new Set()
+  for (let n = 1; n <= 600; n++) C.aiMods(n).forEach((m) => seen.add(m))
+  assert.deepEqual([...seen].sort(), Object.keys(C.ENEMY_MODS).sort())
+})
+
+ok('đặc tính ảnh hưởng chỉ số thật; ước lượng tỉ lệ thắng tính cả hành vi (hồi sinh, tái sinh...)', () => {
+  // tìm một ải thường có Giáp Dày, và một Đại Boss có kỹ năng
+  let giap = 0
+  for (let n = 8; n < 500 && !giap; n++) if (C.aiMods(n).includes('giap_day') && C.aiKind(n) === 'normal') giap = n
+  assert.ok(giap)
+  const { tmpl, kind } = C.pickAiMonster(giap, () => 0)
+  const withMod = C.aiEnemyStats(giap, tmpl, kind)
+  const saved = C.ENEMY_MODS.giap_day.stat
+  assert.ok(withMod.def > 0 && saved.def === 1.6)
+  // hành vi: forSim làm yêu thú "dày" hơn (hoặc đánh mạnh hơn)
+  let big = 0
+  for (let n = 10; n < 500 && !big; n += 10) if (C.aiMods(n).includes('tai_sinh')) big = n
+  assert.ok(big)
+  const m = C.pickAiMonster(big, () => 0)
+  const plain = C.aiEnemyStats(big, m.tmpl, m.kind, null, false)
+  const sim = C.aiEnemyStats(big, m.tmpl, m.kind, null, true)
+  assert.ok(sim.hp > plain.hp * 1.2 && sim.hp < plain.hp * 1.4)
+})
+
+const modArena = (mods, stage = 12) => {
+  const x = arena({ stage })
+  x.b.enemy.mods = mods
+  return x
+}
+
+ok('Hồi Sinh: gục lần đầu thì sống lại 40% khí huyết, lần hai thì chết', () => {
+  const { s, b } = modArena(['hoi_sinh'])
+  b.enemy.maxHp = 1000
+  b.enemy.hp = 10
+  b.hurtEnemy(500)
+  assert.equal(b.enemy.hp, 400)
+  assert.equal(b.enemy.revived, true)
+  b.hurtEnemy(5000)
+  assert.equal(b.enemy.hp, 0)
+  b.enemy.hp = 5 // hạ lần cuối không hồi lại nữa
+  b.hurtEnemy(5)
+  assert.equal(b.enemy.hp, 0)
+})
+
+ok('Kháng Võ Kỹ giảm 30% sát thương võ kỹ và độc, không giảm đòn thường', () => {
+  const { b } = modArena(['khang_vo_ky'])
+  assert.equal(b.hurtEnemy(100, true), 70)
+  assert.equal(b.hurtEnemy(100, false), 100)
+  assert.equal(b.hurtEnemy(1, true), 1, 'tối thiểu 1')
+})
+
+ok('Hút Máu: mỗi đòn của yêu thú hồi cho nó 40% sát thương gây ra', () => {
+  const { b } = modArena(['hut_mau'])
+  b.enemy.maxHp = 1e9
+  b.enemy.hp = 5e8
+  b.enemy.atk = 400
+  b.nextEnemy = 0
+  const before = b.enemy.hp
+  const hp = b.hp
+  b.enemyAct()
+  const dealt = hp - b.hp
+  assert.ok(dealt > 0)
+  assert.equal(b.enemy.hp - before, Math.round(dealt * 0.4))
+})
+
+ok('Nhát Chém Ngàn Cân: đòn thứ 4 gấp 2.5 lần', () => {
+  const { b } = modArena(['nhat_chem'])
+  b.enemy.atk = 200
+  Math.random = () => 0.5
+  const dmg = []
+  for (let i = 0; i < 4; i++) {
+    b.hp = b.maxHp
+    b.nextEnemy = 0
+    b.enemyAct()
+    dmg.push(b.maxHp - b.hp)
+  }
+  Math.random = realRandom
+  assert.ok(Math.abs(dmg[3] / dmg[0] - 2.5) < 0.1, 'tỉ lệ ' + dmg[3] / dmg[0])
+  assert.ok(Math.abs(dmg[1] / dmg[0] - 1) < 0.05)
+})
+
+ok('Cuồng Hóa (dưới 40%) và Huyết Hồn Tái Sinh (dưới 50%) chỉ kích hoạt một lần', () => {
+  const x = modArena(['cuong_hoa', 'tai_sinh'])
+  const { b } = x
+  b.enemy.maxHp = 1000
+  b.enemy.hp = 1000
+  b.enemy.atk = 100
+  const spd = b.enemy.speed
+  b.hurtEnemy(480) // còn 52%: chưa kích hoạt
+  assert.equal(b.enemy.enraged, false)
+  assert.equal(b.enemy.reborn, false)
+  b.hurtEnemy(40) // 48% < 50%: tái sinh +25%
+  assert.equal(b.enemy.reborn, true)
+  assert.equal(b.enemy.hp, 480 + 250)
+  b.hurtEnemy(500) // 23% < 40%: cuồng hóa
+  assert.equal(b.enemy.enraged, true)
+  assert.equal(b.enemy.atk, 135)
+  assert.ok(Math.abs(b.enemy.speed / spd - 1.2) < 1e-9)
+  b.hurtEnemy(1)
+  assert.equal(b.enemy.atk, 135, 'không cuồng hóa lần hai')
+  assert.equal(b.enemy.hp, 229, 'không tái sinh lần hai')
+})
+
+ok('trận thật: yêu thú có đặc tính xuất hiện đúng, ghi vào nhật ký, hạ được bình thường', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 20
+  let n = 0
+  for (let i = 8; i < 500 && !n; i++) if (C.aiKind(i) === 'normal' && C.aiMods(i).length) n = i
+  s.campaign.best = n - 1
+  const b = useBattleStore()
+  b.start()
+  assert.deepEqual(b.enemy.mods, C.aiMods(n))
+  assert.ok(s.log.some((l) => l.text.includes('mang:')))
+  b.enemy.hp = 0
+  b.onKill()
+  assert.equal(s.campaign.best, n)
+})
+
+// =====================================================================
 // Giai đoạn 3: cảnh giới mới, luân hồi, Linh Điền, khoáng mạch, farm offline
 // =====================================================================
 const RB = await import('../src/game/reincarnation.js')

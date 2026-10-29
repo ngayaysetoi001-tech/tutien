@@ -67,7 +67,7 @@ const view = computed(() => {
   return {
     preview: true,
     dungeon: C.themeOf(n).dungeon,
-    enemy: { id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss: kind !== 'normal', tier: kind, hp: stats.hp, maxHp: stats.hp },
+    enemy: { id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss: kind !== 'normal', tier: kind, mods: C.aiMods(n), hp: stats.hp, maxHp: stats.hp },
     hp: maxHp,
     maxHp,
   }
@@ -127,6 +127,9 @@ onBeforeUnmount(() => {
         <div class="mb-0.5 truncate text-[11px] font-bold [text-shadow:0_1px_3px_#000]" :class="view.enemy.boss ? 'text-cinnabar-400' : 'text-slate-100'">
           <span v-if="view.enemy.tier && view.enemy.tier !== 'normal'" class="mr-0.5 rounded bg-cinnabar-500/70 px-1 text-[10px] text-white">{{ C.AI_KINDS[view.enemy.tier].name }}</span>
           <span :style="{ color: ELEMENTS[view.enemy.element]?.css }">[{{ ELEMENTS[view.enemy.element]?.name }}]</span> {{ view.enemy.name }}
+        </div>
+        <div v-if="view.enemy.mods?.length" class="mb-0.5 flex flex-wrap justify-end gap-0.5">
+          <span v-for="m in view.enemy.mods" :key="m" class="rounded px-1 text-[9px] text-white [text-shadow:none]" :class="C.ENEMY_MODS[m].kind === 'boss' ? 'bg-cinnabar-500/80' : 'bg-ink-600/90'">{{ C.ENEMY_MODS[m].name }}</span>
         </div>
         <div class="hp-track">
           <div class="hp-fill ml-auto from-cinnabar-500 to-gold-400 bg-gradient-to-l" :style="{ width: (view.enemy.hp / view.enemy.maxHp) * 100 + '%' }"></div>

@@ -57,18 +57,74 @@ export function pickAiMonster(n, rng = Math.random) {
   return { id, tmpl: MONSTERS[id], kind }
 }
 
-/** Chỉ số yêu thú ở ải n; truyền `rng` để hp/atk lệch ngẫu nhiên. */
-export function aiEnemyStats(n, tmpl, kind, rng = null) {
+// ---------------------------------------------------------------------
+// Đặc tính yêu thú và kỹ năng boss
+// ---------------------------------------------------------------------
+/**
+ * kind 'trait' (yêu thú thường, Tiểu Boss, Đại Boss, Chúa Tể) hoặc 'boss' (kỹ năng của Đại Boss / Chúa Tể).
+ * stat: hệ số nhân chỉ số, áp dụng thật vào trận.
+ * sim : hệ số nhân xấp xỉ cho hành vi trong trận (hồi sinh, phản đòn...) chỉ dùng khi ước lượng tỉ lệ thắng và mô phỏng offline.
+ * Hành vi thật nằm trong battleStore.
+ */
+export const ENEMY_MODS = {
+  cuong_toc: { kind: 'trait', name: 'Cuồng Tốc', desc: 'Đánh nhanh hơn 30%.', stat: { speed: 1.3 } },
+  giap_day: { kind: 'trait', name: 'Giáp Dày', desc: 'Phòng ngự x1.6, khí huyết +10%.', stat: { def: 1.6, hp: 1.1 } },
+  ngoan_cuong: { kind: 'trait', name: 'Ngoan Cường', desc: 'Khí huyết x1.5 nhưng công kích giảm 15%.', stat: { hp: 1.5, atk: 0.85 } },
+  hung_han: { kind: 'trait', name: 'Hung Hãn', desc: 'Công kích +30% nhưng khí huyết giảm 15%.', stat: { atk: 1.3, hp: 0.85 } },
+  hoi_sinh: { kind: 'trait', name: 'Hồi Sinh', desc: 'Gục lần đầu thì sống lại với 40% khí huyết.', sim: { hp: 1.4 } },
+  hut_mau: { kind: 'trait', name: 'Hút Máu', desc: 'Mỗi đòn đánh hồi cho nó 40% sát thương gây ra.', sim: { hp: 1.2 } },
+  khang_vo_ky: { kind: 'trait', name: 'Kháng Võ Kỹ', desc: 'Võ kỹ và độc gây ít hơn 30% sát thương.' },
+  nhat_chem: { kind: 'boss', name: 'Nhát Chém Ngàn Cân', desc: 'Mỗi đòn thứ 4 gây gấp 2.5 sát thương.', sim: { atk: 1.37 } },
+  cuong_hoa: { kind: 'boss', name: 'Cuồng Hóa', desc: 'Dưới 40% khí huyết: công kích +35%, đánh nhanh hơn 20%.', sim: { atk: 1.12, speed: 1.05 } },
+  tai_sinh: { kind: 'boss', name: 'Huyết Hồn Tái Sinh', desc: 'Dưới 50% khí huyết: hồi 25% khí huyết một lần.', sim: { hp: 1.25 } },
+}
+export const TRAIT_POOL = ['cuong_toc', 'giap_day', 'ngoan_cuong', 'hung_han', 'hoi_sinh', 'hut_mau', 'khang_vo_ky']
+export const BOSS_SKILL_POOL = ['nhat_chem', 'cuong_hoa', 'tai_sinh']
+
+/** Băm cố định theo số ải: đặc tính của một ải luôn như nhau (hiển thị trước được, ước lượng đúng). */
+function hashAi(n, salt = 0) {
+  let x = Math.imul((n + salt * 7919) | 0, 0x9e3779b1) >>> 0
+  x ^= x >>> 15
+  x = Math.imul(x, 0x85ebca6b) >>> 0
+  x ^= x >>> 13
+  return x >>> 0
+}
+
+/**
+ * Danh sách đặc tính/kỹ năng của ải n (id trong ENEMY_MODS).
+ *  - Ải thường từ ải 8: 25% có một đặc tính; Tiểu Boss từ ải 5: 70% có một đặc tính.
+ *  - Đại Boss: một kỹ năng boss theo chương, 50% thêm một đặc tính.
+ *  - Chúa Tể: hai kỹ năng boss khác nhau và một đặc tính.
+ */
+export function aiMods(n) {
+  const kind = aiKind(n)
+  const trait = () => TRAIT_POOL[hashAi(n, 1) % TRAIT_POOL.length]
+  const chapter = chapterOf(n)
+  if (kind === 'normal') return n >= 8 && hashAi(n) % 100 < 25 ? [trait()] : []
+  if (kind === 'mini') return n >= 5 && hashAi(n) % 100 < 70 ? [trait()] : []
+  const first = BOSS_SKILL_POOL[chapter % BOSS_SKILL_POOL.length]
+  if (kind === 'big') return hashAi(n) % 100 < 50 ? [first, trait()] : [first]
+  return [first, BOSS_SKILL_POOL[(chapter + 1) % BOSS_SKILL_POOL.length], trait()]
+}
+
+/** Chỉ số yêu thú ở ải n (đã tính đặc tính); truyền `rng` để hp/atk lệch ngẫu nhiên. `forSim` cộng thêm xấp xỉ hành vi để ước lượng. */
+export function aiEnemyStats(n, tmpl, kind, rng = null, forSim = false) {
   const base = combatStats(equivStage(n), ZERO_BONUS)
   const k = AI_KINDS[kind]
   const grow = Math.pow(AI_GROWTH, n - 1)
   const roll = () => (rng ? 1 + (rng() * 2 - 1) * ENEMY_SPREAD : 1)
-  return {
-    hp: Math.round(base.hp * tmpl.hp * k.hp * grow * roll()),
-    atk: Math.round(base.atk * tmpl.atk * k.atk * grow * roll()),
-    def: Math.round(base.def * tmpl.def * k.def),
+  const stats = {
+    hp: base.hp * tmpl.hp * k.hp * grow * roll(),
+    atk: base.atk * tmpl.atk * k.atk * grow * roll(),
+    def: base.def * tmpl.def * k.def,
     speed: base.speed * tmpl.speed * 0.8,
   }
+  for (const id of aiMods(n)) {
+    const m = ENEMY_MODS[id]
+    for (const [key, mult] of Object.entries(m.stat ?? {})) stats[key] *= mult
+    if (forSim) for (const [key, mult] of Object.entries(m.sim ?? {})) stats[key] *= mult
+  }
+  return { hp: Math.round(stats.hp), atk: Math.round(stats.atk), def: Math.round(stats.def), speed: stats.speed }
 }
 
 /** Tỉ lệ thắng ước tính của `player` (hp/atk/def/speed) trước ải n bằng mô phỏng. */
@@ -76,7 +132,7 @@ export function winChance(player, n, samples = 40, rng = Math.random, edge = { o
   let wins = 0
   for (let i = 0; i < samples; i++) {
     const { tmpl, kind } = pickAiMonster(n, rng)
-    const enemy = aiEnemyStats(n, tmpl, kind, rng)
+    const enemy = aiEnemyStats(n, tmpl, kind, rng, true)
     if (simulateFight({ ...player }, enemy, rng, edge).won) wins++
   }
   return wins / samples
@@ -198,7 +254,7 @@ export function simulateOfflineClimb({ stats, best, grit = 0, seconds, stageIdx 
   for (let i = 0; i < attempts; i++) {
     const n = out.best + 1
     const { tmpl, kind } = pickAiMonster(n, rng)
-    const enemy = aiEnemyStats(n, tmpl, kind, rng)
+    const enemy = aiEnemyStats(n, tmpl, kind, rng, true)
     const hero = gritStats(stats, out.grit)
     if (simulateFight({ ...hero }, enemy, rng).won) {
       out.best = n

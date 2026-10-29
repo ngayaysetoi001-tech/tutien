@@ -41,6 +41,7 @@ const incomeAi = computed(() => C.incomeAi(best.value, game.stageIdx))
 const stoneIncome = computed(() => C.campaignStonesPerSecond(best.value, game.stageIdx))
 const itemIncome = computed(() => C.campaignItemsPerHour(best.value, game.stageIdx))
 const nextKind = computed(() => C.aiKind(target.value))
+const nextMods = computed(() => C.aiMods(target.value))
 const nextMonster = computed(() => MONSTERS[C.pickAiMonster(target.value, () => 0).id])
 const chance = computed(() => Math.round(C.winChance(battle.playerStats(), target.value, 30) * 100))
 const chanceClass = computed(() => (chance.value >= 70 ? 'text-jade-300' : chance.value >= 30 ? 'text-gold-300' : 'text-cinnabar-400'))
@@ -76,6 +77,12 @@ function stepFarm(d) {
         <span v-if="farming" class="mr-1 rounded bg-gold-500/30 px-1 text-[11px] text-gold-200">Cày</span>
         Ải {{ target }} · {{ C.AI_KINDS[nextKind].name }}: {{ nextMonster.name }}
         <span :style="{ color: ELEMENTS[nextMonster.element].css }">({{ ELEMENTS[nextMonster.element].name }}{{ edgeMark }})</span>
+      </div>
+      <div v-if="nextMods.length" class="space-y-0.5 rounded border border-ink-600 bg-ink-900 p-1.5 text-[11px]">
+        <div v-for="m in nextMods" :key="m" class="leading-snug">
+          <b :class="C.ENEMY_MODS[m].kind === 'boss' ? 'text-cinnabar-400' : 'text-gold-200'">{{ C.ENEMY_MODS[m].name }}</b>
+          <span class="text-slate-400"> · {{ C.ENEMY_MODS[m].desc }}</span>
+        </div>
       </div>
       <div>
         <div class="mb-0.5 flex items-center justify-between text-xs text-slate-300">

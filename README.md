@@ -202,3 +202,12 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 | Pháp Tu | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ (tối đa 5 ô) | Ngũ Lôi Chính Pháp |
 | Đan Sư | +25% hiệu quả đan tăng chỉ số, +10% luyện đan ra gấp đôi | Đan Hỏa Phần Thân |
 | Trận Pháp Sư | +25% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |
+
+## Đặc tính yêu thú và kỹ năng boss
+
+Ải không còn chỉ là chỉ số (`ENEMY_MODS` trong `src/game/campaign.js`, hành vi trong `battleStore.js`). Đặc tính cố định theo số ải, hiện trước ở tab Vượt Ải và trên cảnh chiến đấu:
+
+- **Yêu thú thường (từ ải 8, 25%) và Tiểu Boss (từ ải 5, 70%)** có một đặc tính: Cuồng Tốc, Giáp Dày, Ngoan Cường, Hung Hãn, Hồi Sinh, Hút Máu, Kháng Võ Kỹ.
+- **Đại Boss** có một kỹ năng boss theo chương (Nhát Chém Ngàn Cân: đòn thứ 4 gấp 2.5; Cuồng Hóa dưới 40% khí huyết; Huyết Hồn Tái Sinh dưới 50%) và 50% thêm một đặc tính. **Chúa Tể** có hai kỹ năng boss và một đặc tính.
+- Tỉ lệ thắng ước tính và mô phỏng offline đã tính xấp xỉ các hành vi này.
+- Sau khi thêm, nhịp kiếp đầu đo được khoảng 20-30 giờ ảo tuỳ đạo lộ.

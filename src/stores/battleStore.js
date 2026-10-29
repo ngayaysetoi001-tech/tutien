@@ -133,11 +133,13 @@ export const useBattleStore = defineStore('battle', {
       const { id, tmpl, kind } = C.pickAiMonster(n)
       const stats = C.aiEnemyStats(n, tmpl, kind, Math.random)
       const boss = kind !== 'normal'
+      const mods = C.aiMods(n)
       // Mỗi ải bắt đầu với khí huyết đầy
       this.maxHp = this.playerStats().hp
       this.hp = this.maxHp
       this.enemy = {
         id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, element: tmpl.element, boss, tier: kind, ...stats, maxHp: stats.hp,
+        mods, revived: false, enraged: false, reborn: false, hits: 0,
       }
       this.phase = 'fighting'
       this.nextPlayer = this.clock + 0.5
@@ -149,6 +151,7 @@ export const useBattleStore = defineStore('battle', {
         game.addLog(`Bước vào ${C.chapterName(n)}, chương ${C.chapterOf(n)}.`, 'event')
         if (C.themeOf(n).round === 0 && DUNGEON_FLAVOR[C.themeOf(n).dungeon.id]) game.addLog(DUNGEON_FLAVOR[C.themeOf(n).dungeon.id], 'info')
       }
+      if (mods.length) game.addLog(`${tmpl.name} mang: ${mods.map((m) => C.ENEMY_MODS[m].name).join(', ')}.`, 'info')
       if (boss) game.addLog(`${C.AI_KINDS[kind].name} xuất hiện ở ải ${n}: ${tmpl.name}!`, 'bad')
     },
 
@@ -224,6 +227,45 @@ export const useBattleStore = defineStore('battle', {
       if (this.enemy && this.enemy.hp <= 0) this.onKill()
     },
 
+    /**
+     * Gây sát thương lên yêu thú đang đánh (qua đây để đặc tính có tác dụng: Kháng Võ Kỹ, Hồi Sinh, Cuồng Hóa, Tái Sinh).
+     * `skill`: sát thương từ võ kỹ hoặc độc. Trả về sát thương thực tế.
+     */
+    hurtEnemy(amount, skill = false) {
+      const e = this.enemy
+      let dmg = amount
+      if (skill && e.mods.includes('khang_vo_ky')) dmg = Math.max(1, Math.round(dmg * 0.7))
+      e.hp = Math.max(0, e.hp - dmg)
+      this.enemyPhase()
+      return dmg
+    },
+
+    /** Các mốc hành vi theo khí huyết của yêu thú: sống lại, cuồng hóa, tái sinh. */
+    enemyPhase() {
+      const e = this.enemy
+      const game = useGameStore()
+      if (e.hp <= 0) {
+        if (e.mods.includes('hoi_sinh') && !e.revived) {
+          e.revived = true
+          e.hp = Math.round(e.maxHp * 0.4)
+          game.addLog(`${e.name} hồi sinh với 40% khí huyết!`, 'bad')
+        }
+        return
+      }
+      const ratio = e.hp / e.maxHp
+      if (e.mods.includes('cuong_hoa') && !e.enraged && ratio < 0.4) {
+        e.enraged = true
+        e.atk = Math.round(e.atk * 1.35)
+        e.speed *= 1.2
+        game.addLog(`${e.name} Cuồng Hóa: công kích và tốc độ tăng mạnh!`, 'bad')
+      }
+      if (e.mods.includes('tai_sinh') && !e.reborn && ratio < 0.5) {
+        e.reborn = true
+        e.hp = Math.min(e.maxHp, e.hp + Math.round(e.maxHp * 0.25))
+        game.addLog(`${e.name} Huyết Hồn Tái Sinh, hồi 25% khí huyết!`, 'bad')
+      }
+    },
+
     /** Công kích đang có: nhân thêm khi Cuồng Bạo còn hiệu lực. */
     atkNow(stats) {
       return stats.atk * (this.clock < this.rageUntil ? 1 + this.rageAmt : 1)
@@ -242,8 +284,7 @@ export const useBattleStore = defineStore('battle', {
       while (this.enemy && this.nextDot <= this.clock && this.nextDot <= this.dotUntil + 1e-9) {
         const game = useGameStore()
         const mult = elementMult(game.element, this.enemy.element)
-        const damage = Math.max(1, Math.round(this.dotDmg * (100 / (100 + this.enemy.def)) * mult))
-        this.enemy.hp = Math.max(0, this.enemy.hp - damage)
+        const damage = this.hurtEnemy(Math.max(1, Math.round(this.dotDmg * (100 / (100 + this.enemy.def)) * mult)), true)
         this.nextDot += 1
         this.lifestealFrom(damage)
         fx('battle-hit', { target: 'enemy', damage, crit: false, skill: true, color: ELEMENTS[game.element]?.color, edge: elementEdge(game.element, this.enemy.element) })
@@ -257,8 +298,8 @@ export const useBattleStore = defineStore('battle', {
     basicAttack(stats) {
       const game = useGameStore()
       const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
-      const { damage, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
-      this.enemy.hp = Math.max(0, this.enemy.hp - damage)
+      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
+      const damage = this.hurtEnemy(raw)
       this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
     },
@@ -277,8 +318,8 @@ export const useBattleStore = defineStore('battle', {
         // Tuyệt Sát: gấp bội khi địch sắp gục
         if (skill.kind === 'execute' && this.enemy.hp / this.enemy.maxHp < skill.threshold) pw *= 1 + skill.bonus
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
-        const { damage, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
-        this.enemy.hp = Math.max(0, this.enemy.hp - damage)
+        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE + game.pathPerk.crit, mult, B.CRIT_MULT + game.pathPerk.critMult)
+        const damage = this.hurtEnemy(raw, true)
         this.lifestealFrom(damage)
         if (skill.slow) {
           this.slowUntil = this.clock + skill.seconds
@@ -316,19 +357,25 @@ export const useBattleStore = defineStore('battle', {
       const game = useGameStore()
       const mult = elementMult(this.enemy.element, game.element)
       let { damage } = B.rollHit(this.enemy.atk, this.playerStats().def, Math.random, 0, mult)
+      this.enemy.hits += 1
+      if (this.enemy.mods.includes('nhat_chem') && this.enemy.hits % 4 === 0) {
+        damage = Math.round(damage * 2.5)
+        game.addLog(`${this.enemy.name} tung Nhát Chém Ngàn Cân!`, 'bad')
+      }
       if (this.clock < this.shieldUntil && this.shield > 0) {
         const absorbed = Math.min(this.shield, damage)
         this.shield -= absorbed
         damage -= absorbed
       }
       this.hp = Math.max(0, this.hp - damage)
+      if (damage > 0 && this.enemy.mods.includes('hut_mau')) this.enemy.hp = Math.min(this.enemy.maxHp, this.enemy.hp + Math.round(damage * 0.4))
       const slow = this.clock < this.slowUntil ? 1 - this.slowAmt : 1
       this.nextEnemy += B.actionInterval(this.enemy.speed * slow)
       fx('battle-hit', { target: 'player', damage, crit: false, edge: elementEdge(this.enemy.element, game.element) })
       // Phản Chấn: trả lại một phần sát thương nhận vào
       if (damage > 0 && this.clock < this.reflectUntil) {
         const back = Math.max(1, Math.round(damage * this.reflectAmt))
-        this.enemy.hp = Math.max(0, this.enemy.hp - back)
+        this.hurtEnemy(back, true)
         fx('battle-hit', { target: 'enemy', damage: back, crit: false, skill: true, color: ELEMENTS.tho.color, edge: 'none' })
         if (this.enemy.hp <= 0 && this.hp > 0) {
           this.onKill()
