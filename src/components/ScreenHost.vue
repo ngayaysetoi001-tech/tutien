@@ -7,6 +7,8 @@ import { computed, ref } from 'vue'
 import { useGameStore } from '../stores/gameStore.js'
 import { useUiStore } from '../stores/uiStore.js'
 import { nextHints } from '../game/guide.js'
+import { nextGoal } from '../game/goals.js'
+import { screenUnlocked } from '../game/screens.js'
 import { SCREEN_COMPONENTS } from './screens.js'
 import LogPanel from './LogPanel.vue'
 import Icon from './Icon.vue'
@@ -15,6 +17,7 @@ const game = useGameStore()
 const ui = useUiStore()
 
 const comp = computed(() => SCREEN_COMPONENTS[ui.tab])
+const goal = computed(() => nextGoal(game))
 
 // Gợi ý việc nên làm: gợi ý ưu tiên cao nhất chưa bị người chơi tắt (tắt đến khi tải lại trang)
 const dismissed = ref([])
@@ -30,6 +33,16 @@ const breakLabel = computed(() => {
 <template>
   <Transition name="tab" mode="out-in">
     <div :key="ui.tab" class="flex h-full min-h-0 flex-col gap-1.5 px-2.5 pt-1.5">
+      <!-- Mục tiêu kế tiếp -->
+      <button
+        v-if="goal"
+        class="relative shrink-0 overflow-hidden rounded border border-ink-600 bg-ink-900/70 px-2 py-0.5 text-left text-[11px] leading-tight text-slate-300"
+        @click="goal.tab && ui.go(goal.tab)"
+      >
+        <span class="absolute inset-y-0 left-0 bg-jade-500/20" :style="{ width: Math.round(goal.progress * 100) + '%' }"></span>
+        <span class="relative">🎯 {{ goal.label }}</span>
+      </button>
+
       <!-- Tiêu đề màn hình (các màn không có cảnh) -->
       <div v-if="!ui.hasCanvas" class="flex items-center gap-2 px-0.5">
         <Icon :name="ui.screen.icon" :size="17" class="text-gold-400" />

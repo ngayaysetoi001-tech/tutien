@@ -10,6 +10,7 @@ import { combatStats } from './formulas.js'
 import { DUNGEONS, ITEMS, MONSTERS } from './data.js'
 import { actionInterval, CRIT_CHANCE, rollHit, simulateFight } from './battle.js'
 import { BALANCE } from './constants.js'
+import { ARTS, artFragmentId } from './arts.js'
 
 const ZERO_BONUS = { hp: 0, atk: 0, def: 0, speed: 0 }
 
@@ -267,4 +268,24 @@ export function simulateOfflineClimb({ stats, best, grit = 0, seconds, stageIdx 
     }
   }
   return out
+}
+
+// ---------------------------------------------------------------------
+// Rương mốc ải: nhận một lần cho mỗi mốc theo ải cao nhất từng đạt (mọi kiếp), thưởng vĩnh viễn
+// ---------------------------------------------------------------------
+export const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 300, 400, 500].map((ai) => ({ ai }))
+
+/** Danh sách effects thưởng của mốc thứ `tier` (0-based): linh thạch, chỉ số vĩnh viễn, công pháp tàn quyển, thỉnh thoảng +% linh khí. */
+export function milestoneReward(tier) {
+  const n = tier + 1
+  const stat = ['hp', 'atk', 'def', 'speed'][tier % 4]
+  const amount = { hp: 30 * n, atk: 5 * n, def: 4 * n, speed: 1 }[stat]
+  const effects = [{ type: 'stones', base: 100 * Math.pow(2.2, tier) }, { type: 'stat', stat, amount }]
+  if (tier >= 1) {
+    const ai = MILESTONES[tier].ai
+    const pool = Object.keys(ARTS).filter((id) => ARTS[id].minAi <= ai)
+    effects.push({ type: 'item', id: artFragmentId(pool[tier % pool.length]), count: 2 + tier })
+  }
+  if (tier % 3 === 2) effects.push({ type: 'expBonus', amount: 0.01 })
+  return effects
 }

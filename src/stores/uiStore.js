@@ -7,18 +7,29 @@ import { DEFAULT_SCREEN, hasCanvas, screenById } from '../game/screens.js'
 
 const UI_KEY = 'tutien-ui-v1'
 
-function loadTab() {
+function loadUi() {
   try {
-    const tab = JSON.parse(localStorage.getItem(UI_KEY) ?? '{}').tab
-    return screenById(tab) ? tab : DEFAULT_SCREEN
+    const raw = JSON.parse(localStorage.getItem(UI_KEY) ?? '{}')
+    return { tab: screenById(raw.tab) ? raw.tab : DEFAULT_SCREEN, seen: raw.seen && typeof raw.seen === 'object' ? raw.seen : null }
   } catch {
-    return DEFAULT_SCREEN
+    return { tab: DEFAULT_SCREEN, seen: null }
+  }
+}
+const initial = () => loadUi()
+
+function persist(tab, seen) {
+  try {
+    localStorage.setItem(UI_KEY, JSON.stringify({ tab, seen }))
+  } catch {
+    /* chế độ riêng tư: không nhớ được cũng không sao */
   }
 }
 
 export const useUiStore = defineStore('ui', {
   state: () => ({
-    tab: loadTab(),
+    tab: initial().tab,
+    seen: initial().seen ?? {}, // màn đã ghé thăm (để chấm "mới" ở màn vừa mở khoá)
+    legacySeen: initial().seen === null, // chưa từng lưu: coi mọi màn đang mở là đã thấy
     logOpen: false, // bảng nhật ký đầy đủ (mở từ thanh trên)
   }),
   getters: {
@@ -31,12 +42,16 @@ export const useUiStore = defineStore('ui', {
     go(id) {
       if (!screenById(id)) return false
       this.tab = id
-      try {
-        localStorage.setItem(UI_KEY, JSON.stringify({ tab: id }))
-      } catch {
-        /* chế độ riêng tư: không nhớ được cũng không sao */
-      }
+      this.seen[id] = true
+      persist(id, this.seen)
       return true
+    },
+
+    /** Đánh dấu đã thấy hàng loạt (lần đầu mở bản có mở khoá dần: không chấm "mới" ở mọi màn đang có). */
+    markSeen(ids) {
+      for (const id of ids) this.seen[id] = true
+      this.legacySeen = false
+      persist(this.tab, this.seen)
     },
   },
 })

@@ -7,7 +7,7 @@
 import Decimal from 'break_infinity.js'
 import { MAX_STAGE_IDX, SAVE_KEY, SAVE_VERSION, SPIRIT_ROOTS } from '../game/constants.js'
 import { DUNGEONS, ITEMS } from '../game/data.js'
-import { AIS_PER_CHAPTER, GRIT_MAX } from '../game/campaign.js'
+import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { ARTS, ART_MAX_LEVEL, MAX_ART_SLOTS } from '../game/arts.js'
@@ -110,6 +110,7 @@ export function deserialize(save, defaults) {
     record: Math.max(best, Math.floor(num(cam.record, 0, 0, 100000))),
     grit: Math.floor(num(cam.grit, 0, 0, GRIT_MAX)),
     farm: Number.isFinite(cam.farm) && cam.farm >= 1 && cam.farm <= best ? Math.floor(cam.farm) : null,
+    milestone: Math.floor(num(cam.milestone, 0, 0, MILESTONES.length)),
   }
   const usage = {}
   for (const [k, v] of Object.entries(d.usage && typeof d.usage === 'object' ? d.usage : {})) {

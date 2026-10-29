@@ -49,6 +49,23 @@ const chanceBar = computed(() => (chance.value >= 70 ? 'bg-jade-500' : chance.va
 const edgeMark = computed(() => ({ up: ' ▲', down: ' ▼' })[elementEdge(game.element, nextMonster.value.element)] ?? '')
 const stuck = computed(() => !farming.value && chance.value < 30)
 
+// Rương mốc ải kế tiếp và mô tả phần thưởng
+const milestone = computed(() => C.MILESTONES[game.campaign.milestone] ?? null)
+const milestoneText = computed(() => {
+  const i = game.campaign.milestone
+  if (!milestone.value) return ''
+  const statLabel = { hp: 'khí huyết', atk: 'công kích', def: 'phòng ngự', speed: 'Thân pháp' }
+  return C.milestoneReward(i)
+    .map((fx) => {
+      if (fx.type === 'stones') return 'linh thạch'
+      if (fx.type === 'stat') return `+${fx.amount} ${statLabel[fx.stat]} vĩnh viễn`
+      if (fx.type === 'item') return `${itemName(fx.id)} x${fx.count}`
+      if (fx.type === 'expBonus') return `+${Math.round(fx.amount * 100)}% linh khí vĩnh viễn`
+      return ''
+    })
+    .join(', ')
+})
+
 function stepFarm(d) {
   farmInput.value = Math.min(Math.max(1, best.value), Math.max(1, (farmInput.value || 1) + d))
 }
@@ -126,6 +143,21 @@ function stepFarm(d) {
         </div>
       </template>
       <div v-else class="text-slate-400">Vượt ải đầu tiên để bắt đầu nhận thu nhập. Mỗi ải vượt thêm làm thu nhập tăng lên.</div>
+    </div>
+
+    <!-- Rương mốc ải -->
+    <div v-if="milestone" class="card space-y-1 text-xs" :class="game.milestoneClaimable ? 'border-gold-400' : ''">
+      <div class="flex items-center justify-between">
+        <div class="font-semibold text-slate-200">Rương mốc ải {{ milestone.ai }}</div>
+        <div class="text-slate-400">Kỷ lục: {{ game.campaign.record }}/{{ milestone.ai }}</div>
+      </div>
+      <div class="h-1.5 overflow-hidden rounded bg-ink-900">
+        <div class="h-full bg-gold-500" :style="{ width: Math.min(100, (game.campaign.record / milestone.ai) * 100) + '%' }"></div>
+      </div>
+      <div class="text-[11px] text-slate-400">Thưởng: {{ milestoneText }}.</div>
+      <button class="btn-gold w-full" :disabled="!game.milestoneClaimable" @click="game.claimMilestone()">
+        {{ game.milestoneClaimable ? 'Nhận rương mốc' : `Còn ${milestone.ai - game.campaign.record} ải` }}
+      </button>
     </div>
 
     <!-- Cày ải đã vượt -->

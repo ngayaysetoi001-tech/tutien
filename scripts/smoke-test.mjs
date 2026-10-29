@@ -393,13 +393,13 @@ ok('save/load giữ ải cao nhất, kỷ lục, Kiên Trì, ải đang cày; t�
   s.addItem('pills', 'duong_the_dan', 2)
   s.useItem('duong_the_dan', 1)
   s.alchemy.level = 4
-  s.campaign = { best: 12, record: 15, grit: 2, farm: 7 }
+  s.campaign = { best: 12, record: 15, grit: 2, farm: 7, milestone: 2 }
   s.save()
   const s2 = freshStore(true)
   s2.init()
   assert.equal(s2.itemCount('duong_the_dan'), 1)
   assert.equal(s2.alchemy.level, 4)
-  assert.deepEqual({ ...s2.campaign }, { best: 12, record: 15, grit: 2, farm: 7 })
+  assert.deepEqual({ ...s2.campaign }, { best: 12, record: 15, grit: 2, farm: 7, milestone: 2 })
   assert.equal(s2.usage.duong_the_dan, 1)
   assert.ok(s2.bonus.hp > 0)
 })
@@ -1664,6 +1664,201 @@ ok('save/load giữ dòng phụ và Huyền Thoại; loại dòng phụ lạ, sa
   assert.equal(g3.legend, 'van_co')
   assert.deepEqual(g3.affixes, [], 'huyền thoại không có dòng phụ')
   assert.deepEqual(s3.gear.bag.find((x) => x.uid === 'g4').affixes, [], 'save cũ thiếu affixes vẫn tải được')
+})
+
+// =====================================================================
+// Hiện dần hệ thống, mục tiêu kế tiếp, rương mốc ải
+const QS6 = await import('../src/game/quests.js')
+// =====================================================================
+const SCR = await import('../src/game/screens.js')
+const GOALS = await import('../src/game/goals.js')
+const GUIDE = await import('../src/game/guide.js')
+
+ok('mở khoá dần: game mới chỉ có 3 màn, các màn mở theo điều kiện, màn đã mở không khoá lại', () => {
+  const s = freshStore()
+  s.init()
+  const ids = () => SCR.unlockedScreens(s).map((x) => x.id)
+  assert.deepEqual(ids(), ['character', 'battle', 'settings'])
+  s.stageIdx = 1
+  assert.ok(['dwelling', 'garden', 'story'].every((x) => ids().includes(x)))
+  assert.ok(!ids().includes('sect') && !ids().includes('skills'))
+  s.stats.kills = 1
+  assert.ok(ids().includes('achievements'))
+  s.campaign.record = 5
+  assert.ok(ids().includes('skills') && ids().includes('gear'))
+  s.stageIdx = 2
+  assert.ok(ids().includes('sect'))
+  assert.ok(!ids().includes('disciples'))
+  s.joinSect('van_moc')
+  assert.ok(ids().includes('disciples'))
+  assert.ok(!ids().includes('reincarnation'))
+  s.stageIdx = 9
+  assert.ok(ids().includes('reincarnation'))
+  // sau luân hồi bậc về 0 nhưng vẫn giữ (đã từng đạt)
+  s.stats.maxStage = 12
+  s.stageIdx = 0
+  assert.ok(ids().includes('reincarnation') && ids().includes('sect'))
+  // đủ 13 màn khi mở hết
+  const t = freshStore()
+  t.init()
+  t.stageIdx = 10; t.stats.maxStage = 10; t.stats.kills = 9; t.campaign.record = 10
+  t.joinSect('van_moc'); t.addItem('herbs', 'linh_thao', 1)
+  assert.equal(SCR.unlockedScreens(t).length, SCR.SCREENS.length)
+  assert.equal(SCR.lockedScreens(t).length, 0)
+})
+
+ok('màn bị khoá có điều kiện hiển thị và tiến độ; mọi điều kiện đều trỏ tới màn có thật', () => {
+  const s = freshStore()
+  s.init()
+  const locked = SCR.lockedScreens(s)
+  assert.ok(locked.length >= 8)
+  for (const l of locked) assert.ok(l.text.length > 5 && SCR.screenById(l.screen.id))
+  for (const id of Object.keys(SCR.UNLOCKS)) assert.ok(SCR.screenById(id), id)
+  s.stageIdx = 0
+  assert.equal(locked.find((l) => l.screen.id === 'reincarnation').progress, 0)
+  s.stageIdx = 5
+  const p = SCR.lockedScreens(s).find((l) => l.screen.id === 'reincarnation').progress
+  assert.ok(p > 0.5 && p < 1)
+  // một màn không có trong bảng thì luôn mở
+  assert.equal(SCR.screenUnlocked('character', s), true)
+  assert.equal(SCR.screenUnlocked('settings', s), true)
+})
+
+ok('mọi gợi ý có tab đích đều trỏ tới màn đã mở (không dẫn tới màn bị khoá)', () => {
+  const build = (stage) => {
+    const s = freshStore()
+    s.init()
+    s.stageIdx = stage
+    s.stats.maxStage = stage
+    s.spiritStones = new Decimal(1e9)
+    s.exp = s.requirement
+    s.addItem('herbs', 'linh_thao', 9)
+    s.addItem('scrolls', SK.fragmentId('liet_hoa'), 5)
+    s.addItem('scrolls', AR.artFragmentId('thanh_tam'), 5)
+    s.addGear(EQ.generateItem('armor', 0))
+    return s
+  }
+  for (const stage of [0, 1, 2, 4, 9, 15, 25]) {
+    const s = build(stage)
+    for (const h of GUIDE.nextHints(s)) if (h.tab) assert.ok(SCR.screenUnlocked(h.tab, s), `gợi ý ${h.id} (bậc ${stage}) trỏ tới ${h.tab} đang khoá`)
+  }
+  // nhiệm vụ xong ở bậc rất thấp: tab Tông Môn phải đã mở để nhận
+  const q = freshStore()
+  q.init()
+  const quest = q.quests[0]
+  q.stats[QS6.templateById(quest.tpl).key] = (q.stats[QS6.templateById(quest.tpl).key] ?? 0) + quest.target + 9
+  if (QS6.templateById(quest.tpl).key === 'aiRecord') q.campaign.record = quest.target + 9
+  if (q.questDone(quest)) assert.ok(SCR.screenUnlocked('sect', q))
+})
+
+ok('mục tiêu kế tiếp: chọn tiến độ cao nhất; việc sẵn sàng (đột phá, rương mốc) lên đầu', () => {
+  const s = freshStore()
+  s.init()
+  const list = GOALS.goalList(s)
+  assert.deepEqual(list.map((g) => g.id).sort(), ['boss', 'breakthrough', 'milestone', 'unlock'])
+  for (const g of list) assert.ok(g.label.length > 5 && g.progress >= 0 && g.progress <= 1)
+  const goal = GOALS.nextGoal(s)
+  assert.ok(goal && goal.progress < 1)
+  // ải: còn 1 ải tới Tiểu Boss -> tiến độ boss 0.8 cao nhất
+  s.campaign.best = 4
+  s.campaign.record = 4
+  assert.equal(GOALS.nextGoal(s).id, 'boss')
+  assert.ok(GOALS.nextGoal(s).label.includes('ải 5'))
+  // linh khí đầy: đột phá sẵn sàng
+  s.exp = s.requirement
+  assert.equal(GOALS.nextGoal(s).id, 'breakthrough')
+  assert.equal(GOALS.nextGoal(s).ready, true)
+  // rương mốc sẵn sàng lên trên cả đột phá
+  s.campaign.record = 10
+  assert.equal(GOALS.nextGoal(s).id, 'milestone')
+  assert.ok(GOALS.nextGoal(s).label.includes('Nhận'))
+  // hết cảnh giới và hết mốc thì vẫn trả về một mục tiêu
+  const t = freshStore()
+  t.init()
+  t.stageIdx = 26
+  t.campaign.milestone = C.MILESTONES.length
+  assert.ok(GOALS.nextGoal(t))
+})
+
+ok('rương mốc ải: chỉ nhận khi đạt mốc, theo thứ tự, thưởng vĩnh viễn, giữ khi luân hồi', () => {
+  assert.equal(C.MILESTONES.length, 10)
+  assert.ok(C.MILESTONES.every((m, i) => i === 0 || m.ai > C.MILESTONES[i - 1].ai))
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12
+  assert.equal(s.milestoneClaimable, false)
+  assert.equal(s.claimMilestone(), false)
+  s.campaign.record = 9
+  assert.equal(s.claimMilestone(), false)
+  s.campaign.record = 10
+  assert.equal(s.milestoneClaimable, true)
+  const hp0 = s.bonus.hp
+  const stones = s.spiritStones
+  assert.equal(s.claimMilestone(), true)
+  assert.equal(s.campaign.milestone, 1)
+  assert.ok(s.bonus.hp > hp0 && s.spiritStones.gt(stones))
+  assert.equal(s.claimMilestone(), false, 'mốc 25 chưa đạt')
+  s.campaign.record = 60
+  assert.equal(s.claimMilestone(), true)
+  assert.equal(s.claimMilestone(), true)
+  assert.equal(s.campaign.milestone, 3)
+  assert.equal(s.claimMilestone(), false, 'mốc 75 chưa đạt')
+  // luân hồi giữ rương đã nhận
+  s.stageIdx = 12
+  s.reincarnate()
+  assert.equal(s.campaign.milestone, 3)
+  assert.equal(s.campaign.best, 0)
+  assert.equal(s.campaign.record, 60)
+  // lưu và tải
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.campaign.milestone, 3)
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.campaign.milestone = 999
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.campaign.milestone, C.MILESTONES.length, 'số rương bị chặn tối đa')
+})
+
+ok('phần thưởng mốc ải: tăng dần, có công pháp tàn quyển hợp ải, +% linh khí mỗi 3 mốc', () => {
+  let prev = null
+  C.MILESTONES.forEach((m, i) => {
+    const fx = C.milestoneReward(i)
+    const stones = fx.find((e) => e.type === 'stones').base
+    if (prev) assert.ok(stones > prev, 'linh thạch tăng dần')
+    prev = stones
+    assert.ok(fx.some((e) => e.type === 'stat'))
+    const item = fx.find((e) => e.type === 'item')
+    if (i === 0) assert.ok(!item)
+    else {
+      assert.ok(ALL_ITEMS[item.id], 'vật phẩm có thật')
+      assert.ok(AR.ARTS[item.id.slice(3)].minAi <= m.ai, 'công pháp đã mở ở mốc này')
+    }
+    assert.equal(fx.some((e) => e.type === 'expBonus'), i % 3 === 2)
+  })
+})
+
+ok('giao diện: màn đã ghé được ghi nhớ; lần đầu coi màn đang mở là đã thấy', () => {
+  const s = freshStore()
+  s.init()
+  const ui = useUiStoreEarly()
+  assert.equal(ui.legacySeen, true)
+  assert.deepEqual({ ...ui.seen }, {})
+  ui.go('battle')
+  assert.equal(ui.seen.battle, true)
+  ui.markSeen(['sect', 'gear'])
+  assert.equal(ui.legacySeen, false)
+  assert.ok(ui.seen.sect && ui.seen.gear)
+  const saved = JSON.parse(mem.get('tutien-ui-v1'))
+  assert.equal(saved.tab, 'battle')
+  assert.ok(saved.seen.sect)
+  // tải lại: giữ danh sách đã thấy
+  setActivePinia(createPinia())
+  const ui2 = useUiStoreEarly()
+  assert.equal(ui2.legacySeen, false)
+  assert.ok(ui2.seen.gear && ui2.seen.battle)
 })
 
 // =====================================================================

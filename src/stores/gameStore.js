@@ -104,7 +104,7 @@ function createPlayerState(minRoot = 0) {
     alchemy: { level: 1, exp: 0 }, // cấp Luyện Đan
     usage: {}, // số lần đã dùng mỗi vật phẩm (kháng đan)
     // Vượt Ải: best = ải cao nhất đã vượt (mất khi luân hồi), record = cao nhất mọi kiếp, grit = Kiên Trì, farm = ải đang cày
-    campaign: { best: 0, record: 0, grit: 0, farm: null },
+    campaign: { best: 0, record: 0, grit: 0, farm: null, milestone: 0 }, // milestone = số rương mốc ải đã nhận (giữ khi luân hồi)
     reincarnation: { count: 0, dao: 0, totalDao: 0, upgrades: {} }, // Luân Hồi: Đạo Vận và cường hoá vĩnh viễn
     garden: { plots: Array(MAX_PLOTS).fill(null) }, // Linh Điền: { crop, readyAt(ms) } hoặc null
     mineAt: Date.now(), // mốc thu khoáng mạch lần cuối (ms)
@@ -228,6 +228,11 @@ export const useGameStore = defineStore('game', {
       return pathPerk(this.path)
     },
     /** Có thể chọn Đạo Lộ ngay bây giờ không. */
+    /** Có rương mốc ải đang chờ nhận không. */
+    milestoneClaimable() {
+      const m = C.MILESTONES[this.campaign.milestone]
+      return !!m && this.campaign.record >= m.ai
+    },
     canChoosePath() {
       return !this.path && this.realmIdx >= PATH_MIN_REALM
     },
@@ -948,7 +953,7 @@ export const useGameStore = defineStore('game', {
         this[key] = fresh[key]
       }
       this.arrayLevel = 3 * (rb.upgrades.tuc_hue ?? 0) // Túc Huệ
-      this.campaign = { best: 0, record: this.campaign.record, grit: 0, farm: null } // ải cao nhất mất, kỷ lục giữ lại
+      this.campaign = { best: 0, record: this.campaign.record, grit: 0, farm: null, milestone: this.campaign.milestone } // ải cao nhất mất, kỷ lục và rương mốc giữ lại
       this.quests = [] // nhiệm vụ cũ đo theo thống kê của kiếp trước
       this.refillQuests()
       this.fullNotified = false
@@ -1360,6 +1365,16 @@ export const useGameStore = defineStore('game', {
       this.spiritStones = this.spiritStones.add(bonus)
       this.addLog(`Vượt ải ${n} (${C.AI_KINDS[kind].name})! Thưởng thêm ${fmt(bonus)} linh thạch. Thu nhập thụ động tăng.`, 'good')
       return bonus
+    },
+
+    /** Nhận rương mốc ải kế tiếp nếu đã đạt mốc. */
+    claimMilestone() {
+      if (!this.milestoneClaimable) return false
+      const tier = this.campaign.milestone
+      const texts = this.applyEffects(C.milestoneReward(tier))
+      this.campaign.milestone = tier + 1
+      this.addLog(`Rương mốc ải ${C.MILESTONES[tier].ai}: ${texts.join(', ')}.`, 'event')
+      return true
     },
 
     /** Thua: cộng 1 điểm Kiên Trì (tối đa GRIT_MAX). Trả về số điểm hiện tại. */
