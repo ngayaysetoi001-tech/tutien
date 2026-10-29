@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  @apply bg-ink-950 font-serif text-slate-200;
+  /* Chặn kéo-để-refresh và chọn chữ ngoài ý muốn trên mobile */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  background-image: radial-gradient(ellipse at 50% 0%, rgb(34 48 80 / 0.35), transparent 60%);
+}
+
+/* Thanh cuộn mảnh cho log / tab */
+.thin-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  @apply rounded bg-ink-600;
+}
+
+:root {
+  --gold-line: rgb(217 165 58 / 0.7);
+  --gold-dim: rgb(217 165 58 / 0.28);
+}
+
+@layer components {
+  /* ---------- Nút ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition duration-150 active:translate-y-px active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 6px rgb(0 0 0 / 0.35);
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  }
+  .btn:not(:disabled):hover {
+    filter: brightness(1.18);
+  }
+  .btn-jade {
+    @apply btn border-jade-500/60 text-jade-300;
+    background: linear-gradient(180deg, rgb(34 192 138 / 0.3), rgb(22 154 110 / 0.12));
+  }
+  .btn-gold {
+    @apply btn border-gold-500/60 text-gold-300;
+    background: linear-gradient(180deg, rgb(246 200 95 / 0.28), rgb(217 165 58 / 0.1));
+  }
+  .btn-ghost {
+    @apply btn border-ink-600 text-slate-300;
+    background: linear-gradient(180deg, rgb(39 50 74 / 0.9), rgb(24 31 48 / 0.9));
+  }
+  .btn-danger {
+    @apply btn border-cinnabar-500/60 text-cinnabar-400;
+    background: linear-gradient(180deg, rgb(229 73 58 / 0.28), rgb(229 73 58 / 0.1));
+  }
+  /* Nút hành động lớn ở giữa màn hình */
+  .btn-big {
+    @apply py-2.5 text-base;
+    letter-spacing: 0.02em;
+  }
+  /* Nút đột phá sẵn sàng: toả sáng nhịp nhàng */
+  .glow-ready:not(:disabled) {
+    animation: glow-pulse 1.6s ease-in-out infinite;
+  }
+
+  /* ---------- Khung ---------- */
+  /* Khung chính (bảng nội dung): viền vàng mảnh, góc trang trí */
+  .panel {
+    @apply relative rounded-xl;
+    border: 1px solid var(--gold-dim);
+    background: linear-gradient(180deg, rgb(22 29 46 / 0.94), rgb(10 14 25 / 0.96));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 6px 18px rgb(0 0 0 / 0.45);
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    pointer-events: none;
+    border-radius: 9px;
+    --c: var(--gold-line);
+    background:
+      linear-gradient(var(--c), var(--c)) top left / 12px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) top left / 1.5px 12px no-repeat,
+      linear-gradient(var(--c), var(--c)) top right / 12px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) top right / 1.5px 12px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom left / 12px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom left / 1.5px 12px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom right / 12px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) bottom right / 1.5px 12px no-repeat;
+  }
+  /* Thẻ nhỏ bên trong các tab */
+  .card {
+    @apply rounded-lg p-3;
+    border: 1px solid rgb(75 90 125 / 0.45);
+    background: linear-gradient(180deg, rgb(30 38 58 / 0.78), rgb(16 21 35 / 0.88));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+  /* Tiêu đề nhỏ có đường kẻ trang trí hai bên */
+  .title-rule {
+    @apply flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-gold-400;
+  }
+  .title-rule::before,
+  .title-rule::after {
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  /* ---------- Thanh tiến độ ---------- */
+  .bar {
+    @apply relative overflow-hidden rounded-full;
+    border: 1px solid rgb(217 165 58 / 0.35);
+    background: linear-gradient(180deg, rgb(0 0 0 / 0.7), rgb(8 12 20 / 0.7));
+    box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6);
+  }
+  .bar-fill {
+    @apply relative h-full rounded-full;
+    transition: width 0.25s ease-out;
+  }
+  /* Vệt sáng chạy ngang */
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.35) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 2.4s linear infinite;
+  }
+
+  /* ---------- Điều hướng dưới ---------- */
+  .nav-btn {
+    @apply relative flex flex-col items-center justify-center gap-0.5 rounded-lg px-0 py-0.5 text-[9.5px] font-semibold text-slate-400 transition;
+  }
+  .nav-btn:hover {
+    @apply text-slate-200;
+  }
+  .nav-btn[data-active='true'] {
+    @apply text-gold-300;
+    background: linear-gradient(180deg, rgb(246 200 95 / 0.16), rgb(246 200 95 / 0.03));
+    box-shadow: inset 0 -2px 0 var(--gold-line);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 rgb(246 200 95 / 0);
+  }
+  50% {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 16px rgb(246 200 95 / 0.55);
+  }
+}
+
+/* Chuyển tab */
+.tab-enter-active,
+.tab-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.tab-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.tab-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Hộp thoại: phủ mờ + khung hiện dần */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-enter-active .panel,
+.modal-leave-active .panel {
+  transition: transform 0.2s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .panel {
+  transform: scale(0.92) translateY(10px);
+}
+
+/* Vùng an toàn trên điện thoại có tai thỏ */
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
