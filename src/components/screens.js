@@ -17,6 +17,7 @@ import StoryTab from './tabs/StoryTab.vue'
 export const SCREEN_COMPONENTS = {
   character: CharacterTab,
   skills: SkillsTab,
+  pets: SkillsTab,
   gear: EquipmentTab,
   battle: BattleTab,
   inventory: InventoryTab,

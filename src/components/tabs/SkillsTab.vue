@@ -5,6 +5,7 @@
 //   gom nhóm: có thể học/nâng, đang dùng, đã học, chưa học, chưa mở (thu gọn). Bấm hàng để xem chi tiết.
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
+import { useUiStore } from '../../stores/uiStore.js'
 import { ELEMENTS, ELEMENT_IDS } from '../../game/elements.js'
 import { LEARN_COST, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, upgradeCost } from '../../game/skills.js'
 import { PATHS } from '../../game/paths.js'
@@ -19,6 +20,7 @@ import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
 
 const game = useGameStore()
+const ui = useUiStore()
 const elCss = (e) => ELEMENTS[e].css
 
 /** Ô trống đầu tiên đã mở; hết ô thì thay ô cuối. */
@@ -72,7 +74,8 @@ const KINDS = {
     words: { equip: 'Ra trận', unequip: 'Cất', up: 'Nuôi', learn: 'Thu phục' },
   },
 }
-const KIND_IDS = Object.keys(KINDS)
+// Màn 'pets' (Linh Thú) đứng riêng ngang hàng Công Pháp; màn 'skills' có hai tab Võ Kỹ / Công Pháp
+const KIND_IDS = ui.tab === 'pets' ? ['pets'] : ['skills', 'arts']
 
 // ---------- Trạng thái một mục ----------
 const lvOf = (kd, id) => kd.owned()[id] ?? 0
@@ -89,7 +92,7 @@ const progressOf = (kd, id) => {
 const kindHot = (key) => Object.keys(KINDS[key].defs).some((id) => readyOf(KINDS[key], id))
 
 // Mở tab đầu tiên có việc để làm (không có thì Võ Kỹ)
-const sub = ref(KIND_IDS.find(kindHot) ?? 'skills')
+const sub = ref(KIND_IDS.find(kindHot) ?? KIND_IDS[0])
 const k = computed(() => KINDS[sub.value])
 const elFilter = ref('') // lọc theo ngũ hành
 const showLocked = ref(false)
@@ -135,7 +138,7 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
 <template>
   <div class="space-y-2">
     <!-- Ba tab lớn -->
-    <div class="grid grid-cols-3 gap-1.5">
+    <div v-if="KIND_IDS.length > 1" class="grid grid-cols-2 gap-1.5">
       <button
         v-for="key in KIND_IDS"
         :key="key"

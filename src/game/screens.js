@@ -7,6 +7,7 @@
 export const SCREENS = [
   { id: 'character', label: 'Nhân Vật', icon: 'character', canvas: true, group: 'tuluyen' },
   { id: 'skills', label: 'Công Pháp', icon: 'arts', canvas: false, group: 'tuluyen' },
+  { id: 'pets', label: 'Linh Thú', icon: 'paw', canvas: false, group: 'tuluyen' },
   { id: 'dwelling', label: 'Động Phủ', icon: 'home', canvas: false, group: 'tuluyen' },
   { id: 'garden', label: 'Linh Điền', icon: 'garden', canvas: false, group: 'tuluyen' },
   { id: 'reincarnation', label: 'Luân Hồi', icon: 'reborn', canvas: false, group: 'tuluyen' },
@@ -51,6 +52,7 @@ export const UNLOCKS = {
   journey: { text: 'Hạ yêu thú đầu tiên', test: (g) => g.stats.kills >= 1 || g.stats.breakthroughs > 0 || g.claimableCount > 0 },
   achievements: { text: 'Hạ yêu thú đầu tiên', test: (g) => g.stats.kills >= 1 || g.stats.breakthroughs > 0 || g.claimableCount > 0 },
   inventory: { text: 'Nhặt được vật phẩm đầu tiên', test: (g) => hasAnyItem(g) || g.stats.kills >= 5 },
+  pets: { text: 'Hạ Tiểu Boss đầu tiên (ải 5)', test: (g) => screenUnlocked('skills', g), progress: (g) => Math.min(1, g.campaign.record / 5) },
   skills: {
     text: 'Hạ Tiểu Boss đầu tiên (ải 5)',
     test: (g) => g.campaign.record >= 5 || Object.keys(g.skills.owned).length > 0 || Object.keys(g.arts.owned).length > 0 || Object.keys(g.inventory.scrolls).length > 0,
