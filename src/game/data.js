@@ -6,6 +6,7 @@
 import { LEARN_COST, SKILLS, fragmentId } from './skills.js'
 import { ARTS, ART_LEARN_COST, artFragmentId } from './arts.js'
 import { PETS, PET_LEARN_COST, petFragmentId } from './pets.js'
+import { TREASURES, TREASURE_LEARN_COST, treasureFragmentId } from './treasures.js'
 
 /**
  * Hiệu ứng khi dùng vật phẩm:
@@ -70,6 +71,14 @@ for (const [id, pet] of Object.entries(PETS)) {
   ITEMS[petFragmentId(id)] = {
     name: `${pet.name} Phách`, group: 'scrolls', sell: 60,
     desc: `Gom ${PET_LEARN_COST} bản để thu phục hoặc nuôi lớn linh thú ${pet.name} (tab Công Pháp > Linh Thú).`,
+  }
+}
+
+// Mảnh Pháp Bảo: sinh tự động từ danh sách TREASURES
+for (const [id, t] of Object.entries(TREASURES)) {
+  ITEMS[treasureFragmentId(id)] = {
+    name: `${t.name} Mảnh`, group: 'scrolls', sell: 120,
+    desc: `Gom ${TREASURE_LEARN_COST} mảnh để luyện hoá pháp bảo ${t.name}, gom thêm để nâng phẩm (tab Pháp Bảo).`,
   }
 }
 

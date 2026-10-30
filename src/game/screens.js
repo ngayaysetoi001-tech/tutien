@@ -13,6 +13,7 @@ export const SCREENS = [
   { id: 'reincarnation', label: 'Luân Hồi', icon: 'reborn', canvas: false, group: 'tuluyen' },
   { id: 'battle', label: 'Vượt Ải', icon: 'dungeon', canvas: true, group: 'vuotai' },
   { id: 'gear', label: 'Trang Bị', icon: 'gear', canvas: false, group: 'hanhtrang' },
+  { id: 'treasure', label: 'Pháp Bảo', icon: 'refine', canvas: false, group: 'hanhtrang' },
   { id: 'inventory', label: 'Túi Đồ', icon: 'bag', canvas: false, group: 'hanhtrang' },
   { id: 'sect', label: 'Tông Môn', icon: 'sect', canvas: false, group: 'monphai' },
   { id: 'disciples', label: 'Đệ Tử', icon: 'disciple', canvas: false, group: 'monphai' },
@@ -57,6 +58,11 @@ export const UNLOCKS = {
     text: 'Hạ Tiểu Boss đầu tiên (ải 5)',
     test: (g) => g.campaign.record >= 5 || Object.keys(g.skills.owned).length > 0 || Object.keys(g.arts.owned).length > 0 || Object.keys(g.inventory.scrolls).length > 0,
     progress: (g) => Math.min(1, g.campaign.record / 5),
+  },
+  treasure: {
+    text: 'Hạ Đại Boss đầu tiên (ải 10)',
+    test: (g) => g.campaign.record >= 10 || Object.keys(g.treasures.owned).length > 0 || Object.keys(g.inventory.scrolls).some((id) => id.startsWith('pb_')),
+    progress: (g) => Math.min(1, g.campaign.record / 10),
   },
   gear: { text: 'Hạ Tiểu Boss đầu tiên (ải 5)', test: (g) => g.campaign.record >= 5 || g.gear.bag.length > 0, progress: (g) => Math.min(1, g.campaign.record / 5) },
   sect: {

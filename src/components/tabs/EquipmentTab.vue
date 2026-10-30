@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import {
-  BAG_LIMIT, LEGENDS, MAX_ENHANCE, SLOTS, SLOT_IDS, affixCount, affixText, enhanceCost, itemColor, itemFullName, itemStats, perkText,
+  AFFIXES, BAG_LIMIT, LEGENDS, MAX_ENHANCE, SLOTS, SLOT_IDS, affixCount, affixText, enhanceCost, itemColor, itemFullName, itemStats, perkText,
   rerollCost, sellValue, statsText,
 } from '../../game/equipment.js'
 import { fmt } from '../../game/format.js'
@@ -14,6 +14,7 @@ import Icon from '../Icon.vue'
 
 const game = useGameStore()
 const sel = ref(null) // uid đang xem
+const lockIdx = ref(-1) // dòng phụ được khoá khi đổi (-1 = không khoá)
 
 const isEquipped = (uid) => Object.values(game.gear.equipped).includes(uid)
 // Túi sắp theo phẩm cấp rồi độ hiếm giảm dần
@@ -44,7 +45,7 @@ const open = computed(() => !!item.value)
   <div class="space-y-3">
     <div v-if="game.activeGearSets.length" class="space-y-0.5 text-xs">
       <div v-for="set in game.activeGearSets" :key="set.name" class="rounded-lg border border-jade-500/30 bg-jade-500/10 px-2 py-1 text-slate-300">
-        <b class="text-jade-300">Bộ {{ set.name }} ({{ set.pieces }}/3)</b>: {{ perkText(set.bonus) }}
+        <b class="text-jade-300">Bộ {{ set.name }} ({{ set.pieces }}/6)</b>: {{ perkText(set.bonus) }}
       </div>
     </div>
 
@@ -60,7 +61,7 @@ const open = computed(() => !!item.value)
           :dim="!it"
           :label="it ? SLOTS[slot] : SLOTS[slot] + ' (trống)'"
           :badge="it && it.enh ? '+' + it.enh : ''"
-          @click="it && (sel = it.uid)"
+          @click="it && ((sel = it.uid), (lockIdx = -1))"
         />
       </div>
     </div>
@@ -80,7 +81,7 @@ const open = computed(() => !!item.value)
           :label="SLOTS[it.slot]"
           :badge="it.enh ? '+' + it.enh : ''"
           :selected="isEquipped(it.uid)"
-          @click="sel = it.uid"
+          @click="(sel = it.uid), (lockIdx = -1)"
         />
       </div>
       <p class="mt-2 text-xs text-slate-500">Màu viền = độ hiếm · viền sáng = đang mặc.</p>
@@ -95,14 +96,28 @@ const open = computed(() => !!item.value)
           <span v-for="x in delta" :key="x.k" class="rounded px-1.5 py-0.5 font-bold" :class="x.d > 0 ? 'bg-jade-500/20 text-jade-300' : 'bg-cinnabar-500/20 text-cinnabar-300'">{{ x.d > 0 ? '▲ +' : '▼ ' }}{{ x.text }} {{ x.label }}</span>
         </div>
         <div v-if="item.legend" class="mt-1 text-pink-300">{{ legendText(item) }}</div>
-        <div v-else-if="item.affixes?.length" class="mt-1 text-jade-300">{{ affixText(item) }}</div>
+        <template v-else-if="item.affixes?.length">
+          <div class="mt-2 space-y-1">
+            <button
+              v-for="(a, i) in item.affixes"
+              :key="a.id"
+              class="flex min-h-[40px] w-full items-center justify-between rounded-lg border px-2.5 text-left text-sm"
+              :class="lockIdx === i ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ink-600 bg-ink-900/60 text-jade-300'"
+              @click="lockIdx = lockIdx === i ? -1 : i"
+            >
+              <span>+{{ Math.round(a.v * 1000) / 10 }}% {{ AFFIXES[a.id].label }}</span>
+              <Icon :name="lockIdx === i ? 'lock' : 'dots'" :size="16" />
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-slate-500">Bấm một dòng để khoá khi đổi (tốn gấp đôi).</p>
+        </template>
         <button
           v-if="canReroll(item)"
-          class="btn-ghost mt-3 min-h-[44px] w-full"
-          :disabled="game.spiritStones.lt(rerollCost(item))"
-          @click="game.rerollAffixes(item.uid)"
+          class="btn-ghost mt-2 min-h-[44px] w-full"
+          :disabled="game.spiritStones.lt(rerollCost(item, lockIdx >= 0))"
+          @click="game.rerollAffixes(item.uid, lockIdx)"
         >
-          <Icon name="refine" :size="16" />Đổi dòng phụ <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(rerollCost(item)) }}
+          <Icon name="refine" :size="16" />{{ lockIdx >= 0 ? 'Đổi dòng còn lại' : 'Đổi dòng phụ' }} <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(rerollCost(item, lockIdx >= 0)) }}
         </button>
       </template>
       <template #actions>

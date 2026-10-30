@@ -67,6 +67,7 @@ const { useBattleStore } = await import('../src/stores/battleStore.js')
 const { STAGES, MAX_STAGE_IDX } = await import('../src/game/constants.js')
 const { RECIPES, ITEMS } = await import('../src/game/data.js')
 const { FORGE, SLOT_IDS } = await import('../src/game/equipment.js')
+const { awakenOffer } = await import('../src/game/arts.js')
 const { SKILLS, fragmentId, canEquip: canEquipSkill } = await import('../src/game/skills.js')
 const { ARTS } = await import('../src/game/arts.js')
 const { CROPS, plotCount } = await import('../src/game/garden.js')
@@ -246,7 +247,19 @@ function createBot(s, b) {
     for (const id of ART_ORDER) {
       s.learnArt(id)
       if (s.arts.owned[id]) while (s.upgradeArt(id));
+      // Ngộ đạo khi đạt cấp tối đa: chọn đặc tính đầu tiên được chào
+      if (s.arts.owned[id] >= 10 && !s.arts.awaken[id]) s.awakenArt(id, awakenOffer(id)[0])
     }
+    // Nhánh tiến hoá võ kỹ cấp tối đa: Cường Lực
+    for (const id of Object.keys(s.skills.owned)) if (s.skills.owned[id] >= 5 && s.skills.branch[id] == null) s.chooseBranch(id, 0)
+    // Pháp Bảo: luyện hoá, nâng phẩm, gắn theo thứ tự ưu tiên
+    const TR_ORDER = ['can_khon_dinh', 'that_tinh_kiem', 'ho_than_phu', 'huyet_sat_chau', 'tu_linh_binh', 'hon_nguyen_chung', 'phong_loi_phien', 'thien_co_la_ban']
+    for (const id of TR_ORDER) {
+      s.learnTreasure(id)
+      if (s.treasures.owned[id]) while (s.upgradeTreasure(id));
+    }
+    const ownedTr = TR_ORDER.filter((id) => s.treasures.owned[id])
+    for (let i = 0; i < s.treasureSlots && i < ownedTr.length; i++) if (s.treasures.slots[i] !== ownedTr[i]) s.equipTreasure(ownedTr[i], i)
 
     // Tụ Linh Trận: chi tối đa nửa số linh thạch mỗi lần
     for (let k = 0; k < 20 && s.spiritStones.gte(s.arrayCost.mul(2)); k++) s.upgradeArray()
@@ -259,7 +272,7 @@ function createBot(s, b) {
       lastGear = now
       for (let tier = FORGE.length - 1; tier >= 0; tier--) {
         if (s.canForge(tier) && s.spiritStones.gte(FORGE[tier].stones * 3)) {
-          s.forge(tier, SLOT_IDS[forgeSlot++ % 3])
+          s.forge(tier, SLOT_IDS[forgeSlot++ % SLOT_IDS.length])
           break
         }
       }

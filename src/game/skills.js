@@ -14,6 +14,10 @@
 //   rage      tăng `power` công kích trong `seconds` giây
 //   reflect   phản lại `power` x sát thương nhận vào trong `seconds` giây
 // Ô võ kỹ mở theo đại cảnh giới (1 -> 2 ở Trúc Cơ -> 3 ở Kim Đan -> 4 ở Hóa Thần).
+//
+// Trạng thái: chiêu tấn công theo ngũ hành gây trạng thái lên địch (Hỏa: Thiêu, Thủy: Băng, Kim: Phá Giáp, Mộc: Độc qua chiêu độc).
+// Liên kích (COMBOS): tung chiêu đúng hệ khi địch đang mang trạng thái thích hợp thì gây thêm sát thương.
+// Nhánh tiến hoá: võ kỹ đạt cấp tối đa chọn một trong hai nhánh (Cường Lực: +30% hiệu lực, Tốc Biến: -25% hồi chiêu).
 // =====================================================================
 
 export const SKILLS = {
@@ -39,12 +43,51 @@ export const SKILLS = {
 }
 
 export const SKILL_MAX_LEVEL = 5
+
+/** Trạng thái lên địch: seconds = thời gian; dps = sát thương mỗi giây (x công kích); slow = làm chậm; defMult = hệ số phòng ngự. */
+export const STATUS = {
+  burn: { name: 'Thiêu', element: 'hoa', seconds: 4, dps: 0.15, text: 'cháy 15% công kích mỗi giây' },
+  chill: { name: 'Băng', element: 'thuy', seconds: 4, slow: 0.2, text: 'làm chậm 20%' },
+  pierce: { name: 'Phá Giáp', element: 'kim', seconds: 4, defMult: 0.85, text: 'giảm 15% phòng ngự' },
+  poison: { name: 'Độc', element: 'moc', seconds: 0, text: 'nhiễm độc' },
+}
+/** Hệ nào gây trạng thái nào (Thổ không gây). */
+export const STATUS_OF_ELEMENT = { hoa: 'burn', thuy: 'chill', kim: 'pierce', moc: 'poison' }
+/** Liên kích: tung chiêu hệ `element` khi địch đang mang `status` thì sát thương nhân `mult`. */
+export const COMBOS = [
+  { status: 'chill', element: 'kim', mult: 1.45, name: 'Băng Vỡ' },
+  { status: 'burn', element: 'thuy', mult: 1.45, name: 'Hàn Hỏa Giao Tranh' },
+  { status: 'poison', element: 'hoa', mult: 1.45, name: 'Độc Hỏa Công Tâm' },
+  { status: 'pierce', element: 'thuy', mult: 1.25, name: 'Phá Giáp Quán Thủy' },
+]
+/** Võ kỹ gây sát thương tức thời (được tính liên kích và gây trạng thái). */
+export const isAttack = (kind) => kind === 'damage' || kind === 'stun' || kind === 'execute' || kind === 'ultimate'
+
+/** Hai nhánh tiến hoá khi đạt cấp tối đa. */
+export const BRANCHES = [
+  { name: 'Cường Lực', text: '+30% hiệu lực', power: 1.3, cd: 1 },
+  { name: 'Tốc Biến', text: '-25% hồi chiêu', power: 1, cd: 0.75 },
+]
+export const branchPower = (b) => BRANCHES[b]?.power ?? 1
+export const branchCd = (b) => BRANCHES[b]?.cd ?? 1
+
+/** Gợi ý trạng thái và liên kích của một võ kỹ (để hiển thị). */
+export function statusLine(id) {
+  const s = SKILLS[id]
+  const st = STATUS_OF_ELEMENT[s.element]
+  const parts = []
+  if (st && (isAttack(s.kind) || s.kind === 'dot')) parts.push(`Gây ${STATUS[st].name}${STATUS[st].seconds ? ` ${STATUS[st].seconds}s` : ''} (${STATUS[st].text})`)
+  if (isAttack(s.kind)) {
+    for (const c of COMBOS) if (c.element === s.element) parts.push(`Liên kích sau ${STATUS[c.status].name}: ${c.name} +${Math.round((c.mult - 1) * 100)}%`)
+  }
+  return parts.join(' · ')
+}
 export const LEARN_COST = 5 // số tàn quyển để học
 
 export const fragmentId = (id) => 'qk_' + id
 /** Mỗi cấp +20% hiệu lực, hồi chiêu giảm 5%. */
 export const skillLevelMult = (level) => 1 + 0.2 * (level - 1)
-export const skillCooldown = (id, level) => SKILLS[id].cd * (1 - 0.05 * (level - 1))
+export const skillCooldown = (id, level, branch = null) => SKILLS[id].cd * (1 - 0.05 * (level - 1)) * branchCd(branch)
 /** Số tàn quyển để lên từ cấp `level` lên cấp kế. */
 export const upgradeCost = (level) => 5 * level
 /** Số ô võ kỹ theo đại cảnh giới. */

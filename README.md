@@ -257,3 +257,10 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Lưới biểu tượng + bảng trượt**: Võ Kỹ, Công Pháp, Linh Thú, Trang Bị, Túi Đồ hiển thị bằng ô icon (khung theo độ hiếm, màu theo ngũ hành, huy hiệu cấp, thanh tiến độ tàn quyển, chấm đỏ khi làm được); bấm ô để mở chi tiết và nút hành động.
 - **Nhân Vật dạng bảng điều khiển**: chip chỉ số, hàng tốc độ, ô "Việc cần làm" (điểm danh, thiên phú, đạo lộ, thử thách) mở bảng trượt.
 - Bộ glyph vẽ bằng code nằm ở `src/components/glyphs.js` (thêm icon: sửa `GLYPHS` và bảng id→glyph). Chỉ giao diện, không đổi cân bằng.
+
+## Trang Bị, Pháp Bảo, Võ Kỹ, Công Pháp (làm lại)
+
+- **Trang Bị 6 ô** (`src/game/equipment.js`): Vũ khí, Y phục, Mũ, Giày, Nhẫn, Ngọc bội. Mỗi ô một thiên hướng chỉ số và dòng phụ riêng; tổng chỉ số 6 ô bằng 3 ô cũ nên cân bằng không đổi. Bộ trang bị mặc 2 / 4 / 6 món cùng phẩm cấp. Đồ Huyền Thoại có cho cả 6 ô. Đổi dòng phụ có thể khoá một dòng (đắt gấp đôi). Save cũ: ô Pháp bảo cũ thành Ngọc bội.
+- **Pháp Bảo** (`src/game/treasures.js`, tab Hành Trang > Pháp Bảo): hệ thống riêng, mỗi pháp bảo một thần thông kích hoạt trong trận (hồi máu theo chu kỳ, mỗi 7 đòn đánh thêm, chặn đòn chí mạng, hút máu, lá chắn đầu ải, chí mạng với boss...). Mảnh rơi từ Đại Boss và Chúa Tể; luyện hoá rồi nâng 5 phẩm; 2 ô, mở thêm theo cảnh giới (tối đa 4); có võ kỹ đang gắn cùng hệ ngũ hành thì thần thông mạnh thêm 30%.
+- **Võ Kỹ**: chiêu tấn công gây trạng thái theo hệ (Hỏa: Thiêu, Thủy: Băng làm chậm, Kim: Phá Giáp, Mộc: Độc qua chiêu độc). Liên kích: tung chiêu đúng hệ khi địch mang trạng thái hợp thì gây thêm sát thương (Băng Vỡ, Hàn Hỏa Giao Tranh, Độc Hỏa Công Tâm, Phá Giáp Quán Thủy). Võ kỹ đạt cấp tối đa chọn nhánh Cường Lực (+30%) hoặc Tốc Biến (-25% hồi chiêu).
+- **Công Pháp** chia 4 hệ (Thể, Công, Tốc, Đạo): tổng cấp một hệ đạt 5 / 12 / 20 thì mở cộng hưởng; công pháp cấp tối đa ngộ đạo, chọn 1 trong 3 đặc tính riêng của nó.

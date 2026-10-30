@@ -12,6 +12,7 @@ import ReincarnationTab from './tabs/ReincarnationTab.vue'
 import SectTab from './tabs/SectTab.vue'
 import DisciplesTab from './tabs/DisciplesTab.vue'
 import JourneyTab from './tabs/JourneyTab.vue'
+import TreasureTab from './tabs/TreasureTab.vue'
 import StoryTab from './tabs/StoryTab.vue'
 
 export const SCREEN_COMPONENTS = {
@@ -19,6 +20,7 @@ export const SCREEN_COMPONENTS = {
   skills: SkillsTab,
   pets: SkillsTab,
   gear: EquipmentTab,
+  treasure: TreasureTab,
   battle: BattleTab,
   inventory: InventoryTab,
   sect: SectTab,

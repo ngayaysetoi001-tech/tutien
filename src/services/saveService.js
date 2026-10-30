@@ -10,12 +10,13 @@ import { DUNGEONS, ITEMS, RECIPES } from '../game/data.js'
 import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
 import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
-import { ARTS, ART_MAX_LEVEL } from '../game/arts.js'
+import { ARTS, ART_MAX_LEVEL, awakenOffer } from '../game/arts.js'
 import { MAX_PET_SLOTS, PETS, PET_MAX_LEVEL } from '../game/pets.js'
 import { MAX_PARTY, MISSIONS } from '../game/expedition.js'
 import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL } from '../game/dwelling.js'
 import { PATHS } from '../game/paths.js'
 import { MAX_SKILL_SLOTS } from '../game/skills.js'
+import { MAX_TREASURE_SLOTS, TREASURES, TREASURE_MAX_TIER } from '../game/treasures.js'
 import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
 import { ACHIEVEMENTS } from '../game/achievements.js'
 import { PERKS } from '../game/reincarnation.js'
@@ -54,6 +55,7 @@ export function serialize(state, now = Date.now()) {
       element: state.element,
       skills: JSON.parse(JSON.stringify(state.skills)),
       arts: JSON.parse(JSON.stringify(state.arts)),
+      treasures: JSON.parse(JSON.stringify(state.treasures)),
       pets: JSON.parse(JSON.stringify(state.pets)),
       dwelling: { ...state.dwelling },
       expeditions: JSON.parse(JSON.stringify(state.expeditions)),
@@ -141,10 +143,32 @@ export function deserialize(save, defaults) {
     const id = d.skills?.slots?.[i]
     return owned[id] ? id : null
   })
+  // Nhánh tiến hoá: chỉ võ kỹ đã đạt cấp tối đa, giá trị 0 hoặc 1
+  const branch = {}
+  for (const [k, v] of Object.entries(d.skills?.branch && typeof d.skills.branch === 'object' ? d.skills.branch : {})) {
+    if (owned[k] === SKILL_MAX_LEVEL && (v === 0 || v === 1)) branch[k] = v
+  }
+  // Pháp Bảo: giữ pháp bảo tồn tại, phẩm hợp lệ; ô gắn phải là pháp bảo đã luyện hoá, không trùng
+  const trOwned = {}
+  for (const [k, v] of Object.entries(d.treasures?.owned && typeof d.treasures.owned === 'object' ? d.treasures.owned : {})) {
+    if (TREASURES[k]) trOwned[k] = Math.floor(num(v, 1, 1, TREASURE_MAX_TIER))
+  }
+  const trSeen = new Set()
+  const trSlots = Array.from({ length: MAX_TREASURE_SLOTS }, (_, i) => {
+    const id = d.treasures?.slots?.[i]
+    if (!trOwned[id] || trSeen.has(id)) return null
+    trSeen.add(id)
+    return id
+  })
   // Công pháp (bị động): giữ công pháp tồn tại, cấp hợp lệ (save cũ có ô trang bị thì bỏ qua: mọi công pháp đã học đều có hiệu lực)
   const artsOwned = {}
   for (const [k, v] of Object.entries(d.arts?.owned && typeof d.arts.owned === 'object' ? d.arts.owned : {})) {
     if (ARTS[k]) artsOwned[k] = Math.floor(num(v, 1, 1, ART_MAX_LEVEL))
+  }
+  // Ngộ đạo: chỉ công pháp đã đạt cấp tối đa và đặc tính nằm trong ba lựa chọn được chào
+  const artsAwaken = {}
+  for (const [k, v] of Object.entries(d.arts?.awaken && typeof d.arts.awaken === 'object' ? d.arts.awaken : {})) {
+    if (artsOwned[k] === ART_MAX_LEVEL && awakenOffer(k).includes(v)) artsAwaken[k] = v
   }
   // Linh thú: giữ linh thú tồn tại, cấp hợp lệ; ô ra trận phải là linh thú đã thu phục, không trùng
   const petsOwned = {}
@@ -161,7 +185,9 @@ export function deserialize(save, defaults) {
   // Trang bị: kiểm tra từng món, bỏ món hỏng; ô mặc phải trỏ tới món có thật đúng ô
   const bag = []
   const seen = new Set()
-  for (const it of Array.isArray(d.gear?.bag) ? d.gear.bag : []) {
+  for (const raw of Array.isArray(d.gear?.bag) ? d.gear.bag : []) {
+    // Save cũ có ô 'Pháp bảo' (trinket): chuyển thành Ngọc bội (chỉ số khí huyết / linh khí tương tự)
+    const it = raw && raw.slot === 'trinket' ? { ...raw, slot: 'jade' } : raw
     if (bag.length >= BAG_LIMIT || !it || typeof it.uid !== 'string' || seen.has(it.uid)) continue
     if (!SLOTS[it.slot] || !TIERS[it.tier] || !RARITIES[it.rarity]) continue
     seen.add(it.uid)
@@ -179,7 +205,7 @@ export function deserialize(save, defaults) {
   }
   const equipped = {}
   for (const slot of Object.keys(SLOTS)) {
-    const uid = d.gear?.equipped?.[slot]
+    const uid = d.gear?.equipped?.[slot] ?? (slot === 'jade' ? d.gear?.equipped?.trinket : undefined)
     equipped[slot] = bag.some((it) => it.uid === uid && it.slot === slot) ? uid : null
   }
   const achTier = {}
@@ -295,8 +321,9 @@ export function deserialize(save, defaults) {
     garden: { plots },
     mineAt: num(d.mineAt, Date.now(), 0, Date.now()),
     element: ELEMENTS[d.element] ? d.element : defaults.element,
-    skills: { owned, slots },
-    arts: { owned: artsOwned },
+    skills: { owned, slots, branch },
+    treasures: { owned: trOwned, slots: trSlots },
+    arts: { owned: artsOwned, awaken: artsAwaken },
     pets: { owned: petsOwned, active: petActive },
     dwelling,
     expeditions,

@@ -15,6 +15,7 @@ import { itemName, MONSTERS } from '../game/data.js'
 import * as B from '../game/battle.js'
 import * as C from '../game/campaign.js'
 import { rollArtDrops } from '../game/arts.js'
+import { rollTreasureDrops } from '../game/treasures.js'
 import { PETS, petLevelMult, rollPetDrops } from '../game/pets.js'
 import { ELEMENTS, elementEdge, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
@@ -66,6 +67,16 @@ export const useBattleStore = defineStore('battle', {
     reflectUntil: 0,
     reflectAmt: 0,
     petNext: {}, // thời điểm ra đòn kế tiếp của từng linh thú (theo clock)
+    // Trạng thái lên địch (xem STATUS ở skills.js)
+    burnUntil: 0,
+    burnDmg: 0,
+    nextBurn: 0,
+    chillUntil: 0,
+    pierceUntil: 0,
+    hitCount: 0, // số đòn thường đã đánh (Thất Tinh Kiếm)
+    nextHeal: 0, // thời điểm Càn Khôn Đỉnh hồi máu kế tiếp
+    lethalUsed: false, // Hộ Thân Linh Phù đã dùng ở ải này chưa
+    dotElem: 'moc', // hệ của chiêu độc đang cháy (Mộc: Độc, Hỏa: Thiêu)
   }),
 
   getters: {
@@ -109,6 +120,9 @@ export const useBattleStore = defineStore('battle', {
       this.cd = {}
       this.shield = this.shieldUntil = this.hasteUntil = this.slowUntil = 0
       this.dotUntil = this.lifestealUntil = this.rageUntil = this.reflectUntil = 0
+      this.burnUntil = this.chillUntil = this.pierceUntil = 0
+      this.hitCount = 0
+      this.nextHeal = this.clock + 20
       this.petNext = {}
       emit('battle-start', { dungeonId: this.dungeon.id })
       this.spawnEnemy()
@@ -148,8 +162,16 @@ export const useBattleStore = defineStore('battle', {
       this.phase = 'fighting'
       this.nextPlayer = this.clock + 0.5
       this.nextEnemy = this.clock + B.actionInterval(stats.speed) * 0.8
+      // Pháp Bảo: Hỗn Nguyên Chung (lá chắn đầu ải), Hộ Thân Linh Phù (làm mới mỗi ải)
+      this.lethalUsed = false
+      const fxT = game.treasureFx
+      if (fxT.shield > 0) {
+        this.shield = Math.round(this.maxHp * fxT.shield)
+        this.shieldUntil = this.clock + 10
+      }
       this.slowUntil = 0 // làm chậm và độc không kéo sang yêu thú mới
       this.dotUntil = 0
+      this.burnUntil = this.chillUntil = this.pierceUntil = 0
       fx('battle-enemy-spawn', { name: tmpl.name, kind: tmpl.kind, color: tmpl.color, boss })
       if (n % C.AIS_PER_CHAPTER === 1 && n > game.campaign.best) {
         game.addLog(`Bước vào ${C.chapterName(n)}, chương ${C.chapterOf(n)}.`, 'event')
@@ -190,7 +212,9 @@ export const useBattleStore = defineStore('battle', {
       if (game.settings.autoHeal && this.hp / this.maxHp < AUTO_HEAL_BELOW) this.useHealPill(true)
 
       this.clock += dt
+      this.processTreasureHeal()
       this.processDot()
+      this.processBurn()
       this.processPets()
       let guard = 0 // chặn vòng lặp vô hạn khi tick quá lớn
       while (this.phase === 'fighting' && guard++ < 50) {
@@ -288,7 +312,7 @@ export const useBattleStore = defineStore('battle', {
         const mult = petLevelMult(game.pets.owned[id])
         if (p.kind === 'hunter') {
           const elem = elementMult(p.element, this.enemy.element) * game.artElementMult(p.element, this.enemy.element)
-          const raw = Math.max(1, Math.round(this.playerStats().atk * p.power * mult * (100 / (100 + this.enemy.def)) * elem))
+          const raw = Math.max(1, Math.round(this.playerStats().atk * p.power * mult * (100 / (100 + this.enemyDef())) * elem))
           const damage = this.hurtEnemy(raw)
           fx('battle-hit', { target: 'enemy', damage, crit: false, skill: true, color: ELEMENTS[p.element].color, edge: elementEdge(p.element, this.enemy.element) })
           if (this.enemy.hp <= 0) {
@@ -303,6 +327,37 @@ export const useBattleStore = defineStore('battle', {
       }
     },
 
+    /** Phòng ngự thực của địch: Phá Giáp giảm 15%. */
+    enemyDef() {
+      return this.enemy.def * (this.clock < this.pierceUntil ? SK.STATUS.pierce.defMult : 1)
+    },
+
+    /** Địch đang mang trạng thái `name` (burn | chill | pierce | poison) không. */
+    hasStatus(name) {
+      if (name === 'burn') return this.clock < this.burnUntil || (this.clock < this.dotUntil && this.dotElem === 'hoa')
+      if (name === 'chill') return this.clock < this.chillUntil
+      if (name === 'pierce') return this.clock < this.pierceUntil
+      return this.clock < this.dotUntil && this.dotElem === 'moc'
+    },
+
+    /** Gây trạng thái theo hệ của chiêu vừa trúng. */
+    applyStatus(element, atk) {
+      const name = SK.STATUS_OF_ELEMENT[element]
+      const st = SK.STATUS[name]
+      if (!st || !st.seconds) return
+      if (name === 'burn') {
+        if (this.clock >= this.burnUntil) this.nextBurn = this.clock + 1
+        this.burnUntil = this.clock + st.seconds
+        this.burnDmg = atk * st.dps
+      } else if (name === 'chill') {
+        this.chillUntil = this.clock + st.seconds
+        if (this.slowUntil < this.chillUntil) this.slowUntil = this.chillUntil
+        this.slowAmt = Math.max(this.clock < this.slowUntil ? this.slowAmt : 0, st.slow)
+      } else if (name === 'pierce') {
+        this.pierceUntil = this.clock + st.seconds
+      }
+    },
+
     /** Công kích đang có: nhân thêm khi Cuồng Bạo còn hiệu lực. */
     atkNow(stats) {
       return stats.atk * (this.clock < this.rageUntil ? 1 + this.rageAmt : 1)
@@ -310,7 +365,7 @@ export const useBattleStore = defineStore('battle', {
 
     /** Hút máu: đòn đánh hồi khí huyết theo sát thương gây ra nếu Huyết Thực còn hiệu lực. */
     lifestealFrom(damage) {
-      const rate = (this.clock < this.lifestealUntil ? this.lifestealAmt : 0) + useGameStore().battlePerk.lifesteal // hút máu nền (Thể Tu, trang bị)
+      const rate = (this.clock < this.lifestealUntil ? this.lifestealAmt : 0) + useGameStore().battlePerk.lifesteal + useGameStore().treasureFx.lifesteal // hút máu nền (Thể Tu, trang bị, Huyết Sát Châu)
       if (rate <= 0) return
       const heal = Math.round(damage * rate)
       if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal)
@@ -321,7 +376,7 @@ export const useBattleStore = defineStore('battle', {
       while (this.enemy && this.nextDot <= this.clock && this.nextDot <= this.dotUntil + 1e-9) {
         const game = useGameStore()
         const mult = elementMult(game.element, this.enemy.element)
-        const damage = this.hurtEnemy(Math.max(1, Math.round(this.dotDmg * (100 / (100 + this.enemy.def)) * mult)), true)
+        const damage = this.hurtEnemy(Math.max(1, Math.round(this.dotDmg * (100 / (100 + this.enemyDef())) * mult)), true)
         this.nextDot += 1
         this.lifestealFrom(damage)
         fx('battle-hit', { target: 'enemy', damage, crit: false, skill: true, color: ELEMENTS[game.element]?.color, edge: elementEdge(game.element, this.enemy.element) })
@@ -332,30 +387,70 @@ export const useBattleStore = defineStore('battle', {
       }
     },
 
+    /** Càn Khôn Đỉnh: hồi khí huyết theo chu kỳ. */
+    processTreasureHeal() {
+      const heal = useGameStore().treasureFx.heal
+      if (!heal) return
+      if (this.clock < this.nextHeal) return
+      this.nextHeal = Math.max(this.nextHeal + heal.interval, this.clock)
+      const amount = Math.round(this.maxHp * heal.pct)
+      this.hp = Math.min(this.maxHp, this.hp + amount)
+      fx('battle-heal', { amount })
+    },
+
+    /** Thiêu: mỗi giây cháy một phần công kích cho đến khi hết hiệu lực. */
+    processBurn() {
+      while (this.enemy && this.clock < this.burnUntil + 1 && this.nextBurn <= this.clock && this.nextBurn <= this.burnUntil + 1e-9) {
+        const damage = this.hurtEnemy(Math.max(1, Math.round(this.burnDmg * (100 / (100 + this.enemyDef())) * elementMult('hoa', this.enemy.element))), true)
+        this.nextBurn += 1
+        fx('battle-hit', { target: 'enemy', damage, crit: false, skill: true, color: ELEMENTS.hoa.color, edge: elementEdge('hoa', this.enemy.element) })
+        if (this.enemy.hp <= 0) {
+          this.onKill()
+          return
+        }
+      }
+    },
+
     basicAttack(stats) {
       const game = useGameStore()
       const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
-      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemy.def, Math.random, B.CRIT_CHANCE + game.battlePerk.crit, mult, B.CRIT_MULT + game.battlePerk.critMult)
+      const bossCrit = this.enemy.boss ? game.treasureFx.bossCrit : 0 // Thiên Cơ La Bàn
+      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + bossCrit, mult, B.CRIT_MULT + game.battlePerk.critMult)
       const damage = this.hurtEnemy(raw)
       this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
+      // Thất Tinh Kiếm: mỗi n đòn thường, một đòn gây thêm sát thương
+      const nth = game.treasureFx.nth
+      this.hitCount += 1
+      if (nth && this.hitCount % nth.n === 0 && this.enemy.hp > 0) {
+        const extra = this.hurtEnemy(Math.max(1, Math.round(this.atkNow(stats) * nth.mult * (100 / (100 + this.enemyDef())) * mult)), true)
+        this.lifestealFrom(extra)
+        fx('battle-hit', { target: 'enemy', damage: extra, crit: true, skill: true, color: ELEMENTS[game.element]?.color, edge: elementEdge(game.element, this.enemy.element) })
+      }
     },
 
     castSkill(id, stats) {
       const game = useGameStore()
       const skill = SK.SKILLS[id]
       const level = game.skills.owned[id]
-      const lv = SK.skillLevelMult(level)
-      const attack = ['damage', 'stun', 'execute', 'ultimate'].includes(skill.kind)
+      const branch = game.skills.branch?.[id] ?? null
+      const lv = SK.skillLevelMult(level) * SK.branchPower(branch) // nhánh Cường Lực: +30% hiệu lực
+      const attack = SK.isAttack(skill.kind)
       const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1) * (attack ? 1 + game.battlePerk.skillDmg : 1)
-      this.cd[id] = this.clock + SK.skillCooldown(id, level) * (1 - game.battlePerk.cd) // Pháp Tu: hồi chiêu nhanh hơn
+      this.cd[id] = this.clock + SK.skillCooldown(id, level, branch) * (1 - game.battlePerk.cd) // Pháp Tu: hồi chiêu nhanh hơn; nhánh Tốc Biến
       fx('battle-skill', { name: skill.name, color: ELEMENTS[skill.element].color, kind: SK.visualKind(skill.kind), element: skill.element, seconds: skill.seconds })
       if (attack) {
         let pw = power
         // Tuyệt Sát: gấp bội khi địch sắp gục
         if (skill.kind === 'execute' && this.enemy.hp / this.enemy.maxHp < skill.threshold) pw *= 1 + skill.bonus
+        // Liên kích: địch đang mang trạng thái hợp với hệ của chiêu
+        const combo = SK.COMBOS.find((c) => c.element === skill.element && this.hasStatus(c.status))
+        if (combo) {
+          pw *= combo.mult
+          game.addLog(`Liên kích ${combo.name}! ${skill.name} gây thêm ${Math.round((combo.mult - 1) * 100)}% sát thương.`, 'good')
+        }
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
-        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemy.def, Math.random, B.CRIT_CHANCE + game.battlePerk.crit, mult, B.CRIT_MULT + game.battlePerk.critMult)
+        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + (this.enemy.boss ? game.treasureFx.bossCrit : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
         const damage = this.hurtEnemy(raw, true)
         this.lifestealFrom(damage)
         if (skill.slow) {
@@ -363,9 +458,17 @@ export const useBattleStore = defineStore('battle', {
           this.slowAmt = skill.slow
         }
         if (skill.kind === 'stun') this.nextEnemy = Math.max(this.nextEnemy, this.clock + skill.seconds) // choáng: mất lượt ra đòn
+        this.applyStatus(skill.element, this.atkNow(stats))
+        // Phong Lôi Phiến: tung võ kỹ tấn công thì ra đòn nhanh hơn 3 giây
+        const ch = game.treasureFx.haste
+        if (ch > 0 && (this.clock >= this.hasteUntil || this.hasteAmt < ch)) {
+          this.hasteAmt = Math.max(ch, this.clock < this.hasteUntil ? this.hasteAmt : 0)
+          this.hasteUntil = Math.max(this.hasteUntil, this.clock + 3)
+        }
         fx('battle-hit', { target: 'enemy', damage, crit, skill: true, color: ELEMENTS[skill.element].color, edge: elementEdge(skill.element, this.enemy.element) })
       } else if (skill.kind === 'dot') {
         this.dotUntil = this.clock + skill.seconds
+        this.dotElem = skill.element
         this.dotDmg = this.atkNow(stats) * power
         this.nextDot = this.clock + 1
       } else if (skill.kind === 'heal') {
@@ -420,6 +523,12 @@ export const useBattleStore = defineStore('battle', {
           return
         }
       }
+      if (this.hp <= 0 && !this.lethalUsed && game.treasureFx.lethal > 0) {
+        // Hộ Thân Linh Phù: chặn một đòn chí mạng mỗi ải
+        this.lethalUsed = true
+        this.hp = Math.max(1, Math.round(this.maxHp * game.treasureFx.lethal))
+        game.addLog('Hộ Thân Linh Phù cứu mạng, hồi khí huyết!', 'good')
+      }
       if (this.hp <= 0) this.onDeath()
     },
 
@@ -430,7 +539,7 @@ export const useBattleStore = defineStore('battle', {
       const kind = this.enemy.tier
       const tmpl = MONSTERS[this.enemy.id]
       const stones = C.aiStoneReward(n, kind, game.stageIdx).mul(1 + game.artBonus.stones + game.extraPerk.stones)
-      const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck), ...rollPetDrops(n, kind, Math.random, game.lootLuck)]
+      const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck), ...rollPetDrops(n, kind, Math.random, game.lootLuck), ...rollTreasureDrops(n, kind, Math.random, game.lootLuck)]
         .filter(({ id }) => !(id.startsWith('qk_') && SK.SKILLS[id.slice(3)]?.path && SK.SKILLS[id.slice(3)].path !== game.path)) // võ kỹ độc quyền chỉ rơi cho đúng đạo lộ
 
       game.spiritStones = game.spiritStones.add(stones)
@@ -442,6 +551,14 @@ export const useBattleStore = defineStore('battle', {
         game.addContribution(C.aiContribution(n, kind)) // Cống Hiến tông môn
       }
       this.run.stones = this.run.stones.add(stones)
+      // Tụ Linh Bình: hạ boss thì hồi khí huyết và thêm linh thạch
+      const bk = game.treasureFx.bossKill
+      if (bk > 0 && kind !== 'normal') {
+        this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * bk))
+        const extraStones = stones.mul(bk * 0.4)
+        game.spiritStones = game.spiritStones.add(extraStones)
+        this.run.stones = this.run.stones.add(extraStones)
+      }
       // Trang bị rơi: tỉ lệ theo loại ải; phẩm cấp theo bối cảnh (tối đa phẩm cao nhất)
       if (Math.random() < C.AI_KINDS[kind].gear * (1 + game.lootLuck)) {
         const slot = EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)]

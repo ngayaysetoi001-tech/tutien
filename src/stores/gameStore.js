@@ -28,6 +28,7 @@ import { ELEMENT_IDS, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
 import * as AR from '../game/arts.js'
 import * as PT from '../game/pets.js'
+import * as TR from '../game/treasures.js'
 import { TALENTS, TALENT_REROLL_COST, rollTalentOffer, talentPerk } from '../game/talents.js'
 import { MAX_PARTY, MISSIONS, expeditionSlots, missionEffects, partyPower, successChance } from '../game/expedition.js'
 import { BUILDINGS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage, dwellingPerks, emptyDwelling } from '../game/dwelling.js'
@@ -117,9 +118,10 @@ function createPlayerState(minRoot = 0) {
     dwelling: emptyDwelling(), // cấp các công trình Động Phủ (giữ khi luân hồi)
     expeditions: [], // thám hiểm đang đi: { id, uids, since (ms), seconds }
     pets: { owned: {}, active: [null, null] }, // Linh thú. owned: { id: cấp }, active: id linh thú ra trận
-    arts: { owned: {} }, // Công pháp (bị động, học xong là cộng ngay). owned: { id: cấp }
-    skills: { owned: {}, slots: [null, null, null, null, null] }, // Võ kỹ. owned: { id: cấp }, slots: id võ kỹ đã trang bị
-    gear: { bag: [], equipped: { weapon: null, armor: null, trinket: null } }, // equipped lưu uid
+    treasures: { owned: {}, slots: [null, null, null, null] }, // Pháp Bảo: owned { id: phẩm 1..5 }, slots: id đã gắn
+    arts: { owned: {}, awaken: {} }, // Công pháp (bị động, học xong là cộng ngay). owned: { id: cấp }, awaken: { id: đặc tính ngộ đạo }
+    skills: { owned: {}, slots: [null, null, null, null, null], branch: {} }, // Võ kỹ. owned: { id: cấp }, slots: id đã trang bị, branch: { id: 0|1 } nhánh tiến hoá
+    gear: { bag: [], equipped: { weapon: null, armor: null, helm: null, boots: null, ring: null, jade: null } }, // equipped lưu uid
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
       breakthroughs: 0, failures: 0, tribulations: 0, playSeconds: 0,
@@ -258,7 +260,7 @@ export const useGameStore = defineStore('game', {
         lifesteal: p.lifesteal + g.lifesteal, cd: Math.min(0.5, p.cd + g.cd + e.cd), extra: g.extra, thorns: g.thorns + e.thorns,
       }
     },
-    /** Mảng 3 phần tử theo thứ tự EQ.SLOT_IDS (weapon, armor, trinket): món đồ hoặc null */
+    /** Mảng 6 phần tử theo thứ tự EQ.SLOT_IDS (weapon, armor, helm, boots, ring, jade): món đồ hoặc null */
     equippedItems() {
       const out = []
       for (const slot of EQ.SLOT_IDS) out.push(this.gear.bag.find((it) => it.uid === this.gear.equipped[slot]) ?? null)
@@ -311,7 +313,18 @@ export const useGameStore = defineStore('game', {
       for (const [k, v] of Object.entries(this.petPerk)) out[k] += v
       for (const [k, v] of Object.entries(dwellingPerks(this.dwelling))) out[k] += v
       for (const [k, v] of Object.entries(talentPerk(this.talent))) out[k] += v
+      if (this.challenge !== 'doc_hanh') for (const [k, v] of Object.entries(AR.artPerks(this.arts.owned, this.arts.awaken))) out[k] += v // cộng hưởng hệ + ngộ đạo (Độc Hành: vô hiệu như công pháp)
       return out
+    },
+    /** Số ô pháp bảo đã mở. */
+    treasureSlots() {
+      return TR.treasureSlotCount(this.realmIdx)
+    },
+    /** Thần thông của các pháp bảo đang gắn (cho trận đánh). */
+    treasureFx() {
+      const slots = this.treasures.slots.slice(0, this.treasureSlots)
+      const elements = this.skills.slots.slice(0, this.skillSlots).filter(Boolean).map((id) => SK.SKILLS[id].element)
+      return TR.treasureEffects(slots, this.treasures.owned, elements)
     },
     /** Tổng bị động từ mọi công pháp đã học (đã tính thưởng cùng hệ với tông môn). */
     artBonus() {
@@ -821,6 +834,14 @@ export const useGameStore = defineStore('game', {
       return true
     },
 
+    /** Chọn (hoặc đổi) nhánh tiến hoá của võ kỹ đã đạt cấp tối đa. */
+    chooseBranch(id, b) {
+      if (!SK.SKILLS[id] || (b !== 0 && b !== 1) || (this.skills.owned[id] ?? 0) < SK.SKILL_MAX_LEVEL) return false
+      this.skills.branch[id] = b
+      this.addLog(`${SK.SKILLS[id].name}: chọn nhánh ${SK.BRANCHES[b].name} (${SK.BRANCHES[b].text}).`, 'good')
+      return true
+    },
+
     equipSkill(id, slot) {
       if (!this.skills.owned[id] || slot < 0 || slot >= this.skillSlots || !SK.canEquip(id, this.realmIdx, this.path)) return false
       const prev = this.skills.slots.indexOf(id)
@@ -940,6 +961,45 @@ export const useGameStore = defineStore('game', {
     },
 
     // ------------------------------------------------------------
+    // Pháp Bảo (thần thông kích hoạt trong trận)
+    // ------------------------------------------------------------
+    /** Luyện hoá pháp bảo mới bằng mảnh; tự gắn vào ô trống đầu tiên đã mở. */
+    learnTreasure(id) {
+      const frag = TR.treasureFragmentId(id)
+      if (!TR.TREASURES[id] || this.treasures.owned[id] || this.itemCount(frag) < TR.TREASURE_LEARN_COST) return false
+      this.removeItem(frag, TR.TREASURE_LEARN_COST)
+      this.treasures.owned[id] = 1
+      const free = this.treasures.slots.findIndex((x, i) => i < this.treasureSlots && !x)
+      if (free >= 0) this.treasures.slots[free] = id
+      this.addLog(`Luyện hoá pháp bảo ${TR.TREASURES[id].name}!`, 'event')
+      return true
+    },
+
+    /** Nâng phẩm pháp bảo bằng mảnh cùng loại. */
+    upgradeTreasure(id) {
+      const tier = this.treasures.owned[id]
+      if (!tier || tier >= TR.TREASURE_MAX_TIER) return false
+      const cost = TR.treasureUpgradeCost(tier)
+      if (this.itemCount(TR.treasureFragmentId(id)) < cost) return false
+      this.removeItem(TR.treasureFragmentId(id), cost)
+      this.treasures.owned[id] = tier + 1
+      this.addLog(`${TR.TREASURES[id].name} lên phẩm ${TR.TREASURE_TIERS[tier].name}.`, 'event')
+      return true
+    },
+
+    equipTreasure(id, slot) {
+      if (!this.treasures.owned[id] || slot < 0 || slot >= this.treasureSlots) return false
+      const prev = this.treasures.slots.indexOf(id)
+      if (prev >= 0) this.treasures.slots[prev] = null
+      this.treasures.slots[slot] = id
+      return true
+    },
+
+    unequipTreasure(slot) {
+      this.treasures.slots[slot] = null
+    },
+
+    // ------------------------------------------------------------
     // Công pháp (bị động)
     // ------------------------------------------------------------
     /** Học công pháp mới bằng tàn quyển; cộng chỉ số ngay. */
@@ -949,6 +1009,14 @@ export const useGameStore = defineStore('game', {
       this.removeItem(frag, AR.ART_LEARN_COST)
       this.arts.owned[id] = 1
       this.addLog(`Lĩnh ngộ công pháp ${AR.ARTS[id].name}!`, 'good')
+      return true
+    },
+
+    /** Ngộ đạo: công pháp đạt cấp tối đa chọn một trong ba đặc tính được chào (chọn lại được bằng cách chọn mục khác). */
+    awakenArt(id, key) {
+      if (!AR.ARTS[id] || (this.arts.owned[id] ?? 0) < AR.ART_MAX_LEVEL || !AR.awakenOffer(id).includes(key)) return false
+      this.arts.awaken[id] = key
+      this.addLog(`${AR.ARTS[id].name} ngộ đạo: ${AR.AWAKEN_POOL[AR.ARTS[id].sys][key].name}.`, 'good')
       return true
     },
 
@@ -1076,14 +1144,15 @@ export const useGameStore = defineStore('game', {
       return true
     },
 
-    /** Đổi lại toàn bộ dòng phụ của một món (tốn linh thạch; không áp dụng cho đồ Phàm hay Huyền Thoại). */
-    rerollAffixes(uid) {
+    /** Đổi lại dòng phụ của một món (tốn linh thạch, khoá được một dòng với giá gấp đôi; không áp dụng cho đồ Phàm hay Huyền Thoại). */
+    rerollAffixes(uid, lock = -1) {
       const item = this.gear.bag.find((it) => it.uid === uid)
       if (!item || item.legend || EQ.affixCount(item.rarity) === 0) return false
-      const cost = EQ.rerollCost(item)
+      const locked = lock >= 0 && !!item.affixes[lock]
+      const cost = EQ.rerollCost(item, locked)
       if (this.spiritStones.lt(cost)) return false
       this.spiritStones = this.spiritStones.sub(cost)
-      EQ.rerollItemAffixes(item)
+      EQ.rerollItemAffixes(item, Math.random, locked ? lock : -1)
       this.addLog(`Đổi dòng phụ ${EQ.itemFullName(item)}: ${EQ.affixText(item)} (-${fmt(cost)} linh thạch).`, 'good')
       return true
     },

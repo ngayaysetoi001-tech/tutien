@@ -2,6 +2,7 @@
 // Icon.vue gộp GLYPHS vào PATHS nên dùng chung một thẻ <Icon name="..." />.
 
 export const GLYPHS = {
+  robe: '<path d="M8 3l-4 4 2.500 3L8 9v12h8V9l1.500 1L20 7l-4-4-2 2h-4z"/><path d="M12 5v16"/>',
   dagger: '<path d="M5 19l9-9"/><path d="M13 7l4-4 4 4-4 4z"/><path d="M4 20.500l2.500-.5L5 17.500z"/>',
   cloudbolt: '<path d="M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.500 1.500A3.500 3.500 0 0 1 17 15z"/><path d="M12.500 12l-2 3.500h3l-2 3.500"/>',
   cracks: '<path d="M3 8h6l2 4 2-3 3 5 5-1"/><path d="M11 12l-1 7M16 14l1 5"/>',
@@ -64,6 +65,10 @@ export const ART_GLYPH = {
 export const PET_GLYPH = {
   tieu_ho: 'paw', quy_giap: 'shell', linh_hac: 'wing', kim_thiem: 'claw', van_ho: 'mask', bang_ly: 'snow', thanh_long: 'wave', hoa_phuong: 'flame',
 }
+export const TREASURE_GLYPH = {
+  can_khon_dinh: 'refine', that_tinh_kiem: 'sword', ho_than_phu: 'scroll', tu_linh_binh: 'drop',
+  phong_loi_phien: 'wind', huyet_sat_chau: 'gem', hon_nguyen_chung: 'shield', thien_co_la_ban: 'target',
+}
 export const PATH_GLYPH = { kiem: 'sword', the: 'shield', phap: 'burst', dan: 'pill', tran: 'target' }
 export const GROUP_GLYPH = { herbs: 'herb', ores: 'stone', scrolls: 'scroll', pills: 'pill' }
 
@@ -72,7 +77,8 @@ export function itemGlyph(id, group) {
   if (id.startsWith('qk_')) return SKILL_GLYPH[id.slice(3)] ?? 'scroll'
   if (id.startsWith('cp_')) return ART_GLYPH[id.slice(3)] ?? 'scroll'
   if (id.startsWith('ln_')) return PET_GLYPH[id.slice(3)] ?? 'scroll'
+  if (id.startsWith('pb_')) return TREASURE_GLYPH[id.slice(3)] ?? 'scroll'
   return GROUP_GLYPH[group] ?? 'gem'
 }
 export const GROUP_COLOR = { herbs: '#5fd36a', ores: '#9fb4d8', scrolls: '#e8d9a8', pills: '#f6c85f' }
-export const SLOT_GLYPH = { weapon: 'sword', armor: 'shield', trinket: 'ring' }
+export const SLOT_GLYPH = { weapon: 'sword', armor: 'robe', helm: 'helm', boots: 'boots', ring: 'ring', jade: 'gem' }
