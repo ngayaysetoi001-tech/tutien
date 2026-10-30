@@ -87,3 +87,6 @@ export function itemGlyph(id, group) {
 }
 export const GROUP_COLOR = { herbs: '#5fd36a', ores: '#9fb4d8', scrolls: '#e8d9a8', pills: '#f6c85f' }
 export const SLOT_GLYPH = { weapon: 'sword', armor: 'robe', helm: 'helm', boots: 'boots', ring: 'ring', jade: 'gem' }
+
+/** Tranh biểu tượng của nhóm ở thanh dưới (public/nav/<id>.png). */
+export const navImg = (id) => `${import.meta.env.BASE_URL}nav/${id}.png`

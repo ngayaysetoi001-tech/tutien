@@ -6,7 +6,7 @@ import { useUiStore } from '../stores/uiStore.js'
 import { computed, onMounted, watch } from 'vue'
 import { groupOf, groupScreens, unlockedGroups, unlockedScreens } from '../game/screens.js'
 import { screenWork } from './badges.js'
-import Icon from './Icon.vue'
+import { navImg } from './glyphs.js'
 
 const game = useGameStore()
 const ui = useUiStore()
@@ -40,7 +40,7 @@ const groupBadge = (id) => groupScreens(id, game).some((s) => s.id !== ui.tab &&
 <template>
   <nav class="safe-bottom panel mx-2 mb-1 grid shrink-0 gap-0.5 p-0.5" :style="{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }">
     <button v-for="gr in groups" :key="gr.id" class="nav-btn" :data-active="currentGroup === gr.id" @click="openGroup(gr.id)">
-      <Icon :name="gr.icon" :size="22" />
+      <img :src="navImg(gr.id)" alt="" class="nav-img" draggable="false" />
       <span class="leading-none">{{ gr.label }}</span>
       <span
         v-if="groupBadge(gr.id)"
