@@ -13,7 +13,7 @@ import { STREAK_DAYS, nextRewardDay } from '../../game/daily.js'
 import { QUEST_TEMPLATES } from '../../game/quests.js'
 import { REALMS, STAGES } from '../../game/constants.js'
 import { screenUnlocked } from '../../game/screens.js'
-import { PATH_GLYPH } from '../glyphs.js'
+import { PATH_GLYPH, gearImg, navImg, skillImg } from '../glyphs.js'
 import { TREES } from '../../game/skilltree.js'
 import Icon from '../Icon.vue'
 import BottomSheet from '../BottomSheet.vue'
@@ -28,6 +28,7 @@ const backupHidden = ref(false) // ẩn nhắc sao lưu đến khi tải lại t
 const sheet = ref(null) // 'daily' | 'talent' | 'path' | 'challenge' | 'rates'
 const learned = computed(() => Object.keys(game.skills.owned).length)
 const worn = computed(() => game.equippedItems.filter(Boolean).length)
+const elColor = computed(() => ELEMENTS[game.element].css)
 
 const statRows = computed(() => [
   { label: 'Khí huyết', icon: 'heart', value: game.combat.hp, color: 'text-cinnabar-400' },
@@ -102,18 +103,24 @@ function pickPath(id) {
 <template>
   <div class="space-y-3">
     <!-- Nhân vật -->
-    <div class="flex items-center gap-2 px-0.5">
-      <div class="min-w-0 flex-1">
-        <div class="truncate font-bold text-white">{{ game.name }}</div>
-        <div class="truncate text-xs text-slate-400">{{ game.spiritRoot.name }} ×{{ game.spiritRoot.mult }}</div>
+    <div class="hero flex items-center gap-3 rounded-xl border border-ink-600 px-3 py-2.5" :style="{ '--c': elColor }">
+      <div class="hero__portrait">
+        <img :src="navImg('tuluyen')" alt="" draggable="false" />
       </div>
-      <span
-        class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold"
-        :style="{ color: ELEMENTS[game.element].css, borderColor: ELEMENTS[game.element].css + '88' }"
-      >
-        Hệ {{ ELEMENTS[game.element].name }}
-        <span class="font-normal opacity-80">khắc {{ ELEMENTS[BEAT_TARGET[game.element]].name }}</span>
-      </span>
+      <div class="min-w-0 flex-1">
+        <div class="truncate font-serif text-lg font-bold leading-tight text-white">{{ game.name }}</div>
+        <div class="truncate text-xs text-slate-400">{{ game.spiritRoot.name }} ×{{ game.spiritRoot.mult }}</div>
+        <div class="mt-1.5 flex flex-wrap gap-1 text-[11px] font-bold">
+          <span class="rounded-full border px-2 py-0.5" :style="{ color: elColor, borderColor: elColor + '88' }">
+            Hệ {{ ELEMENTS[game.element].name }}
+            <span class="font-normal opacity-80">khắc {{ ELEMENTS[BEAT_TARGET[game.element]].name }}</span>
+          </span>
+          <span v-if="game.path" class="flex items-center gap-1 rounded-full border px-2 py-0.5" :style="{ color: PATHS[game.path].css, borderColor: PATHS[game.path].css + '88' }">
+            <Icon :name="PATH_GLYPH[game.path]" :size="11" />{{ PATHS[game.path].name }}
+          </span>
+          <span v-else class="rounded-full border border-ink-600 px-2 py-0.5 font-normal text-slate-500">Chưa chọn đạo lộ</span>
+        </div>
+      </div>
     </div>
 
     <!-- Nhắc sao lưu save -->
@@ -139,7 +146,7 @@ function pickPath(id) {
 
     <!-- 4 chỉ số -->
     <div class="grid grid-cols-4 gap-1.5">
-      <div v-for="row in statRows" :key="row.label" class="flex flex-col items-center rounded-lg border border-ink-600 bg-ink-900/60 px-1 py-1.5" :title="row.label">
+      <div v-for="row in statRows" :key="row.label" class="stat flex flex-col items-center rounded-lg border border-ink-600 px-1 py-1.5" :title="row.label">
         <Icon :name="row.icon" :size="20" :class="row.color" />
         <b class="mt-0.5 text-sm leading-tight" :class="row.color">{{ fmt(row.value) }}</b>
         <span class="text-[11px] text-slate-500">{{ row.label }}</span>
@@ -173,17 +180,17 @@ function pickPath(id) {
           <span v-if="t.hot" class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-cinnabar-500 shadow-[0_0_6px_rgb(229_73_58)]"></span>
         </button>
         <button class="flex min-h-[56px] items-center gap-2 rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2 text-left transition active:scale-[0.97]" @click="ui.go('skills')">
-          <Icon name="swords" :size="24" class="text-jade-300" />
+          <img :src="skillImg('ngu_kiem')" alt="" class="h-8 w-8 rounded-full" draggable="false" />
           <span>
             <span class="block text-sm font-bold text-white">Võ Kỹ</span>
             <span class="block text-xs text-slate-400">{{ learned }}/{{ Object.keys(SKILLS).length }} · {{ game.skillSlots }} ô</span>
           </span>
         </button>
         <button class="flex min-h-[56px] items-center gap-2 rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2 text-left transition active:scale-[0.97]" @click="ui.go('gear')">
-          <Icon name="gear" :size="24" class="text-gold-300" />
+          <img :src="gearImg('weapon')" alt="" class="h-8 w-8 rounded-full" draggable="false" />
           <span>
             <span class="block text-sm font-bold text-white">Trang Bị</span>
-            <span class="block text-xs text-slate-400">{{ worn }}/3 · túi {{ game.gear.bag.length }}</span>
+            <span class="block text-xs text-slate-400">{{ worn }}/6 · túi {{ game.gear.bag.length }}</span>
           </span>
         </button>
       </div>
@@ -297,3 +304,42 @@ function pickPath(id) {
     </BottomSheet>
   </div>
 </template>
+
+<style scoped>
+.hero {
+  background:
+    radial-gradient(70% 120% at 12% 50%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%),
+    linear-gradient(180deg, rgb(22 29 46 / 0.9), rgb(10 14 25 / 0.95));
+}
+.hero__portrait {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--c) 75%, transparent);
+  background: radial-gradient(circle at 50% 35%, rgb(40 52 84 / 0.8), rgb(12 16 30 / 0.95));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c) 45%, transparent), inset 0 0 12px color-mix(in srgb, var(--c) 25%, transparent);
+  animation: hero-aura 3.2s ease-in-out infinite;
+}
+.hero__portrait img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  padding: 4px;
+}
+@keyframes hero-aura {
+  50% {
+    box-shadow: 0 0 26px color-mix(in srgb, var(--c) 70%, transparent), inset 0 0 16px color-mix(in srgb, var(--c) 40%, transparent);
+  }
+}
+.stat {
+  background: linear-gradient(180deg, rgb(30 40 64 / 0.65), rgb(10 14 25 / 0.8));
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero__portrait {
+    animation: none;
+  }
+}
+</style>
