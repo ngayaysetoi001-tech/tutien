@@ -23,6 +23,12 @@ import * as ART from './art.js'
 const HERO_ART = ['kiem', 'dao', 'the', 'phu', 'meditate']
 // Tranh yêu thú (public/monsters/<id>.png, nhìn sang trái); con nào chưa có tranh thì vẽ bằng code theo loại
 const MONSTER_HEIGHT = 112 // chiều cao hiển thị của yêu thú thường (boss nhân thêm theo size)
+// Hoạt ảnh ra đòn (public/heroes/<đạo lộ>_atk_<n>.png): số khung theo đạo lộ; chưa có thì chỉ lao tới bằng code.
+// Mỗi khung là khung 760x440, chân sát đáy (y = 428), tâm đầu ở giữa, nhân vật cao 330 (= chiều cao hiển thị HERO_HEIGHT.sword).
+const HERO_ATK = { kiem: 6 }
+const ATK_FPS = 18
+const ATK_START = 1 // bắt đầu từ khung thứ 2: sự kiện trúng đòn tới cùng lúc nên đòn phải chạm đích sớm (khung 4)
+const ATK_FRAME = { w: 760, h: 440, feet: 428, charH: 330 }
 const HERO_HEIGHT = { sword: 175, meditate: 125 } // chiều cao hiển thị (đơn vị nhân vật)
 
 // ---- Bảng màu nền trời theo đại cảnh giới: [đỉnh, giữa, chân trời] ----
@@ -102,6 +108,8 @@ export class CultivatorScene {
     this.realmIdx = 0
     this.path = null // đạo lộ: chọn tranh tư thế chiến đấu
     this.heroTex = {}
+    this.atkTex = {} // { đạo lộ: [khung] }
+    this.atkTime = -1 // giây đã phát của hoạt ảnh ra đòn (-1 = không phát)
     this.monsterTex = {}
     this.enemyId = null
     this.fill = 0
@@ -147,6 +155,9 @@ export class CultivatorScene {
   // Khởi tạo / huỷ
   // ------------------------------------------------------------------
   async init(host) {
+    // Nạp tranh trước khi gán this.app: không để khoảng chờ bất đồng bộ giữa lúc có app và lúc dựng lớp (watcher gọi setState sẽ gặp lớp chưa có)
+    await Promise.all([this.loadHeroArt(), this.loadMonsterArt()])
+    if (this.destroyed) return
     const app = new Application()
     await app.init({
       resizeTo: host,
@@ -165,9 +176,6 @@ export class CultivatorScene {
     app.canvas.style.display = 'block'
 
     this.glowTex = glowTexture()
-    await this.loadHeroArt()
-    await this.loadMonsterArt()
-    if (this.destroyed) return
     this.buildLayers()
     this.layout()
     this.setPose('meditate')
@@ -181,6 +189,15 @@ export class CultivatorScene {
   async loadHeroArt() {
     this.heroTex = {}
     const base = import.meta.env.BASE_URL
+    await Promise.all(
+      Object.entries(HERO_ATK).map(async ([path, n]) => {
+        try {
+          this.atkTex[path] = await Promise.all(Array.from({ length: n }, (_, i) => Assets.load(`${base}heroes/${path}_atk_${i}.png`)))
+        } catch {
+          /* chưa có tranh ra đòn thì bỏ qua */
+        }
+      }),
+    )
     await Promise.all(
       HERO_ART.map(async (id) => {
         try {
@@ -588,8 +605,36 @@ export class CultivatorScene {
     this.redrawHero()
   }
 
+  /** Bắt đầu phát hoạt ảnh ra đòn (nếu đạo lộ hiện tại có tranh và đang ở tư thế chiến đấu). */
+  playAttack() {
+    if (this.pose === 'sword' && this.heroArt && this.atkTex[this.path ?? 'kiem']) this.atkTime = ATK_START / ATK_FPS
+  }
+
+  /** Phát hoạt ảnh ra đòn: đổi khung theo thời gian; hết thì về tranh đứng. */
+  updateAttackAnim(dt) {
+    if (this.atkTime < 0) return
+    const frames = this.atkTex[this.path ?? 'kiem']
+    if (!frames || this.pose !== 'sword') {
+      this.atkTime = -1
+      this.redrawHero()
+      return
+    }
+    this.atkTime += dt
+    const i = Math.floor(this.atkTime * ATK_FPS)
+    if (i >= frames.length) {
+      this.atkTime = -1
+      this.redrawHero()
+      return
+    }
+    this.heroSprite.texture = frames[i]
+    this.heroSprite.anchor.set(0.5, ATK_FRAME.feet / ATK_FRAME.h)
+    this.heroSprite.scale.set(HERO_HEIGHT.sword / ATK_FRAME.charH)
+  }
+
   /** Vẽ lại thân, kiếm và mặt khi đổi tư thế / cảnh giới / vũ khí. */
   redrawHero() {
+    this.atkTime = -1
+    this.heroSprite.anchor.set(0.5, 1)
     // Có tranh: dùng sprite, ẩn hình vẽ bằng code (hào quang heroFx vẫn vẽ sau lưng)
     const tex = this.pose === 'sword' ? this.heroTex[this.path ?? 'kiem'] ?? this.heroTex.kiem : this.heroTex.meditate
     this.heroArt = !!tex
@@ -684,7 +729,10 @@ export class CultivatorScene {
       }),
       on('battle-skill', (ev) => {
         if (this.mode !== 'battle') return
-        if (ev.kind === 'damage') this.playerLunge = 1
+        if (ev.kind === 'damage') {
+          this.playerLunge = 1
+          this.playAttack()
+        }
         this.spawnText(ev.name, this.px, this.groundY - 165 * this.u, css(ev.color), 16)
         this.vfx.castSkill(ev)
       }),
@@ -735,6 +783,7 @@ export class CultivatorScene {
     if (target === 'enemy') {
       if (!skill) {
         this.playerLunge = 1
+        this.playAttack()
         this.vfx.slashArc(!!crit)
       }
       this.foxHop = 1
@@ -1184,6 +1233,7 @@ export class CultivatorScene {
         Math.sin(t * 3) * 0.05 + (this.storm > 0.5 ? Math.sin(t * 17) * 0.015 : 0) + Math.sin(Math.PI * this.playerLunge) * 1.2
     }
     // Chớp đỏ khi trúng lôi / thất bại
+    this.updateAttackAnim(dt)
     this.hitFlash = Math.max(0, this.hitFlash - dt * 2.5)
     this.char.tint = this.hitFlash > 0 ? mix(0xffffff, 0xff6a5a, this.hitFlash) : 0xffffff
 
