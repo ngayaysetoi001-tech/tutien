@@ -8,7 +8,7 @@ import {
 } from '../../game/equipment.js'
 import { fmt } from '../../game/format.js'
 import { automationById, automationUnlocked } from '../../game/automation.js'
-import { SLOT_GLYPH, gearImg } from '../glyphs.js'
+import { SLOT_GLYPH, gearImg, navImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -30,6 +30,10 @@ const sortedBag = computed(() =>
     ),
 )
 const equipped = computed(() => SLOT_IDS.map((slot, i) => [slot, game.equippedItems[i]]))
+// Bố cục búp bê: cột trái (mũ, giáp, giày), cột phải (vũ khí, nhẫn, ngọc bội), nhân vật ở giữa
+const DOLL_LEFT = ['helm', 'armor', 'boots']
+const DOLL_RIGHT = ['weapon', 'ring', 'jade']
+const worn = (slot) => game.equippedItems[SLOT_IDS.indexOf(slot)] ?? null
 const canEnhance = (it) => it.enh < MAX_ENHANCE && game.spiritStones.gte(enhanceCost(it))
 const canReroll = (it) => !it.legend && affixCount(it.rarity) > 0
 const legendText = (it) => LEGENDS[it.legend]?.text
@@ -66,19 +70,38 @@ const open = computed(() => !!item.value)
 
     <div>
       <div class="mb-1.5 text-sm font-bold text-gold-300">Đang mặc</div>
-      <div class="grid grid-cols-3 gap-3">
-        <ItemIcon
-          v-for="[slot, it] in equipped"
-          :key="slot"
-          :src="it ? gearImg(slot) : ''"
-          :glyph="SLOT_GLYPH[slot]"
-          :color="it ? itemColor(it) : '#475569'"
-          :frame="it ? itemColor(it) : ''"
-          :dim="!it"
-          :label="it ? SLOTS[slot] : SLOTS[slot] + ' (trống)'"
-          :badge="it && it.enh ? '+' + it.enh : ''"
-          @click="it && ((sel = it.uid), (lockIdx = -1))"
-        />
+      <div class="doll grid grid-cols-[1fr_1.15fr_1fr] items-center gap-2 rounded-xl border border-ink-600 px-2 py-3">
+        <div class="flex flex-col gap-2.5">
+          <ItemIcon
+            v-for="slot in DOLL_LEFT"
+            :key="slot"
+            :src="worn(slot) ? gearImg(slot) : ''"
+            :glyph="SLOT_GLYPH[slot]"
+            :color="worn(slot) ? itemColor(worn(slot)) : '#475569'"
+            :frame="worn(slot) ? itemColor(worn(slot)) : ''"
+            :dim="!worn(slot)"
+            :label="worn(slot) ? SLOTS[slot] : SLOTS[slot] + ' (trống)'"
+            :badge="worn(slot) && worn(slot).enh ? '+' + worn(slot).enh : ''"
+            @click="worn(slot) && ((sel = worn(slot).uid), (lockIdx = -1))"
+          />
+        </div>
+        <div class="doll__figure">
+          <img :src="navImg('tuluyen')" alt="" draggable="false" />
+        </div>
+        <div class="flex flex-col gap-2.5">
+          <ItemIcon
+            v-for="slot in DOLL_RIGHT"
+            :key="slot"
+            :src="worn(slot) ? gearImg(slot) : ''"
+            :glyph="SLOT_GLYPH[slot]"
+            :color="worn(slot) ? itemColor(worn(slot)) : '#475569'"
+            :frame="worn(slot) ? itemColor(worn(slot)) : ''"
+            :dim="!worn(slot)"
+            :label="worn(slot) ? SLOTS[slot] : SLOTS[slot] + ' (trống)'"
+            :badge="worn(slot) && worn(slot).enh ? '+' + worn(slot).enh : ''"
+            @click="worn(slot) && ((sel = worn(slot).uid), (lockIdx = -1))"
+          />
+        </div>
       </div>
     </div>
 
@@ -106,6 +129,7 @@ const open = computed(() => !!item.value)
         </div>
         <button class="btn-ghost mt-1.5 min-h-[40px] w-full text-xs" :disabled="salvageNow === 0" @click="game.autoSalvage()">Phân giải ngay {{ salvageNow }} món</button>
       </template>
+
     </div>
 
     <div>
@@ -191,3 +215,31 @@ const open = computed(() => !!item.value)
     </BottomSheet>
   </div>
 </template>
+
+<style scoped>
+.doll {
+  background:
+    radial-gradient(60% 45% at 50% 50%, rgb(246 200 95 / 0.18), transparent 70%),
+    linear-gradient(180deg, rgb(22 29 46 / 0.9), rgb(10 14 25 / 0.95));
+}
+.doll__figure {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.doll__figure::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgb(246 200 95 / 0.3);
+  box-shadow: 0 0 22px rgb(246 200 95 / 0.25), inset 0 0 18px rgb(246 200 95 / 0.15);
+}
+.doll__figure img {
+  position: relative;
+  width: 88%;
+  filter: drop-shadow(0 0 10px rgb(95 211 166 / 0.55));
+}
+</style>

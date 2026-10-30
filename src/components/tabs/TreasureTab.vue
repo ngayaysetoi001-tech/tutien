@@ -67,18 +67,24 @@ function equip(id) {
         <span class="text-slate-500">cùng hệ võ kỹ: +{{ Math.round(TREASURE_SYNERGY * 100) }}%</span>
       </div>
       <div class="grid grid-cols-4 gap-1.5">
-        <ItemIcon
+        <div
           v-for="i in MAX_TREASURE_SLOTS"
           :key="i"
-          :src="game.treasures.slots[i - 1] ? treasureImg(game.treasures.slots[i - 1]) : ''"
-          :glyph="game.treasures.slots[i - 1] ? TREASURE_GLYPH[game.treasures.slots[i - 1]] : 'dots'"
-          :color="game.treasures.slots[i - 1] ? elCss(TREASURES[game.treasures.slots[i - 1]].element) : '#475569'"
-          :tint="game.treasures.slots[i - 1] ? elCss(TREASURES[game.treasures.slots[i - 1]].element) : ''"
-          :frame="game.treasures.slots[i - 1] ? tierColor(game.treasures.slots[i - 1]) : ''"
-          :locked="i - 1 >= game.treasureSlots"
-          :dim="!game.treasures.slots[i - 1]"
-          @click="game.treasures.slots[i - 1] && (sel = game.treasures.slots[i - 1])"
-        />
+          class="altar"
+          :class="{ 'altar--on': game.treasures.slots[i - 1] }"
+          :style="game.treasures.slots[i - 1] ? { '--c': elCss(TREASURES[game.treasures.slots[i - 1]].element) } : {}"
+        >
+          <ItemIcon
+            :src="game.treasures.slots[i - 1] ? treasureImg(game.treasures.slots[i - 1]) : ''"
+            :glyph="game.treasures.slots[i - 1] ? TREASURE_GLYPH[game.treasures.slots[i - 1]] : 'dots'"
+            :color="game.treasures.slots[i - 1] ? elCss(TREASURES[game.treasures.slots[i - 1]].element) : '#475569'"
+            :tint="game.treasures.slots[i - 1] ? elCss(TREASURES[game.treasures.slots[i - 1]].element) : ''"
+            :frame="game.treasures.slots[i - 1] ? tierColor(game.treasures.slots[i - 1]) : ''"
+            :locked="i - 1 >= game.treasureSlots"
+            :dim="!game.treasures.slots[i - 1]"
+            @click="game.treasures.slots[i - 1] && (sel = game.treasures.slots[i - 1])"
+          />
+        </div>
       </div>
       <div v-if="game.treasureSlots < MAX_TREASURE_SLOTS" class="mt-1 text-[11px] text-slate-500">Ô kế tiếp mở ở: {{ slotHint(game.treasureSlots) }}</div>
     </div>
@@ -111,6 +117,7 @@ function equip(id) {
             <div class="truncate text-sm font-bold" :style="{ color: elCss(TREASURES[id].element) }">{{ TREASURES[id].name }}</div>
             <div class="truncate text-xs text-slate-400">
               <template v-if="s.key === 'locked'">Ải {{ TREASURES[id].minAi }}</template>
+
               <template v-else>{{ treasureDesc(id, tier(id) || 1, synergy(id)) }}</template>
             </div>
           </div>
@@ -157,3 +164,35 @@ function equip(id) {
     </BottomSheet>
   </div>
 </template>
+
+<style scoped>
+/* Bệ thờ: đế đá bên dưới mỗi ô, có pháp bảo thì toả ánh sáng theo hệ lên trên */
+.altar {
+  --c: #475569;
+  position: relative;
+  padding-bottom: 12px;
+}
+.altar::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 2px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, rgb(120 130 160 / 0.55), rgb(40 50 75 / 0.9));
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.6);
+}
+.altar--on::after {
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--c) 80%, #fff), color-mix(in srgb, var(--c) 40%, #000));
+  box-shadow: 0 0 12px var(--c);
+}
+.altar--on::before {
+  content: '';
+  position: absolute;
+  inset: -4px 18% 6px;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--c) 40%, transparent), transparent 85%);
+  filter: blur(5px);
+  pointer-events: none;
+}
+</style>

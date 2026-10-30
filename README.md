@@ -262,6 +262,7 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 - **Lưới biểu tượng + bảng trượt**: Võ Kỹ, Công Pháp, Linh Thú, Trang Bị, Túi Đồ hiển thị bằng ô icon (khung theo độ hiếm, màu theo ngũ hành, huy hiệu cấp, thanh tiến độ tàn quyển, chấm đỏ khi làm được); bấm ô để mở chi tiết và nút hành động.
 - **Nhân Vật dạng bảng điều khiển**: chip chỉ số, hàng tốc độ, ô "Việc cần làm" (điểm danh, thiên phú, đạo lộ, thử thách) mở bảng trượt.
 - **Phong cách chung**: phông Noto Serif gói sẵn (offline vẫn đẹp, có tiếng Việt), khung icon phát sáng theo màu độ hiếm/hệ (Huyền Thoại nhấp nháy, tắt khi bật giảm chuyển động), panel nền sâu hơn, thanh nắm ở bảng trượt, rung nhẹ khi bấm nút (bật/tắt trong Cài Đặt).
+- **Bố cục riêng từng màn**: Trang Bị dạng búp bê (6 ô quanh nhân vật), Công Pháp có 4 cột cộng hưởng đầy dần với vạch mốc 5/12/20, Pháp Bảo gắn trên bệ thờ phát sáng theo hệ, Linh Thú ra trận là thẻ chân dung. Tranh vẽ tay nằm ở `public/{nav,skills,arts,pets,treasures,gear,items,banners}`; tranh nền mờ theo nhóm ở `public/banners`.
 - Bộ glyph vẽ bằng code nằm ở `src/components/glyphs.js` (thêm icon: sửa `GLYPHS` và bảng id→glyph). Chỉ giao diện, không đổi cân bằng.
 
 ## Trang Bị, Pháp Bảo, Võ Kỹ, Công Pháp (làm lại)

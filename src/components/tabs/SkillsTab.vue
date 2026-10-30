@@ -135,6 +135,7 @@ const bonusLines = computed(() => BONUS_LABELS.filter(([key]) => game.artBonus[k
 // Công Pháp: tổng cấp từng hệ và mốc cộng hưởng
 const sysLv = computed(() => systemLevels(game.arts.owned))
 const resText = (sys, i) => perkText(RESONANCE[sys][i])
+const PILLAR_MAX = RESONANCE_STEPS[RESONANCE_STEPS.length - 1]
 const nextStep = (sys) => RESONANCE_STEPS.find((n) => sysLv.value[sys] < n) ?? null
 const awakeKey = (id) => game.arts.awaken[id] ?? null
 const sheetDef = computed(() => (sel.value ? k.value.defs[sel.value] : null))
@@ -161,18 +162,27 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
     <div v-if="k.passive" class="sticky top-0 z-10 -mx-0.5 rounded-lg border border-ink-600 bg-ink-900 px-2.5 py-2">
       <div class="text-xs font-bold text-gold-300">Đang cộng cho nhân vật</div>
       <div class="mt-0.5 text-sm text-jade-300">{{ bonusLines.length ? bonusLines.join(' · ') : 'Học công pháp để cộng chỉ số, không cần gắn.' }}</div>
-      <div class="mt-1.5 grid grid-cols-4 gap-1">
+      <div class="mt-1.5 grid grid-cols-4 gap-1.5">
         <button
           v-for="sys in SYSTEM_IDS"
           :key="sys"
-          class="rounded-lg border px-1 py-1 text-center"
+          class="flex flex-col items-center rounded-lg border px-1 pb-1 pt-1.5"
           :class="sysFilter === sys ? 'bg-ink-800' : 'bg-ink-900/60'"
           :style="{ borderColor: sysFilter === sys ? SYSTEMS[sys].css : 'rgb(75 90 125 / 0.45)' }"
           @click="sysFilter = sysFilter === sys ? '' : sys"
         >
-          <div class="text-xs font-bold" :style="{ color: SYSTEMS[sys].css }">{{ SYSTEMS[sys].name }}</div>
+          <div class="pillar" :style="{ '--c': SYSTEMS[sys].css }">
+            <i class="pillar__fill" :style="{ height: Math.min(100, (sysLv[sys] / PILLAR_MAX) * 100) + '%' }"></i>
+            <b
+              v-for="n in RESONANCE_STEPS"
+              :key="n"
+              class="pillar__mark"
+              :class="{ on: sysLv[sys] >= n }"
+              :style="{ bottom: (n / PILLAR_MAX) * 100 + '%' }"
+            ></b>
+          </div>
+          <div class="mt-1 text-xs font-bold" :style="{ color: SYSTEMS[sys].css }">{{ SYSTEMS[sys].name }}</div>
           <div class="text-[11px] text-slate-300">{{ sysLv[sys] }}<template v-if="nextStep(sys)">/{{ nextStep(sys) }}</template></div>
-          <div class="mt-0.5 flex justify-center gap-0.5"><i v-for="n in 3" :key="n" class="h-1.5 w-3 rounded-sm" :style="{ background: n <= resonanceTier(sysLv[sys]) ? SYSTEMS[sys].css : '#334155' }"></i></div>
         </button>
       </div>
       <p class="mt-1 text-[11px] text-slate-500">Tổng cấp một hệ đạt {{ RESONANCE_STEPS.join(' / ') }} thì mở cộng hưởng. Bấm hệ để lọc.</p>
@@ -185,7 +195,32 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
         <button v-if="sub === 'skills'" class="min-h-[32px] rounded-full border border-ink-600 px-3 font-bold text-slate-300" @click="game.autoEquipSkills()">Gắn tốt nhất</button>
         <span v-if="sub === 'pets'" class="text-slate-500">cùng hệ: +25%</span>
       </div>
-      <div class="grid gap-1.5" :class="sub === 'pets' ? 'grid-cols-3' : 'grid-cols-5'">
+      <div v-if="sub === 'pets'" class="grid grid-cols-2 gap-2">
+        <button
+          v-for="i in k.maxSlots"
+          :key="i"
+          class="pet-card"
+          :class="{ 'pet-card--on': k.slots()[i - 1] }"
+          :style="k.slots()[i - 1] ? { '--c': elCss(k.defs[k.slots()[i - 1]].element) } : {}"
+          :disabled="i - 1 >= k.slotCount() || !k.slots()[i - 1]"
+          @click="k.slots()[i - 1] && (sel = k.slots()[i - 1])"
+        >
+          <template v-if="i - 1 >= k.slotCount()">
+            <Icon name="lock" :size="22" class="text-slate-500" />
+            <span class="text-[11px] text-slate-500">Mở ở {{ k.slotHint(i - 1) }}</span>
+          </template>
+          <template v-else-if="k.slots()[i - 1]">
+            <img :src="petImg(k.slots()[i - 1])" alt="" class="pet-card__img" draggable="false" />
+            <b class="text-sm" :style="{ color: elCss(k.defs[k.slots()[i - 1]].element) }">{{ k.defs[k.slots()[i - 1]].name }}</b>
+            <span class="text-[11px] text-slate-400">Cấp {{ k.owned()[k.slots()[i - 1]] }}/{{ k.maxLevel }}</span>
+          </template>
+          <template v-else>
+            <Icon name="paw" :size="26" class="text-slate-600" />
+            <span class="text-[11px] text-slate-500">Ô trống</span>
+          </template>
+        </button>
+      </div>
+      <div v-else class="grid grid-cols-5 gap-1.5">
         <ItemIcon
           v-for="i in k.maxSlots"
           :key="i"
@@ -343,3 +378,57 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
     </BottomSheet>
   </div>
 </template>
+
+<style scoped>
+/* Cột cộng hưởng của Công Pháp: đầy dần theo tổng cấp, vạch sáng ở các mốc cộng hưởng */
+.pillar {
+  position: relative;
+  width: 22px;
+  height: 64px;
+  border-radius: 6px 6px 3px 3px;
+  border: 1px solid color-mix(in srgb, var(--c) 45%, #334155);
+  background: rgb(10 14 25 / 0.9);
+  overflow: hidden;
+}
+.pillar__fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 95%, #fff), color-mix(in srgb, var(--c) 55%, #000));
+  box-shadow: 0 0 10px var(--c);
+  transition: height 0.4s;
+}
+.pillar__mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgb(148 163 184 / 0.55);
+}
+.pillar__mark.on {
+  background: #fff;
+  box-shadow: 0 0 5px #fff;
+}
+/* Thẻ linh thú ra trận */
+.pet-card {
+  --c: #475569;
+  display: flex;
+  min-height: 118px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 12px;
+  border: 1.5px dashed rgb(75 90 125 / 0.6);
+  background: rgb(10 14 25 / 0.55);
+}
+.pet-card--on {
+  border: 1.5px solid color-mix(in srgb, var(--c) 70%, transparent);
+  background: radial-gradient(80% 70% at 50% 35%, color-mix(in srgb, var(--c) 28%, transparent), rgb(10 14 25 / 0.9));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c) 30%, transparent);
+}
+.pet-card__img {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+}
+</style>
