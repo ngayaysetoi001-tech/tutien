@@ -258,6 +258,7 @@ export const useGameStore = defineStore('game', {
       return {
         crit: p.crit + g.crit + e.crit, critMult: p.critMult + g.critMult, skillDmg: p.skillDmg + g.skillDmg + 0.05 * (this.reincarnation.upgrades.vo_ky ?? 0),
         lifesteal: p.lifesteal + g.lifesteal, cd: Math.min(0.5, p.cd + g.cd + e.cd), extra: g.extra, thorns: g.thorns + e.thorns,
+        bossDmg: g.bossDmg, killHeal: g.killHeal, killShield: g.killShield, ignite: g.ignite, hitCd: g.hitCd, // dòng đặc tính có tên
       }
     },
     /** Mảng 6 phần tử theo thứ tự EQ.SLOT_IDS (weapon, armor, helm, boots, ring, jade): món đồ hoặc null */
@@ -838,7 +839,8 @@ export const useGameStore = defineStore('game', {
     chooseBranch(id, b) {
       if (!SK.SKILLS[id] || (b !== 0 && b !== 1) || (this.skills.owned[id] ?? 0) < SK.SKILL_MAX_LEVEL) return false
       this.skills.branch[id] = b
-      this.addLog(`${SK.SKILLS[id].name}: chọn nhánh ${SK.BRANCHES[b].name} (${SK.BRANCHES[b].text}).`, 'good')
+      const info = SK.branchInfo(id, b)
+      this.addLog(`${SK.SKILLS[id].name}: tiến hoá ${info.name} (${info.kind}: ${info.text}).`, 'good')
       return true
     },
 

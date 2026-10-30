@@ -269,6 +269,8 @@ export const useBattleStore = defineStore('battle', {
       const e = this.enemy
       let dmg = amount
       if (skill && e.mods.includes('khang_vo_ky')) dmg = Math.max(1, Math.round(dmg * 0.7))
+      const bd = e.boss ? useGameStore().battlePerk.bossDmg : 0
+      if (bd > 0) dmg = Math.max(1, Math.round(dmg * (1 + bd))) // dòng đặc tính: sát thương lên boss
       e.hp = Math.max(0, e.hp - dmg)
       this.enemyPhase()
       return dmg
@@ -420,8 +422,11 @@ export const useBattleStore = defineStore('battle', {
       this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
       // Thất Tinh Kiếm: mỗi n đòn thường, một đòn gây thêm sát thương
+      const perk = game.battlePerk
+      if (perk.ignite > 0 && this.enemy.hp > 0 && Math.random() < perk.ignite) this.applyStatus('hoa', this.atkNow(stats)) // dòng đặc tính: gây Thiêu
       const nth = game.treasureFx.nth
       this.hitCount += 1
+      if (perk.hitCd > 0 && this.hitCount % 5 === 0) for (const id of Object.keys(this.cd)) this.cd[id] -= perk.hitCd // mỗi 5 đòn giảm hồi chiêu
       if (nth && this.hitCount % nth.n === 0 && this.enemy.hp > 0) {
         const extra = this.hurtEnemy(Math.max(1, Math.round(this.atkNow(stats) * nth.mult * (100 / (100 + this.enemyDef())) * mult)), true)
         this.lifestealFrom(extra)
@@ -551,6 +556,13 @@ export const useBattleStore = defineStore('battle', {
         game.addContribution(C.aiContribution(n, kind)) // Cống Hiến tông môn
       }
       this.run.stones = this.run.stones.add(stones)
+      // Dòng đặc tính: hạ yêu thú hồi máu / có lá chắn
+      const bp = game.battlePerk
+      if (bp.killHeal > 0) this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * bp.killHeal))
+      if (bp.killShield > 0) {
+        this.shield = Math.max(this.clock < this.shieldUntil ? this.shield : 0, Math.round(this.maxHp * bp.killShield))
+        this.shieldUntil = this.clock + 8
+      }
       // Tụ Linh Bình: hạ boss thì hồi khí huyết và thêm linh thạch
       const bk = game.treasureFx.bossKill
       if (bk > 0 && kind !== 'normal') {

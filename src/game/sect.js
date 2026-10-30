@@ -5,6 +5,7 @@
 import { SKILLS, fragmentId } from './skills.js'
 import { ARTS, artFragmentId } from './arts.js'
 import { PETS, petFragmentId } from './pets.js'
+import { TREASURES, treasureFragmentId } from './treasures.js'
 
 /** Mỗi tông môn một hệ ngũ hành và một đặc quyền (perk). Đặc quyền tăng 25% mỗi cấp bậc. */
 export const SECTS = [
@@ -69,4 +70,6 @@ export const SHOP = [
   ...Object.keys(ARTS).map((id) => ({ id: 'cp_' + id, item: artFragmentId(id), count: 1, cost: 60, rank: 2 })),
   // Linh Thú Phách: mỗi loại 120 Cống Hiến, từ Trưởng Lão
   ...Object.keys(PETS).map((id) => ({ id: 'ln_' + id, item: petFragmentId(id), count: 1, cost: 120, rank: 3 })),
+  // Mảnh Pháp Bảo: mỗi loại 150 Cống Hiến, từ Trưởng Lão
+  ...Object.keys(TREASURES).map((id) => ({ id: 'pb_' + id, item: treasureFragmentId(id), count: 1, cost: 150, rank: 3 })),
 ]

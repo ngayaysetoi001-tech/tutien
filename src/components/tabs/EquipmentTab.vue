@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import {
-  AFFIXES, BAG_LIMIT, LEGENDS, MAX_ENHANCE, SLOTS, SLOT_IDS, affixCount, affixText, enhanceCost, itemColor, itemFullName, itemStats, perkText,
+  BAG_LIMIT, LEGENDS, MAX_ENHANCE, SLOTS, SLOT_IDS, affixCount, affixLine, affixText, enhanceCost, itemColor, itemFullName, itemStats, perkText,
   rerollCost, sellValue, statsText,
 } from '../../game/equipment.js'
 import { fmt } from '../../game/format.js'
@@ -105,7 +105,7 @@ const open = computed(() => !!item.value)
               :class="lockIdx === i ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ink-600 bg-ink-900/60 text-jade-300'"
               @click="lockIdx = lockIdx === i ? -1 : i"
             >
-              <span>+{{ Math.round(a.v * 1000) / 10 }}% {{ AFFIXES[a.id].label }}</span>
+              <span>{{ affixLine(a) }}</span>
               <Icon :name="lockIdx === i ? 'lock' : 'dots'" :size="16" />
             </button>
           </div>

@@ -7,7 +7,7 @@ import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { ELEMENTS, ELEMENT_IDS } from '../../game/elements.js'
-import { BRANCHES, LEARN_COST, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, statusLine, upgradeCost } from '../../game/skills.js'
+import { BRANCHES, LEARN_COST, branchInfo, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, statusLine, upgradeCost } from '../../game/skills.js'
 import { PATHS } from '../../game/paths.js'
 import {
   ARTS, ART_LEARN_COST, ART_MAX_LEVEL, AWAKEN_POOL, RESONANCE, RESONANCE_STEPS, SYSTEMS, SYSTEM_IDS, artDesc, artFragmentId, artUpgradeCost, awakenOffer,
@@ -304,7 +304,7 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
               class="min-h-[52px] rounded-lg border px-2 py-1 text-left text-sm"
               :class="game.skills.branch[sel] === i ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ink-600 bg-ink-900/60 text-slate-300'"
               @click="game.chooseBranch(sel, i)"
-            ><b>{{ b.name }}</b><span class="block text-xs text-slate-400">{{ b.text }}</span></button>
+            ><b>{{ branchInfo(sel, i).name }}</b><span class="block text-xs text-slate-400">{{ b.name }}: {{ b.text }}</span></button>
           </div>
         </div>
         <!-- Ngộ đạo (công pháp cấp tối đa) -->

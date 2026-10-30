@@ -153,7 +153,7 @@ function onDismiss(x) {
           <span class="text-xs text-slate-400">{{ fmtDuration(MISSIONS[m].seconds) }} · ≥{{ MISSIONS[m].need }} người</span>
         </div>
         <div class="text-xs text-slate-500">
-          Thưởng: linh thạch, thảo dược<template v-if="MISSIONS[m].ore">, quặng</template><template v-if="MISSIONS[m].art">, công pháp</template><template v-if="MISSIONS[m].pet">, linh thú</template><template v-if="MISSIONS[m].skill">, võ kỹ</template>
+          Thưởng: linh thạch, thảo dược<template v-if="MISSIONS[m].ore">, quặng</template><template v-if="MISSIONS[m].art">, công pháp</template><template v-if="MISSIONS[m].pet">, linh thú</template><template v-if="MISSIONS[m].treasure">, mảnh pháp bảo</template><template v-if="MISSIONS[m].skill">, võ kỹ</template>
         </div>
         <div v-if="missionLock(m)" class="text-xs text-cinnabar-400"><Icon name="lock" :size="12" class="inline" /> {{ missionLock(m) }}</div>
         <template v-else>

@@ -4986,4 +4986,130 @@ ok('màn Pháp Bảo thuộc nhóm Hành Trang, mở khi hạ Đại Boss đầu
   assert.equal(SCR.screenUnlocked('treasure', t), true)
 })
 
+// =====================================================================
+// Mảnh Pháp Bảo từ thám hiểm / cửa hàng, tên nhánh riêng, dòng đặc tính có tên
+// =====================================================================
+const EXP = await import('../src/game/expedition.js')
+
+ok('Mảnh Pháp Bảo: bán ở cửa hàng tông môn (Trưởng Lão) và thưởng từ thám hiểm khó, đúng theo ải', () => {
+  for (const id of Object.keys(TRS.TREASURES)) {
+    const e = SECT_SHOP.find((x) => x.item === TRS.treasureFragmentId(id))
+    assert.ok(e && e.rank === 3 && e.cost >= 100, 'cửa hàng thiếu ' + id)
+  }
+  const m = EXP.MISSIONS
+  assert.ok(m.thu.treasure > 0 && m.vuc.treasure >= m.thu.treasure && !m.rung.treasure && !m.mach.treasure && !m.mo.treasure)
+  const ids = (record, mission) => EXP.missionEffects(m[mission], 24, true, { record, path: null }, Math.random).filter((fx) => fx.type === 'item' && fx.id.startsWith('pb_'))
+  assert.equal(ids(5, 'vuc').length, 0, 'ải 5: chưa pháp bảo nào mở khoá nên không có mảnh')
+  assert.equal(ids(12, 'vuc').length, 1, 'ải 12: Càn Khôn Đỉnh (ải 10) đã mở')
+})
+
+ok('Mảnh Pháp Bảo thám hiểm chỉ từ pháp bảo đã mở theo ải, thất bại thì không có', () => {
+  for (let i = 0; i < 80; i++) {
+    const fx = EXP.missionEffects(EXP.MISSIONS.vuc, 24, true, { record: 30, path: null }, Math.random).filter((f) => f.id?.startsWith('pb_'))
+    assert.equal(fx.length, 1)
+    assert.ok(TRS.TREASURES[fx[0].id.slice(3)].minAi <= 30)
+    assert.equal(fx[0].count, EXP.MISSIONS.vuc.treasure)
+  }
+  assert.equal(EXP.missionEffects(EXP.MISSIONS.vuc, 24, false, { record: 90 }).filter((f) => f.id?.startsWith('pb_')).length, 0)
+  const s = freshStore()
+  s.init()
+  s.sect.id = 'van_moc'
+  s.sect.contribution = 1000
+  s.sect.total = 100000 // đủ cấp bậc
+  const shop = SECT_SHOP.find((x) => x.item === TRS.treasureFragmentId('can_khon_dinh'))
+  assert.equal(s.buyShop(shop.id), true)
+  assert.equal(s.itemCount(TRS.treasureFragmentId('can_khon_dinh')), 1)
+})
+
+ok('mỗi võ kỹ có hai tên nhánh riêng, khác nhau và không trùng giữa các võ kỹ', () => {
+  const all = []
+  for (const id of Object.keys(SK.SKILLS)) {
+    const names = SK.BRANCH_NAMES[id]
+    assert.equal(names.length, 2, id)
+    assert.notEqual(names[0], names[1])
+    all.push(...names)
+    assert.equal(SK.branchInfo(id, 0).name, names[0])
+    assert.equal(SK.branchInfo(id, 1).kind, 'Tốc Biến')
+  }
+  assert.equal(new Set(all).size, all.length, 'tên nhánh không trùng')
+  const s = freshStore()
+  s.init()
+  s.skills.owned.liet_hoa = SK.SKILL_MAX_LEVEL
+  assert.equal(s.chooseBranch('liet_hoa', 1), true)
+  assert.ok(s.log.some((l) => l.text.includes(SK.BRANCH_NAMES.liet_hoa[1])), 'nhật ký ghi tên nhánh')
+})
+
+ok('dòng đặc tính có tên: có chữ mô tả, hợp ô, lưu / tải; không làm hỏng dòng phụ thường', () => {
+  const specials = Object.keys(EQ.AFFIXES).filter((id) => EQ.AFFIXES[id].special)
+  assert.deepEqual(specials.sort(), ['bossDmg', 'hitCd', 'ignite', 'killHeal', 'killShield'])
+  for (const id of specials) {
+    assert.ok(EQ.AFFIXES[id].slots.length >= 2)
+    const a = { id, v: EQ.AFFIXES[id].min }
+    assert.ok(EQ.affixLine(a).length > 8 && !EQ.affixLine(a).includes('undefined'))
+    assert.ok(id in EQ.ZERO_GEAR_PERK, 'thiếu khoá thưởng ' + id)
+  }
+  assert.equal(EQ.affixLine({ id: 'atk', v: 0.05 }), '+5% công kích')
+  // mỗi ô vẫn có >= 3 dòng phụ khả dĩ; đồ Tiên cho ra 3 dòng khác nhau
+  for (const slot of EQ.SLOT_IDS) {
+    const it = EQ.generateItem(slot, 3, [0, 0, 0, 1])
+    assert.equal(it.affixes.length, 3)
+    assert.equal(new Set(it.affixes.map((a) => a.id)).size, 3)
+  }
+  // thống kê: dòng đặc tính xuất hiện ở các ô cho phép
+  let seen = new Set()
+  for (let i = 0; i < 600; i++) for (const a of EQ.generateItem('weapon', 2, [0, 0, 0, 1]).affixes) seen.add(a.id)
+  assert.ok(seen.has('bossDmg') && seen.has('ignite') && !seen.has('hitCd'), 'vũ khí có bossDmg, ignite; không có hitCd')
+  // save giữ dòng đặc tính, bỏ dòng sai ô
+  const s = freshStore()
+  s.init()
+  s.addGear({ uid: 'sp1', slot: 'weapon', tier: 2, rarity: 3, enh: 0, affixes: [{ id: 'bossDmg', v: 0.1 }, { id: 'hitCd', v: 0.5 }, { id: 'atk', v: 0.05 }] })
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  const back = s2.gear.bag.find((x) => x.uid === 'sp1')
+  assert.deepEqual(back.affixes.map((a) => a.id), ['bossDmg', 'atk'], 'hitCd không hợp vũ khí nên bị loại')
+})
+
+ok('đặc tính có tên trong trận: sát thương lên boss, hồi máu / lá chắn khi hạ địch, Thiêu khi đánh thường, giảm hồi chiêu theo đòn', () => {
+  const wearAff = (s, slot, id, v) => wear(s, { uid: slot + id, slot, tier: 0, rarity: 3, enh: 0, affixes: [{ id, v }] })
+  // sát thương lên boss
+  const dmgVs = (boss, withAffix) => {
+    const x = arena()
+    if (withAffix) wearAff(x.s, 'weapon', 'bossDmg', 0.5)
+    x.b.enemy.boss = boss
+    const hp0 = x.b.enemy.hp
+    x.b.hurtEnemy(1000)
+    return hp0 - x.b.enemy.hp
+  }
+  assert.equal(dmgVs(true, false), 1000)
+  assert.equal(dmgVs(true, true), 1500, 'boss +50%')
+  assert.equal(dmgVs(false, true), 1000, 'yêu thú thường không đổi')
+  // hạ địch: hồi máu và lá chắn
+  const k = arena()
+  wearAff(k.s, 'armor', 'killHeal', 0.2)
+  wearAff(k.s, 'helm', 'killShield', 0.3)
+  k.b.hp = k.b.maxHp * 0.1
+  k.b.enemy.hp = 0
+  k.b.onKill()
+  assert.ok(k.b.hp >= k.b.maxHp * 0.3 - 1, 'hồi 20%')
+  assert.ok(k.b.shield >= k.b.maxHp * 0.3 - 1 && k.b.shieldUntil > k.b.clock, 'lá chắn 30% khí huyết')
+  // Thiêu khi đánh thường (xác suất 100%)
+  Math.random = () => 0.1
+  const f = arena()
+  wearAff(f.s, 'ring', 'ignite', 1)
+  f.b.basicAttack(f.s.combat)
+  assert.ok(f.b.hasStatus('burn'), 'đòn thường gây Thiêu')
+  Math.random = realRandom
+  // giảm hồi chiêu mỗi 5 đòn
+  const h = arena()
+  wearAff(h.s, 'boots', 'hitCd', 1)
+  h.b.cd = { ngu_kiem: h.b.clock + 10 }
+  Math.random = () => 0.5
+  for (let i = 0; i < 4; i++) h.b.basicAttack(h.s.combat)
+  assert.equal(h.b.cd.ngu_kiem, h.b.clock + 10, 'chưa đủ 5 đòn')
+  h.b.basicAttack(h.s.combat)
+  assert.ok(Math.abs(h.b.cd.ngu_kiem - (h.b.clock + 10 - 1)) < 1e-9, 'đòn thứ 5 giảm 1 giây')
+  Math.random = realRandom
+})
+
 console.log(`\nTất cả ${passed} kiểm tra đã đạt.`)

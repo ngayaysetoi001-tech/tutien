@@ -98,7 +98,18 @@ export const AFFIXES = {
   luck: { label: 'tỉ lệ rơi đồ', slots: ['helm', 'boots', 'jade', 'armor'], min: 0.05, max: 0.12 },
   exp: { label: 'tốc độ linh khí', slots: ['helm', 'jade'], min: 0.02, max: 0.05 },
 }
+// Dòng đặc tính có tên: hiệu ứng điều kiện trong trận (special), hiển thị bằng text(v) thay vì "+x% nhãn".
+const p1 = (v) => Math.round(v * 1000) / 10
+Object.assign(AFFIXES, {
+  bossDmg: { label: 'sát thương lên boss', slots: ['weapon', 'ring'], min: 0.06, max: 0.15, special: true, text: (v) => `+${p1(v)}% sát thương lên boss` },
+  killHeal: { label: 'hồi máu khi hạ địch', slots: ['armor', 'helm', 'jade'], min: 0.03, max: 0.08, special: true, text: (v) => `Hạ yêu thú: hồi ${p1(v)}% khí huyết` },
+  killShield: { label: 'lá chắn khi hạ địch', slots: ['armor', 'helm'], min: 0.06, max: 0.15, special: true, text: (v) => `Hạ yêu thú: lá chắn ${p1(v)}% khí huyết (8s)` },
+  ignite: { label: 'đòn thường gây Thiêu', slots: ['weapon', 'ring'], min: 0.08, max: 0.2, special: true, text: (v) => `${p1(v)}% đòn thường gây Thiêu` },
+  hitCd: { label: 'giảm hồi chiêu theo đòn', slots: ['boots', 'jade'], min: 0.4, max: 1, special: true, text: (v) => `Mỗi 5 đòn thường: giảm hồi chiêu ${Math.round(v * 10) / 10}s` },
+})
 export const AFFIX_IDS = Object.keys(AFFIXES)
+/** Chuỗi một dòng phụ: "+5% công kích" hoặc câu có tên của dòng đặc tính. */
+export const affixLine = (a) => (AFFIXES[a.id].text ? AFFIXES[a.id].text(a.v) : `+${p1(a.v)}% ${AFFIXES[a.id].label}`)
 export const MAX_AFFIXES = 3
 /** Số dòng phụ theo độ hiếm (Phàm 0, Linh 1, Bảo 2, Tiên 3). */
 export const affixCount = (rarity) => Math.min(MAX_AFFIXES, rarity)
@@ -141,7 +152,7 @@ export const LEGEND_COLOR = '#f472b6'
 export const LEGEND_MULT = 1.3 // chỉ số gốc nhân thêm
 
 /** Mọi khoá thưởng từ dòng phụ / bộ / huyền thoại (mặc định 0). */
-export const ZERO_GEAR_PERK = { atk: 0, hp: 0, def: 0, speed: 0, crit: 0, critMult: 0, skillDmg: 0, lifesteal: 0, cd: 0, elem: 0, luck: 0, exp: 0, extra: 0, thorns: 0 }
+export const ZERO_GEAR_PERK = { bossDmg: 0, killHeal: 0, killShield: 0, ignite: 0, hitCd: 0, atk: 0, hp: 0, def: 0, speed: 0, crit: 0, critMult: 0, skillDmg: 0, lifesteal: 0, cd: 0, elem: 0, luck: 0, exp: 0, extra: 0, thorns: 0 }
 
 /** Số món cùng phẩm cấp nhiều nhất trong các món đang mặc (để tính thưởng bộ). */
 export function setCounts(items) {
@@ -231,7 +242,7 @@ export function sumStats(items) {
 }
 
 /** Chuỗi hiển thị dòng phụ: "+5% công kích, +3% chí mạng". */
-export const affixText = (item) => (item.affixes ?? []).map((a) => `+${Math.round(a.v * 1000) / 10}% ${AFFIXES[a.id].label}`).join(', ')
+export const affixText = (item) => (item.affixes ?? []).map(affixLine).join(', ')
 
 /** Chuỗi hiển thị thưởng gộp (dùng cho bộ trang bị): "+5% khí huyết". */
 export function perkText(perk) {

@@ -68,6 +68,29 @@ export const BRANCHES = [
   { name: 'Cường Lực', text: '+30% hiệu lực', power: 1.3, cd: 1 },
   { name: 'Tốc Biến', text: '-25% hồi chiêu', power: 1, cd: 0.75 },
 ]
+/** Tên nhánh riêng của từng võ kỹ: [Cường Lực, Tốc Biến]. */
+export const BRANCH_NAMES = {
+  ngu_kiem: ['Vạn Kiếm Quy Nhất', 'Phi Kiếm Liên Hoàn'],
+  liet_hoa: ['Phần Thiên Chưởng', 'Liệt Diễm Liên Châu'],
+  huyen_bang: ['Cực Hàn Phong Tỏa', 'Băng Phách Tốc Ngưng'],
+  thanh_moc: ['Vạn Mộc Hồi Xuân', 'Xuân Phong Tái Sinh'],
+  hau_tho: ['Thái Sơn Áp Đỉnh', 'Địa Mạch Tốc Củng'],
+  phong_loi: ['Lôi Phong Cuồng Bộ', 'Thần Hành Vô Ảnh'],
+  doc_chu: ['Vạn Độc Xâm Cốt', 'Độc Vụ Tốc Phát'],
+  loi_dinh: ['Cửu Thiên Giáng Lôi', 'Lôi Quang Tốc Kích'],
+  tuyet_sat: ['Nhất Kiếm Phong Hầu', 'Sát Ý Liên Miên'],
+  huyet_thuc: ['Huyết Hải Nuốt Chửng', 'Huyết Thực Tốc Hồi'],
+  bao_nhan: ['Cuồng Long Nộ Hống', 'Nộ Khí Tụ Nhanh'],
+  phan_chan: ['Địa Chấn Phản Phệ', 'Phản Chấn Tốc Ứng'],
+  thien_ha: ['Thiên Hà Đổ Xuống', 'Ngân Hà Tốc Tụ'],
+  van_kiem: ['Vạn Kiếm Triều Tông', 'Kiếm Trận Tốc Khai'],
+  kim_than: ['Bất Diệt Kim Cương', 'Kim Thân Tốc Thành'],
+  ngu_loi: ['Ngũ Lôi Hợp Nhất', 'Lôi Pháp Tốc Triệu'],
+  dan_hoa: ['Tam Muội Chân Hỏa', 'Đan Hỏa Tốc Luyện'],
+  tran_dia: ['Địa Cực Phản Chấn', 'Trận Pháp Tốc Bố'],
+}
+/** Thông tin nhánh `b` của võ kỹ `id`: tên riêng, loại (Cường Lực / Tốc Biến) và hiệu quả. */
+export const branchInfo = (id, b) => ({ name: BRANCH_NAMES[id]?.[b] ?? BRANCHES[b].name, kind: BRANCHES[b].name, text: BRANCHES[b].text })
 export const branchPower = (b) => BRANCHES[b]?.power ?? 1
 export const branchCd = (b) => BRANCHES[b]?.cd ?? 1
 
