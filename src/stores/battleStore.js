@@ -179,7 +179,7 @@ export const useBattleStore = defineStore('battle', {
       this.slowUntil = 0 // làm chậm và độc không kéo sang yêu thú mới
       this.dotUntil = 0
       this.burnUntil = this.chillUntil = this.pierceUntil = this.dizzyUntil = 0
-      fx('battle-enemy-spawn', { name: tmpl.name, kind: tmpl.kind, color: tmpl.color, boss })
+      fx('battle-enemy-spawn', { id: this.enemy.id, name: tmpl.name, kind: tmpl.kind, color: tmpl.color, boss })
       if (n % C.AIS_PER_CHAPTER === 1 && n > game.campaign.best) {
         game.addLog(`Bước vào ${C.chapterName(n)}, chương ${C.chapterOf(n)}.`, 'event')
         if (C.themeOf(n).round === 0 && DUNGEON_FLAVOR[C.themeOf(n).dungeon.id]) game.addLog(DUNGEON_FLAVOR[C.themeOf(n).dungeon.id], 'info')

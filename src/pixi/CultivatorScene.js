@@ -14,12 +14,15 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import { on } from '../game/events.js'
 import { REALMS } from '../game/constants.js'
+import { MONSTERS } from '../game/data.js'
 import { THEMES, drawDecor } from './themes.js'
 import { Vfx } from './vfx.js'
 import * as ART from './art.js'
 
 // Tranh nhân vật (public/heroes): tư thế chiến đấu theo đạo lộ và tư thế thiền; thiếu tranh thì dùng hình vẽ bằng code
 const HERO_ART = ['kiem', 'dao', 'the', 'phu', 'meditate']
+// Tranh yêu thú (public/monsters/<id>.png, nhìn sang trái); con nào chưa có tranh thì vẽ bằng code theo loại
+const MONSTER_HEIGHT = 112 // chiều cao hiển thị của yêu thú thường (boss nhân thêm theo size)
 const HERO_HEIGHT = { sword: 175, meditate: 125 } // chiều cao hiển thị (đơn vị nhân vật)
 
 // ---- Bảng màu nền trời theo đại cảnh giới: [đỉnh, giữa, chân trời] ----
@@ -99,6 +102,8 @@ export class CultivatorScene {
     this.realmIdx = 0
     this.path = null // đạo lộ: chọn tranh tư thế chiến đấu
     this.heroTex = {}
+    this.monsterTex = {}
+    this.enemyId = null
     this.fill = 0
     this.particlesOn = true
     // Trạng thái hiệu ứng nội bộ
@@ -161,6 +166,7 @@ export class CultivatorScene {
 
     this.glowTex = glowTexture()
     await this.loadHeroArt()
+    await this.loadMonsterArt()
     if (this.destroyed) return
     this.buildLayers()
     this.layout()
@@ -179,6 +185,21 @@ export class CultivatorScene {
       HERO_ART.map(async (id) => {
         try {
           this.heroTex[id] = await Assets.load(`${base}heroes/${id}.png`)
+        } catch {
+          /* dùng hình dự phòng */
+        }
+      }),
+    )
+  }
+
+  /** Nạp tranh yêu thú; con nào thiếu file thì bỏ qua và dùng hình vẽ bằng code. */
+  async loadMonsterArt() {
+    this.monsterTex = {}
+    const base = import.meta.env.BASE_URL
+    await Promise.all(
+      Object.keys(MONSTERS).map(async (id) => {
+        try {
+          this.monsterTex[id] = await Assets.load(`${base}monsters/${id}.png`)
         } catch {
           /* dùng hình dự phòng */
         }
@@ -211,8 +232,8 @@ export class CultivatorScene {
         this.themeId = dungeonId
         this.setTheme(dungeonId)
       }
-      if (enemy && (!this.hasEnemy || this.enemyKind !== enemy.kind || this.enemyBoss !== enemy.boss)) {
-        this.spawnEnemy({ kind: enemy.kind, color: enemy.color, boss: enemy.boss })
+      if (enemy && (!this.hasEnemy || this.enemyKind !== enemy.kind || this.enemyBoss !== enemy.boss || this.enemyId !== enemy.id)) {
+        this.spawnEnemy({ id: enemy.id, kind: enemy.kind, color: enemy.color, boss: enemy.boss })
         this.enemyAppear = 1
       }
     } else if (this.mode === 'battle') {
@@ -275,6 +296,9 @@ export class CultivatorScene {
     this.enemyLayer = new Container()
     this.enemyGlow = new Sprite(this.glowTex) // quầng đỏ sau lưng boss
     this.enemyGfx = new Graphics()
+    this.enemySprite = new Sprite() // tranh yêu thú (thay cho enemyGfx khi có tranh)
+    this.enemySprite.anchor.set(0.5, 1)
+    this.enemySprite.visible = false
     this.textLayer = new Container() // số sát thương bay lên
     this.auraLayer = new Container()
     this.char = new Container()
@@ -311,7 +335,7 @@ export class CultivatorScene {
     this.enemyGlow.tint = 0xff3030
     this.enemyGlow.position.set(0, -50)
     this.enemyGlow.scale.set(1.8)
-    this.enemyLayer.addChild(this.enemyGlow, this.enemyGfx)
+    this.enemyLayer.addChild(this.enemyGlow, this.enemyGfx, this.enemySprite)
     this.enemyLayer.visible = false
     this.world.addChild(
       this.skySprite,
@@ -691,7 +715,8 @@ export class CultivatorScene {
   // ------------------------------------------------------------------
   // Yêu thú & số sát thương (chế độ chiến đấu)
   // ------------------------------------------------------------------
-  spawnEnemy({ kind, color, boss }) {
+  spawnEnemy({ id, kind, color, boss }) {
+    this.enemyId = id ?? null
     this.enemyKind = kind
     this.enemyBoss = boss
     this.enemyColor = color
@@ -752,8 +777,21 @@ export class CultivatorScene {
     this.enemyLunge = Math.max(0, this.enemyLunge - dt * 3)
     this.enemyHit = Math.max(0, this.enemyHit - dt * 4)
     if (!this.enemyLayer.visible) return
-    this.enemyGfx.clear()
-    ART.drawEnemy(this.enemyGfx, this.enemyKind, this.enemyColor ?? 0xffffff, this.enemyBoss, t, this.enemyLunge)
+    const tex = this.monsterTex[this.enemyId]
+    if (tex) {
+      // Tranh nhìn sang trái; lớp enemyLayer đã lật ngang nên lật lại để mặt hướng về nhân vật. Nhún nhẹ và nghiêng khi tấn công
+      this.enemyGfx.visible = false
+      this.enemySprite.visible = true
+      if (this.enemySprite.texture !== tex) this.enemySprite.texture = tex
+      const k0 = MONSTER_HEIGHT / tex.height
+      this.enemySprite.scale.set(-k0, k0 * (1 + 0.025 * Math.sin(t * 3 + 1)))
+      this.enemySprite.rotation = -Math.sin(Math.PI * this.enemyLunge) * 0.12
+    } else {
+      this.enemySprite.visible = false
+      this.enemyGfx.visible = true
+      this.enemyGfx.clear()
+      ART.drawEnemy(this.enemyGfx, this.enemyKind, this.enemyColor ?? 0xffffff, this.enemyBoss, t, this.enemyLunge)
+    }
     const size = (this.enemyBoss ? 1.45 : 0.98) * this.u
     if (this.hasEnemy) this.enemyAppear = Math.min(1, this.enemyAppear + dt * 3)
     else this.enemyDying = Math.max(0, this.enemyDying - dt * 2.2)

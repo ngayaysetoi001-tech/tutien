@@ -93,7 +93,7 @@ watch(
   },
 )
 // Đổi màn, vào/ra trận, đổi chương (bối cảnh) hoặc yêu thú -> cảnh theo kịp
-watch(() => [ui.tab, battle.phase, view.value?.dungeon?.id, view.value?.enemy?.kind, view.value?.enemy?.boss], syncBattle)
+watch(() => [ui.tab, battle.phase, view.value?.dungeon?.id, view.value?.enemy?.kind, view.value?.enemy?.boss, view.value?.enemy?.id], syncBattle)
 
 onBeforeUnmount(() => {
   scene?.destroy()
