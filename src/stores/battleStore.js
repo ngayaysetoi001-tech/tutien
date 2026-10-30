@@ -73,6 +73,8 @@ export const useBattleStore = defineStore('battle', {
     nextBurn: 0,
     chillUntil: 0,
     pierceUntil: 0,
+    comboName: '', // liên kích vừa xảy ra (hiện trên cảnh trận)
+    comboUntil: 0,
     hitCount: 0, // số đòn thường đã đánh (Thất Tinh Kiếm)
     nextHeal: 0, // thời điểm Càn Khôn Đỉnh hồi máu kế tiếp
     lethalUsed: false, // Hộ Thân Linh Phù đã dùng ở ải này chưa
@@ -121,6 +123,7 @@ export const useBattleStore = defineStore('battle', {
       this.shield = this.shieldUntil = this.hasteUntil = this.slowUntil = 0
       this.dotUntil = this.lifestealUntil = this.rageUntil = this.reflectUntil = 0
       this.burnUntil = this.chillUntil = this.pierceUntil = 0
+      this.comboUntil = 0
       this.hitCount = 0
       this.nextHeal = this.clock + 20
       this.petNext = {}
@@ -452,6 +455,8 @@ export const useBattleStore = defineStore('battle', {
         const combo = SK.COMBOS.find((c) => c.element === skill.element && this.hasStatus(c.status))
         if (combo) {
           pw *= combo.mult
+          this.comboName = combo.name
+          this.comboUntil = this.clock + 1.6
           game.addLog(`Liên kích ${combo.name}! ${skill.name} gây thêm ${Math.round((combo.mult - 1) * 100)}% sát thương.`, 'good')
         }
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)

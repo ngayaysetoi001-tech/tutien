@@ -13,6 +13,7 @@ import OfflineModal from './components/OfflineModal.vue'
 import EventModal from './components/EventModal.vue'
 import StoryModal from './components/StoryModal.vue'
 import MeditateOverlay from './components/MeditateOverlay.vue'
+import UpdateBanner from './components/UpdateBanner.vue'
 import { bindAudio } from './game/audioDirector.js'
 import { setAudioPrefs } from './game/audio.js'
 import { notify } from './services/notify.js'
@@ -27,6 +28,14 @@ const onVisibility = () => {
 }
 
 let unbindAudio = null
+
+// Cỡ chữ người dùng chọn: đổi font-size gốc (mọi cỡ chữ rem trong giao diện co giãn theo)
+const FONT_PX = { sm: '15px', md: '16px', lg: '18px' }
+watch(
+  () => game.settings.fontScale,
+  (v) => { document.documentElement.style.fontSize = FONT_PX[v] ?? '16px' },
+  { immediate: true },
+)
 
 // Bật/tắt âm thanh theo cài đặt (có hiệu lực ngay cả khi save được nạp sau đó)
 watch(
@@ -65,6 +74,7 @@ onBeforeUnmount(() => {
   <div class="flex h-full justify-center bg-ink-950">
     <main class="relative flex h-full w-full max-w-[460px] flex-col overflow-hidden bg-ink-900 shadow-2xl shadow-black">
       <TopBar v-if="game.ready" />
+      <UpdateBanner v-if="game.ready" />
 
       <!--
         Một thể hiện PixiJS duy nhất, không bao giờ bị huỷ: ở màn Nhân Vật / Bí Cảnh nằm trong luồng bố cục,

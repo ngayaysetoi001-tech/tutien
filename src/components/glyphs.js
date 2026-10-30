@@ -68,6 +68,7 @@ export const PET_GLYPH = {
 export const TREASURE_GLYPH = {
   can_khon_dinh: 'refine', that_tinh_kiem: 'sword', ho_than_phu: 'scroll', tu_linh_binh: 'drop',
   phong_loi_phien: 'wind', huyet_sat_chau: 'gem', hon_nguyen_chung: 'shield', thien_co_la_ban: 'target',
+  van_loi_an: 'cloudbolt', tinh_ha_binh: 'star', huyen_vu_an: 'shell',
 }
 export const PATH_GLYPH = { kiem: 'sword', the: 'shield', phap: 'burst', dan: 'pill', tran: 'target' }
 export const GROUP_GLYPH = { herbs: 'herb', ores: 'stone', scrolls: 'scroll', pills: 'pill' }

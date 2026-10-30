@@ -94,6 +94,32 @@ export const branchInfo = (id, b) => ({ name: BRANCH_NAMES[id]?.[b] ?? BRANCHES[
 export const branchPower = (b) => BRANCHES[b]?.power ?? 1
 export const branchCd = (b) => BRANCHES[b]?.cd ?? 1
 
+/**
+ * Gợi ý liên kích của võ kỹ `id` so với các võ kỹ đang gắn (`equipped`): mỗi dòng { ok, text }.
+ *  - chiêu tấn công: cần địch mang trạng thái nào, ô hiện có chiêu gây trạng thái đó không;
+ *  - chiêu gây trạng thái: mở liên kích cho chiêu nào trong ô.
+ */
+export function comboHints(id, equipped) {
+  const s = SKILLS[id]
+  const others = equipped.filter((x) => x && x !== id)
+  const gives = (x, status) => SKILLS[x].kind !== 'heal' && STATUS_OF_ELEMENT[SKILLS[x].element] === status && (isAttack(SKILLS[x].kind) || SKILLS[x].kind === 'dot')
+  const out = []
+  if (isAttack(s.kind)) {
+    for (const c of COMBOS.filter((x) => x.element === s.element)) {
+      const src = others.filter((x) => gives(x, c.status))
+      out.push({ ok: src.length > 0, text: src.length ? `${c.name} (+${Math.round((c.mult - 1) * 100)}%): có ${STATUS[c.status].name} từ ${src.map((x) => SKILLS[x].name).join(', ')}` : `${c.name} (+${Math.round((c.mult - 1) * 100)}%): thiếu chiêu gây ${STATUS[c.status].name}` })
+    }
+  }
+  const st = STATUS_OF_ELEMENT[s.element]
+  if (st && (isAttack(s.kind) || s.kind === 'dot')) {
+    for (const c of COMBOS.filter((x) => x.status === st)) {
+      const use = others.filter((x) => isAttack(SKILLS[x].kind) && SKILLS[x].element === c.element)
+      out.push({ ok: use.length > 0, text: use.length ? `Mở ${c.name} cho ${use.map((x) => SKILLS[x].name).join(', ')}` : `Hợp với chiêu hệ ${c.element === 'kim' ? 'Kim' : c.element === 'thuy' ? 'Thủy' : c.element === 'hoa' ? 'Hỏa' : 'khác'} để ra ${c.name} (chưa gắn)` })
+    }
+  }
+  return out
+}
+
 /** Gợi ý trạng thái và liên kích của một võ kỹ (để hiển thị). */
 export function statusLine(id) {
   const s = SKILLS[id]

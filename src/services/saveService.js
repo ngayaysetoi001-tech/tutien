@@ -201,7 +201,7 @@ export function deserialize(save, defaults) {
       affixes.push({ id: a.id, v: num(a.v, def.min, 0, def.max * 3) })
     }
     const legend = LEGENDS[it.legend]?.slot === it.slot ? it.legend : undefined
-    bag.push({ uid: it.uid, slot: it.slot, tier: it.tier, rarity: it.rarity, enh: Math.floor(num(it.enh, 0, 0, MAX_ENHANCE)), affixes: legend ? [] : affixes, ...(legend ? { legend } : {}) })
+    bag.push({ uid: it.uid, slot: it.slot, tier: it.tier, rarity: it.rarity, enh: Math.floor(num(it.enh, 0, 0, MAX_ENHANCE)), affixes: legend ? [] : affixes, ...(legend ? { legend } : {}), ...(it.locked === true ? { locked: true } : {}) })
   }
   const equipped = {}
   for (const slot of Object.keys(SLOTS)) {
@@ -397,6 +397,8 @@ export function deserialize(save, defaults) {
       auto: Object.fromEntries(AUTOMATION_IDS.map((id) => [id, d.settings?.auto?.[id] === true])),
       autoCraft: RECIPES.some((r) => r.id === d.settings?.autoCraft) ? d.settings.autoCraft : null,
       salvageBelow: Math.floor(num(d.settings?.salvageBelow, 1, 1, 3)),
+      lastBackup: num(d.settings?.lastBackup, 0, 0, Date.now()),
+      fontScale: ['sm', 'md', 'lg'].includes(d.settings?.fontScale) ? d.settings.fontScale : 'md',
     },
     savedAt: num(save.savedAt, Date.now()),
   }

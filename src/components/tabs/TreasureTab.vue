@@ -83,7 +83,8 @@ function equip(id) {
       <div v-if="game.treasureSlots < MAX_TREASURE_SLOTS" class="mt-1 text-[11px] text-slate-500">Ô kế tiếp mở ở: {{ slotHint(game.treasureSlots) }}</div>
     </div>
 
-    <p class="px-0.5 text-xs text-slate-500">Mảnh Pháp Bảo rơi từ Đại Boss và Chúa Tể. Mỗi pháp bảo có một thần thông kích hoạt trong trận, không cộng chỉ số thô.</p>
+    <button class="btn-ghost min-h-[40px] w-full text-sm" :disabled="!Object.keys(game.treasures.owned).length" @click="game.autoEquipTreasures()"><Icon name="star" :size="16" />Gắn tốt nhất</button>
+    <p class="px-0.5 text-xs text-slate-500">Mảnh Pháp Bảo rơi từ Đại Boss, Chúa Tể, thám hiểm khó và cửa hàng tông môn. Mỗi pháp bảo có một thần thông kích hoạt trong trận, không cộng chỉ số thô.</p>
 
     <template v-for="s in sections" :key="s.key">
       <div class="px-0.5 text-xs font-bold" :class="s.accent ? 'text-cinnabar-400' : 'text-gold-300'">{{ s.title }}</div>

@@ -19,7 +19,16 @@ const lockIdx = ref(-1) // dòng phụ được khoá khi đổi (-1 = không kh
 
 const isEquipped = (uid) => Object.values(game.gear.equipped).includes(uid)
 // Túi sắp theo phẩm cấp rồi độ hiếm giảm dần
-const sortedBag = computed(() => [...game.gear.bag].sort((a, b) => b.tier - a.tier || b.rarity - a.rarity || b.enh - a.enh))
+const slotFilter = ref('') // lọc túi theo ô
+const sortKey = ref('tier') // tier | rarity
+const SORTS = { tier: 'Phẩm cấp', rarity: 'Độ hiếm' }
+const sortedBag = computed(() =>
+  game.gear.bag
+    .filter((it) => !slotFilter.value || it.slot === slotFilter.value)
+    .sort((a, b) =>
+      (sortKey.value === 'rarity' ? b.rarity - a.rarity || b.tier - a.tier : b.tier - a.tier || b.rarity - a.rarity) || b.enh - a.enh,
+    ),
+)
 const equipped = computed(() => SLOT_IDS.map((slot, i) => [slot, game.equippedItems[i]]))
 const canEnhance = (it) => it.enh < MAX_ENHANCE && game.spiritStones.gte(enhanceCost(it))
 const canReroll = (it) => !it.legend && affixCount(it.rarity) > 0
@@ -102,7 +111,18 @@ const open = computed(() => !!item.value)
       <div class="mb-1.5 flex items-center justify-between text-sm font-bold text-gold-300">
         <span>Túi trang bị</span><span class="text-xs font-normal text-slate-500">{{ game.gear.bag.length }}/{{ BAG_LIMIT }}</span>
       </div>
-      <p v-if="sortedBag.length === 0" class="text-sm text-slate-500">Trống. Hạ boss ở Vượt Ải hoặc rèn pháp khí ở Động Phủ để có trang bị.</p>
+      <div class="mb-2 flex gap-1 overflow-x-auto no-bar">
+        <button class="min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-bold" :class="!slotFilter ? 'border-gold-400 bg-gold-500/20 text-gold-200' : 'border-ink-600 text-slate-400'" @click="slotFilter = ''">Tất cả</button>
+        <button
+          v-for="sl in SLOT_IDS"
+          :key="sl"
+          class="min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-bold"
+          :class="slotFilter === sl ? 'border-gold-400 bg-gold-500/20 text-gold-200' : 'border-ink-600 text-slate-400'"
+          @click="slotFilter = slotFilter === sl ? '' : sl"
+        >{{ SLOTS[sl] }}</button>
+        <button class="min-h-[34px] shrink-0 rounded-full border border-ink-600 px-3 text-xs font-bold text-slate-300" @click="sortKey = sortKey === 'tier' ? 'rarity' : 'tier'">Sắp: {{ SORTS[sortKey] }}</button>
+      </div>
+      <p v-if="sortedBag.length === 0" class="text-sm text-slate-500">{{ game.gear.bag.length ? 'Không có món nào ở ô này.' : 'Trống. Hạ boss ở Vượt Ải hoặc rèn pháp khí ở Động Phủ để có trang bị.' }}</p>
       <div class="grid grid-cols-4 gap-x-2 gap-y-3">
         <ItemIcon
           v-for="it in sortedBag"
@@ -111,7 +131,7 @@ const open = computed(() => !!item.value)
           :color="itemColor(it)"
           :frame="itemColor(it)"
           :label="SLOTS[it.slot]"
-          :badge="it.enh ? '+' + it.enh : ''"
+          :badge="(it.locked ? '🔒' : '') + (it.enh ? '+' + it.enh : '')"
           :selected="isEquipped(it.uid)"
           @click="(sel = it.uid), (lockIdx = -1)"
         />
@@ -160,7 +180,8 @@ const open = computed(() => !!item.value)
             <template v-if="item.enh >= MAX_ENHANCE">Tối đa</template>
             <template v-else>Cường hoá <Icon name="stone" :size="14" />{{ fmt(enhanceCost(item)) }}</template>
           </button>
-          <button v-if="!isEquipped(item.uid)" class="btn-ghost" @click="game.sellGear(item.uid)">
+          <button class="btn-ghost" @click="game.toggleGearLock(item.uid)"><Icon :name="item.locked ? 'lock' : 'dots'" :size="16" />{{ item.locked ? 'Mở khoá' : 'Khoá' }}</button>
+          <button v-if="!isEquipped(item.uid)" class="btn-ghost" :disabled="item.locked" @click="game.sellGear(item.uid)">
             Phân giải <Icon name="stone" :size="14" />+{{ fmt(sellValue(item)) }}
           </button>
         </template>

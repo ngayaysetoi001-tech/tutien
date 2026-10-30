@@ -12,6 +12,7 @@ import { GRADE_COLORS, GRADE_NAMES, TALENTS, TALENT_REROLL_COST } from '../../ga
 import { STREAK_DAYS, nextRewardDay } from '../../game/daily.js'
 import { QUEST_TEMPLATES } from '../../game/quests.js'
 import { REALMS, STAGES } from '../../game/constants.js'
+import { screenUnlocked } from '../../game/screens.js'
 import { PATH_GLYPH } from '../glyphs.js'
 import Icon from '../Icon.vue'
 import BottomSheet from '../BottomSheet.vue'
@@ -22,6 +23,7 @@ const BEATEN_BY = Object.fromEntries(Object.entries(BEAT_TARGET).map(([a, b]) =>
 
 const game = useGameStore()
 const ui = useUiStore()
+const backupHidden = ref(false) // ẩn nhắc sao lưu đến khi tải lại trang
 const sheet = ref(null) // 'daily' | 'talent' | 'path' | 'challenge' | 'rates'
 const learned = computed(() => Object.keys(game.skills.owned).length)
 const worn = computed(() => game.equippedItems.filter(Boolean).length)
@@ -37,12 +39,18 @@ const statRows = computed(() => [
 const TOUR_KEY = 'tutien-tour-off'
 const tourOff = ref(false)
 try { tourOff.value = localStorage.getItem(TOUR_KEY) === '1' } catch { /* bỏ qua */ }
-const tour = computed(() => [
-  { id: 'break', icon: 'bolt', text: 'Đột phá khi thanh linh khí đầy', done: game.stats.breakthroughs > 0, go: null },
-  { id: 'array', icon: 'home', text: 'Nâng Tụ Linh Trận ở Động Phủ', done: game.arrayLevel > 0, go: 'dwelling' },
-  { id: 'battle', icon: 'dungeon', text: 'Vượt ải đầu tiên ở Vượt Ải', done: game.campaign.record > 0, go: 'battle' },
-  { id: 'skill', icon: 'arts', text: 'Học và gắn một võ kỹ', done: game.skills.slots.some(Boolean), go: 'skills' },
-])
+// Các bước hệ thống mới (trang bị, liên kích, pháp bảo) chỉ hiện khi màn tương ứng đã mở khoá
+const tour = computed(() =>
+  [
+    { id: 'break', icon: 'bolt', text: 'Đột phá khi thanh linh khí đầy', done: game.stats.breakthroughs > 0, go: null },
+    { id: 'array', icon: 'home', text: 'Nâng Tụ Linh Trận ở Động Phủ', done: game.arrayLevel > 0, go: 'dwelling' },
+    { id: 'battle', icon: 'dungeon', text: 'Vượt ải đầu tiên ở Vượt Ải', done: game.campaign.record > 0, go: 'battle' },
+    { id: 'skill', icon: 'arts', text: 'Học và gắn một võ kỹ', done: game.skills.slots.some(Boolean), go: 'skills' },
+    { id: 'gear', icon: 'gear', text: 'Mặc món trang bị đầu tiên', done: game.equippedItems.some(Boolean), go: 'gear', show: screenUnlocked('gear', game) },
+    { id: 'combo', icon: 'swords', text: 'Gắn 2 võ kỹ khác hệ để tạo liên kích', done: game.skills.slots.filter(Boolean).length >= 2, go: 'skills', show: screenUnlocked('skills', game) && game.skillSlots >= 2 },
+    { id: 'treasure', icon: 'refine', text: 'Luyện hoá và gắn một Pháp Bảo', done: game.treasures.slots.some(Boolean), go: 'treasure', show: screenUnlocked('treasure', game) },
+  ].filter((t) => t.show !== false),
+)
 const tourShow = computed(() => !tourOff.value && tour.value.some((t) => !t.done))
 const tourLeft = computed(() => tour.value.filter((t) => !t.done).length)
 watchEffect(() => { ui.tourShown = tourShow.value })
@@ -105,6 +113,14 @@ function pickPath(id) {
         Hệ {{ ELEMENTS[game.element].name }}
         <span class="font-normal opacity-80">khắc {{ ELEMENTS[BEAT_TARGET[game.element]].name }}</span>
       </span>
+    </div>
+
+    <!-- Nhắc sao lưu save -->
+    <div v-if="game.backupDue && !backupHidden" class="flex items-center gap-2 rounded-lg border border-gold-400/60 bg-gold-500/10 px-2.5 py-1.5 text-sm">
+      <Icon name="info" :size="18" class="shrink-0 text-gold-300" />
+      <span class="min-w-0 flex-1 text-gold-200">Lâu rồi chưa sao lưu save.</span>
+      <button class="btn-gold !px-3 text-xs" @click="game.exportSave()">Xuất save</button>
+      <button class="px-1.5 text-slate-500" aria-label="Ẩn" @click="backupHidden = true">✕</button>
     </div>
 
     <!-- Khởi đầu -->

@@ -7,7 +7,7 @@ import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { ELEMENTS, ELEMENT_IDS } from '../../game/elements.js'
-import { BRANCHES, LEARN_COST, branchInfo, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, statusLine, upgradeCost } from '../../game/skills.js'
+import { BRANCHES, LEARN_COST, branchInfo, comboHints, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, statusLine, upgradeCost } from '../../game/skills.js'
 import { PATHS } from '../../game/paths.js'
 import {
   ARTS, ART_LEARN_COST, ART_MAX_LEVEL, AWAKEN_POOL, RESONANCE, RESONANCE_STEPS, SYSTEMS, SYSTEM_IDS, artDesc, artFragmentId, artUpgradeCost, awakenOffer,
@@ -186,6 +186,7 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
     <div v-else class="sticky top-0 z-10 -mx-0.5 rounded-lg border border-ink-600 bg-ink-900 px-2 pb-1.5 pt-1">
       <div class="mb-1 flex items-center justify-between text-xs">
         <b class="text-gold-300">{{ k.slotTitle }}</b>
+        <button v-if="sub === 'skills'" class="min-h-[32px] rounded-full border border-ink-600 px-3 font-bold text-slate-300" @click="game.autoEquipSkills()">Gắn tốt nhất</button>
         <span v-if="sub === 'pets'" class="text-slate-500">cùng hệ: +25%</span>
       </div>
       <div class="grid gap-1.5" :class="sub === 'pets' ? 'grid-cols-3' : 'grid-cols-5'">
@@ -293,6 +294,9 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
         <p>{{ k.desc(sel, lvOf(k, sel) || 1) }}</p>
         <p v-if="lvOf(k, sel) && !maxedOf(k, sel) && sub !== 'pets'" class="text-xs text-jade-300">Cấp sau: {{ k.desc(sel, lvOf(k, sel) + 1) }}</p>
         <p v-if="sub === 'skills' && statusLine(sel)" class="mt-1 text-xs text-gold-200">{{ statusLine(sel) }}</p>
+        <ul v-if="sub === 'skills' && comboHints(sel, game.skills.slots.slice(0, game.skillSlots)).length" class="mt-1 space-y-0.5 text-xs">
+          <li v-for="h in comboHints(sel, game.skills.slots.slice(0, game.skillSlots))" :key="h.text" :class="h.ok ? 'text-jade-300' : 'text-slate-500'">{{ h.ok ? '✓' : '○' }} {{ h.text }}</li>
+        </ul>
         <p v-if="sub === 'arts'" class="mt-1 text-xs" :style="{ color: SYSTEMS[sheetDef.sys].css }">Hệ {{ SYSTEMS[sheetDef.sys].name }}: tổng cấp {{ sysLv[sheetDef.sys] }}. Cộng hưởng {{ RESONANCE_STEPS.map((n, i) => n + ' → ' + resText(sheetDef.sys, i)).join(' · ') }}</p>
         <!-- Nhánh tiến hoá (võ kỹ cấp tối đa) -->
         <div v-if="sub === 'skills' && lvOf(k, sel) >= SKILL_MAX_LEVEL" class="mt-2">

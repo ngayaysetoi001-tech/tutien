@@ -5147,4 +5147,138 @@ ok('đặc tính có tên trong trận: sát thương lên boss, hồi máu / l�
   Math.random = realRandom
 })
 
+// =====================================================================
+// Cập nhật bản mới, sao lưu, cỡ chữ, khoá đồ, tự gắn, pháp bảo hậu kỳ, gợi ý liên kích
+// =====================================================================
+const VER = await import('../src/services/version.js')
+
+ok('phát hiện bản mới: id khác thì có bản mới; lỗi mạng hay thiếu version.json thì không báo; URL tải lại có tham số', async () => {
+  assert.equal(VER.isNewerBuild('a1', 'b2'), true)
+  assert.equal(VER.isNewerBuild('a1', 'a1'), false)
+  assert.equal(VER.isNewerBuild('a1', ''), false)
+  assert.equal(VER.isNewerBuild('a1', null), false)
+  assert.equal(VER.isNewerBuild('dev', 'b2'), false, 'bản dev không báo')
+  const url = VER.reloadUrl('https://x.github.io/tutien/?a=1#h', 'b2')
+  assert.ok(url.includes('v=b2') && url.includes('a=1'))
+  assert.equal(await VER.fetchLatestBuildId(async () => ({ ok: true, json: async () => ({ id: 'zz' }) })), 'zz')
+  assert.equal(await VER.fetchLatestBuildId(async () => ({ ok: false })), null)
+  assert.equal(await VER.fetchLatestBuildId(async () => { throw new Error('offline') }), null)
+  assert.equal(await VER.fetchLatestBuildId(async () => ({ ok: true, json: async () => ({}) })), null)
+})
+
+ok('nhắc sao lưu: chỉ khi chơi trên 2 giờ và quá 7 ngày; xuất save thì ghi mốc; lưu / tải; cỡ chữ lưu và kiểm tra', () => {
+  const s = freshStore()
+  s.init()
+  assert.equal(s.backupDue, false, 'mới chơi')
+  s.stats.playSeconds = 8000
+  s.createdAt = Date.now() - 8 * 86400000
+  assert.equal(s.backupDue, true)
+  s.settings.lastBackup = Date.now() - 2 * 86400000
+  assert.equal(s.backupDue, false, 'mới sao lưu 2 ngày trước')
+  s.settings.lastBackup = Date.now() - 9 * 86400000
+  assert.equal(s.backupDue, true)
+  s.settings.fontScale = 'lg'
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.settings.fontScale, 'lg')
+  assert.ok(Math.abs(s2.settings.lastBackup - s.settings.lastBackup) < 5)
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.settings.fontScale = 'khổng lồ'
+  raw.data.settings.lastBackup = 'x'
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s3 = freshStore(true)
+  s3.init()
+  assert.equal(s3.settings.fontScale, 'md')
+  assert.equal(s3.settings.lastBackup, 0)
+})
+
+ok('khoá đồ: món khoá không bị bán / phân giải thủ công hay tự động; lưu và tải giữ khoá', () => {
+  const s = freshStore()
+  s.init()
+  const mk = (uid, slot, rarity) => ({ uid, slot, tier: 0, rarity, enh: 0, affixes: [] })
+  s.addGear(mk('a', 'ring', 0))
+  s.addGear(mk('b', 'ring', 0))
+  s.addGear({ ...mk('c', 'ring', 0), tier: 1 }) // món tốt nhất của ô: luôn được giữ
+  assert.equal(s.toggleGearLock('a'), true)
+  assert.equal(s.toggleGearLock('khong_co'), false)
+  assert.equal(s.sellGear('a'), false, 'đồ khoá không bán được')
+  s.settings.salvageBelow = 3
+  assert.equal(s.autoSalvage(), 1, 'chỉ phân giải b')
+  assert.deepEqual(s.gear.bag.map((x) => x.uid).sort(), ['a', 'c'])
+  s.toggleGearLock('a')
+  assert.equal(s.sellGear('a'), true, 'mở khoá thì bán được')
+  s.toggleGearLock('c')
+  s.save()
+  const s2 = freshStore(true)
+  s2.init()
+  assert.equal(s2.gear.bag.find((x) => x.uid === 'c').locked, true)
+})
+
+ok('tự gắn tốt nhất: pháp bảo theo phẩm cao nhất; võ kỹ ưu tiên chiêu tấn công mạnh; không gắn chiêu sai đạo lộ / cảnh giới', () => {
+  const s = freshStore()
+  s.init()
+  s.stageIdx = 12 // Kim Đan: 3 ô võ kỹ, 3 ô pháp bảo cần Hóa Thần?
+  s.treasures.owned = { can_khon_dinh: 1, that_tinh_kiem: 4, ho_than_phu: 2 }
+  const n = s.autoEquipTreasures()
+  assert.ok(n >= 1)
+  assert.equal(s.treasures.slots[0], 'that_tinh_kiem', 'phẩm cao nhất trước')
+  assert.equal(s.treasures.slots[1], 'ho_than_phu')
+  assert.equal(s.autoEquipTreasures(), 0, 'lần hai không đổi gì')
+  s.skills.owned = { thanh_moc: 3, ngu_kiem: 2, liet_hoa: 1, thien_ha: 1, van_kiem: 1 } // thien_ha cần Nguyên Anh, van_kiem cần đạo lộ Kiếm
+  s.autoEquipSkills()
+  const slots = s.skills.slots.slice(0, s.skillSlots)
+  assert.ok(!slots.includes('thien_ha') && !slots.includes('van_kiem'))
+  assert.ok(slots.includes('ngu_kiem') && slots.includes('liet_hoa'), 'chiêu tấn công trước')
+  assert.equal(slots.length, s.skillSlots)
+})
+
+ok('pháp bảo hậu kỳ: Vạn Lôi Ấn (sát thương chí mạng), Tinh Hà Bảo Bình (sát thương võ kỹ), Huyền Vũ Giáp Ấn (phản sát thương) cộng vào chiến đấu', () => {
+  const s = freshStore()
+  s.init()
+  const base = { cm: s.battlePerk.critMult, sd: s.battlePerk.skillDmg, th: s.battlePerk.thorns }
+  s.treasures.owned = { van_loi_an: 1, tinh_ha_binh: 2, huyen_vu_an: 3 }
+  s.treasures.slots = ['van_loi_an', 'tinh_ha_binh', null, null]
+  assert.ok(Math.abs(s.battlePerk.critMult - base.cm - TRS.treasureValue('van_loi_an', 1)) < 1e-9)
+  assert.ok(Math.abs(s.battlePerk.skillDmg - base.sd - TRS.treasureValue('tinh_ha_binh', 2)) < 1e-9)
+  assert.equal(s.battlePerk.thorns, base.th, 'chưa gắn thì không phản')
+  s.stageIdx = 15 // ô thứ 3
+  s.treasures.slots[2] = 'huyen_vu_an'
+  assert.ok(Math.abs(s.battlePerk.thorns - base.th - TRS.treasureValue('huyen_vu_an', 3)) < 1e-9)
+  for (const id of ['van_loi_an', 'tinh_ha_binh', 'huyen_vu_an']) {
+    assert.ok(TRS.TREASURES[id].minAi >= 90)
+    assert.ok(TRS.treasureDesc(id, 2).includes('%') && !TRS.treasureDesc(id, 2).includes('NaN'))
+    assert.ok(ALL_ITEMS[TRS.treasureFragmentId(id)])
+  }
+  // pháp bảo hậu kỳ rơi ở ải cao
+  let seen = false
+  for (let i = 0; i < 400 && !seen; i++) seen = TRS.rollTreasureDrops(200, 'lord', () => [0.1, 0.99, 0.5][i % 3] * 0 + Math.random()).some((d) => ['pb_van_loi_an', 'pb_tinh_ha_binh', 'pb_huyen_vu_an'].includes(d.id))
+  assert.ok(seen)
+})
+
+ok('gợi ý liên kích trong màn Võ Kỹ: báo có / thiếu chiêu gây trạng thái và chiêu ăn liên kích', () => {
+  const full = SK.comboHints('ngu_kiem', ['ngu_kiem', 'huyen_bang'])
+  assert.ok(full.some((h) => h.ok && h.text.includes('Băng Vỡ')), 'Kim ăn Băng từ Huyền Băng')
+  const lacking = SK.comboHints('ngu_kiem', ['ngu_kiem'])
+  assert.ok(lacking.some((h) => !h.ok && h.text.includes('thiếu chiêu gây Băng')))
+  const feeder = SK.comboHints('huyen_bang', ['ngu_kiem', 'huyen_bang'])
+  assert.ok(feeder.some((h) => h.ok && h.text.includes('Mở Băng Vỡ cho Ngự Kiếm Thuật')))
+  assert.deepEqual(SK.comboHints('thanh_moc', ['thanh_moc']), [], 'chiêu hồi máu không có liên kích')
+})
+
+ok('liên kích ghi tên để hiện trên cảnh trận; trạng thái hết hạn thì biến mất', () => {
+  Math.random = () => 0.5
+  const x = arena()
+  learn(x.s, 'ngu_kiem')
+  x.b.enemy.def = 0
+  x.b.chillUntil = x.b.clock + 5
+  x.b.castSkill('ngu_kiem', x.s.combat)
+  Math.random = realRandom
+  assert.equal(x.b.comboName, 'Băng Vỡ')
+  assert.ok(x.b.comboUntil > x.b.clock)
+  x.b.clock += 10
+  assert.ok(!(x.b.clock < x.b.comboUntil), 'hết hiển thị')
+  assert.ok(!x.b.hasStatus('chill') && !x.b.hasStatus('pierce'))
+})
+
 console.log(`\nTất cả ${passed} kiểm tra đã đạt.`)

@@ -133,6 +133,8 @@ function createPlayerState(minRoot = 0) {
       warp: false, // đang tăng tốc (không lưu)
       auto: Object.fromEntries(AUTOMATIONS.map((a) => [a.id, false])), // tự động hoá đã mở khoá: bật / tắt từng cái
       autoCraft: null, // id công thức tự luyện
+      lastBackup: 0, // thời điểm xuất save gần nhất (0 = chưa từng)
+      fontScale: 'md', // cỡ chữ: sm | md | lg
       salvageBelow: 1, // tự phân giải đồ có độ hiếm dưới ngưỡng này (1..3), khi bật tự động hoá 'salvage'
     },
     buffs: { success: 0, guard: 0 }, // hiệu ứng đan dược dùng một lần
@@ -241,6 +243,11 @@ export const useGameStore = defineStore('game', {
       if (this.challenge === 'tay_khong') return { hp: 0, atk: 0, def: 0, speed: 0, exp: 0 } // Tay Không: trang bị vô hiệu
       return EQ.sumStats(this.equippedItems.filter(Boolean))
     },
+    /** Đã lâu chưa sao lưu save (chơi trên 2 giờ và quá 7 ngày kể từ lần xuất gần nhất hoặc từ lúc bắt đầu). */
+    backupDue() {
+      const base = this.settings.lastBackup || this.createdAt
+      return this.stats.playSeconds > 7200 && Date.now() - base > 7 * 86400 * 1000
+    },
     /** Thưởng từ dòng phụ, bộ trang bị và đồ Huyền Thoại đang mặc. */
     gearPerk() {
       if (this.challenge === 'tay_khong') return { ...EQ.ZERO_GEAR_PERK }
@@ -257,8 +264,8 @@ export const useGameStore = defineStore('game', {
       const g = this.gearPerk
       const e = this.extraPerk
       return {
-        crit: p.crit + g.crit + e.crit, critMult: p.critMult + g.critMult, skillDmg: p.skillDmg + g.skillDmg + 0.05 * (this.reincarnation.upgrades.vo_ky ?? 0),
-        lifesteal: p.lifesteal + g.lifesteal, cd: Math.min(0.5, p.cd + g.cd + e.cd), extra: g.extra, thorns: g.thorns + e.thorns,
+        crit: p.crit + g.crit + e.crit, critMult: p.critMult + g.critMult + this.treasureFx.critMult, skillDmg: p.skillDmg + g.skillDmg + this.treasureFx.skillDmg + 0.05 * (this.reincarnation.upgrades.vo_ky ?? 0),
+        lifesteal: p.lifesteal + g.lifesteal, cd: Math.min(0.5, p.cd + g.cd + e.cd), extra: g.extra, thorns: g.thorns + e.thorns + this.treasureFx.thorns,
         bossDmg: g.bossDmg, killHeal: g.killHeal, killShield: g.killShield, ignite: g.ignite, hitCd: g.hitCd, // dòng đặc tính có tên
       }
     },
@@ -853,6 +860,25 @@ export const useGameStore = defineStore('game', {
       return true
     },
 
+    /** Gắn bộ võ kỹ mạnh nhất: chiêu tấn công theo sát thương / hồi chiêu, chiêu hỗ trợ xếp sau; mở hết ô hiện có. Trả về số ô đã đổi. */
+    autoEquipSkills() {
+      const score = (id) => {
+        const sk = SK.SKILLS[id]
+        const lv = SK.skillLevelMult(this.skills.owned[id])
+        return SK.isAttack(sk.kind) || sk.kind === 'dot' ? (sk.power * lv) / SK.skillCooldown(id, this.skills.owned[id]) : 0.2
+      }
+      const ranked = Object.keys(this.skills.owned).filter((id) => SK.canEquip(id, this.realmIdx, this.path)).sort((a, b) => score(b) - score(a))
+      let changed = 0
+      for (let i = 0; i < this.skillSlots; i++) {
+        const id = ranked[i] ?? null
+        if (id && this.skills.slots[i] !== id) {
+          this.equipSkill(id, i)
+          changed++
+        }
+      }
+      return changed
+    },
+
     unequipSkill(slot) {
       this.skills.slots[slot] = null
     },
@@ -1002,6 +1028,20 @@ export const useGameStore = defineStore('game', {
       this.treasures.slots[slot] = null
     },
 
+    /** Gắn các pháp bảo phẩm cao nhất vào các ô đã mở (cùng phẩm thì theo thứ tự danh sách). Trả về số ô đã đổi. */
+    autoEquipTreasures() {
+      const ranked = Object.keys(this.treasures.owned).sort((a, b) => this.treasures.owned[b] - this.treasures.owned[a] || Object.keys(TR.TREASURES).indexOf(a) - Object.keys(TR.TREASURES).indexOf(b))
+      let changed = 0
+      for (let i = 0; i < this.treasureSlots; i++) {
+        const id = ranked[i] ?? null
+        if (id && this.treasures.slots[i] !== id) {
+          this.equipTreasure(id, i)
+          changed++
+        }
+      }
+      return changed
+    },
+
     // ------------------------------------------------------------
     // Công pháp (bị động)
     // ------------------------------------------------------------
@@ -1122,7 +1162,7 @@ export const useGameStore = defineStore('game', {
       }
       let n = 0
       for (const it of [...this.gear.bag]) {
-        if (it.rarity < below && !it.legend && !keep.has(it.uid) && this.sellGear(it.uid)) n++
+        if (it.rarity < below && !it.legend && !it.locked && !keep.has(it.uid) && this.sellGear(it.uid)) n++
       }
       return n
     },
@@ -1184,9 +1224,17 @@ export const useGameStore = defineStore('game', {
       return true
     },
 
+    /** Khoá / mở khoá một món (đồ khoá không bị phân giải, kể cả tự động). */
+    toggleGearLock(uid) {
+      const it = this.gear.bag.find((x) => x.uid === uid)
+      if (!it) return false
+      it.locked = !it.locked
+      return true
+    },
+
     sellGear(uid) {
       const idx = this.gear.bag.findIndex((it) => it.uid === uid)
-      if (idx < 0 || Object.values(this.gear.equipped).includes(uid)) return false
+      if (idx < 0 || Object.values(this.gear.equipped).includes(uid) || this.gear.bag[idx].locked) return false
       const item = this.gear.bag[idx]
       const value = EQ.sellValue(item)
       this.spiritStones = this.spiritStones.add(value)
@@ -1941,6 +1989,7 @@ export const useGameStore = defineStore('game', {
 
     exportSave() {
       exportToFile(serialize(this))
+      this.settings.lastBackup = Date.now()
       this.addLog('Đã xuất file save.', 'info')
     },
 

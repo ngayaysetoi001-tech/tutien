@@ -100,6 +100,24 @@ function onReset() {
       <input v-model="game.settings.autoSave" type="checkbox" class="h-4 w-4 accent-emerald-500" />
     </label>
 
+    <div class="card">
+      <div class="mb-1 text-sm">Cỡ chữ</div>
+      <div class="grid grid-cols-3 gap-1.5">
+        <button
+          v-for="o in [{ id: 'sm', t: 'Nhỏ' }, { id: 'md', t: 'Vừa' }, { id: 'lg', t: 'Lớn' }]"
+          :key="o.id"
+          class="min-h-[44px] rounded-lg border text-sm font-bold"
+          :class="game.settings.fontScale === o.id ? 'border-gold-400 bg-gold-500/20 text-gold-200' : 'border-ink-600 bg-ink-900 text-slate-400'"
+          @click="game.settings.fontScale = o.id"
+        >{{ o.t }}</button>
+      </div>
+    </div>
+
+    <div class="card text-xs" :class="game.backupDue ? 'border-gold-400 text-gold-200' : 'text-slate-400'">
+      Sao lưu gần nhất: {{ game.settings.lastBackup ? Math.floor((Date.now() - game.settings.lastBackup) / 86400000) + ' ngày trước' : 'chưa từng' }}.
+      Xuất save định kỳ để không mất tiến trình khi xoá dữ liệu trình duyệt.
+    </div>
+
     <div class="grid grid-cols-3 gap-2">
       <button class="btn-ghost" @click="saveNow">Lưu ngay</button>
       <button class="btn-ghost" @click="game.exportSave()">Xuất save</button>

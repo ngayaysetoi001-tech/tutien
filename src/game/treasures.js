@@ -14,8 +14,10 @@
 //   lifesteal   hút máu nền `value`
 //   start_shield  đầu mỗi ải: lá chắn `value` x khí huyết trong 10 giây
 //   boss_crit   +`value` chí mạng khi đánh boss
+//   crit_dmg    +`value` sát thương chí mạng   skill_dmg  +`value` sát thương võ kỹ   thorns  phản `value` sát thương nhận vào
 // =====================================================================
 
+// Hậu kỳ (ải 90+): van_loi_an, tinh_ha_binh, huyen_vu_an là thưởng bị động mạnh.
 export const TREASURES = {
   can_khon_dinh: { name: 'Càn Khôn Đỉnh', element: 'tho', kind: 'heal_tick', base: 0.12, interval: 20, minAi: 10, text: 'Cứ 20 giây hồi khí huyết' },
   that_tinh_kiem: { name: 'Thất Tinh Kiếm', element: 'kim', kind: 'nth_hit', base: 2, n: 7, minAi: 15, text: 'Mỗi 7 đòn thường, một đòn gây thêm sát thương lớn' },
@@ -25,6 +27,9 @@ export const TREASURES = {
   huyet_sat_chau: { name: 'Huyết Sát Châu', element: 'hoa', kind: 'lifesteal', base: 0.04, minAi: 40, text: 'Mọi đòn đánh hút máu' },
   hon_nguyen_chung: { name: 'Hỗn Nguyên Chung', element: 'tho', kind: 'start_shield', base: 0.15, minAi: 50, text: 'Đầu mỗi ải có lá chắn 10 giây' },
   thien_co_la_ban: { name: 'Thiên Cơ La Bàn', element: 'kim', kind: 'boss_crit', base: 0.08, minAi: 60, text: 'Tăng chí mạng khi đánh boss' },
+  van_loi_an: { name: 'Vạn Lôi Ấn', element: 'kim', kind: 'crit_dmg', base: 0.25, minAi: 90, text: 'Đòn chí mạng gây thêm sát thương' },
+  tinh_ha_binh: { name: 'Tinh Hà Bảo Bình', element: 'thuy', kind: 'skill_dmg', base: 0.15, minAi: 120, text: 'Võ kỹ tấn công mạnh hơn' },
+  huyen_vu_an: { name: 'Huyền Vũ Giáp Ấn', element: 'tho', kind: 'thorns', base: 0.12, minAi: 150, text: 'Phản lại một phần sát thương nhận vào' },
 }
 
 export const TREASURE_TIERS = [
@@ -61,6 +66,9 @@ export function treasureDesc(id, tier = 1, synergy = false) {
     case 'cast_haste': return `Tung võ kỹ tấn công: +${pct(v)} tốc độ ra đòn trong 3s.`
     case 'lifesteal': return `Hút ${pct(v)} sát thương gây ra thành khí huyết.`
     case 'start_shield': return `Đầu mỗi ải: lá chắn ${pct(v)} khí huyết trong 10s.`
+    case 'crit_dmg': return `+${pct(v)} sát thương chí mạng.`
+    case 'skill_dmg': return `+${pct(v)} sát thương võ kỹ tấn công.`
+    case 'thorns': return `Phản ${pct(v)} sát thương nhận vào.`
     default: return `+${pct(v)} chí mạng khi đánh boss.`
   }
 }
@@ -70,7 +78,7 @@ export function treasureDesc(id, tier = 1, synergy = false) {
  * `slots` = id (hoặc null), `owned` = { id: phẩm }, `skillElements` = hệ của các võ kỹ đang gắn.
  */
 export function treasureEffects(slots, owned, skillElements = []) {
-  const out = { heal: null, nth: null, lethal: 0, bossKill: 0, haste: 0, lifesteal: 0, shield: 0, bossCrit: 0 }
+  const out = { heal: null, nth: null, lethal: 0, bossKill: 0, haste: 0, lifesteal: 0, shield: 0, bossCrit: 0, critMult: 0, skillDmg: 0, thorns: 0 }
   for (const id of slots) {
     if (!id || !owned[id]) continue
     const t = TREASURES[id]
@@ -83,6 +91,9 @@ export function treasureEffects(slots, owned, skillElements = []) {
       case 'cast_haste': out.haste = v; break
       case 'lifesteal': out.lifesteal = v; break
       case 'start_shield': out.shield = v; break
+      case 'crit_dmg': out.critMult = v; break
+      case 'skill_dmg': out.skillDmg = v; break
+      case 'thorns': out.thorns = v; break
       default: out.bossCrit = v
     }
   }

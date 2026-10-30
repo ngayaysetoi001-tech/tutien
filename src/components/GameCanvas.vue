@@ -8,6 +8,7 @@ import { useBattleStore } from '../stores/battleStore.js'
 import { useUiStore } from '../stores/uiStore.js'
 import * as C from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
+import { STATUS } from '../game/skills.js'
 import { fmt } from '../game/format.js'
 import Icon from './Icon.vue'
 
@@ -54,6 +55,12 @@ watch(
  * Cảnh chiến đấu hiển thị ở màn Vượt Ải: trận thật khi đang đánh, còn không thì xem trước ải mục tiêu
  * với yêu thú đầu tiên và khí huyết đầy.
  */
+// Trạng thái đang mang trên địch (Thiêu, Băng, Phá Giáp, Độc)
+const statusList = computed(() =>
+  Object.entries(STATUS)
+    .filter(([id]) => battle.hasStatus(id))
+    .map(([id, st]) => ({ id, name: st.name, element: st.element })),
+)
 const view = computed(() => {
   if (ui.tab !== 'battle') return null // Vượt Ải đánh liên tục nhưng chỉ vẽ ở màn này
   if (battle.inFight) {
@@ -109,6 +116,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <!-- Liên kích vừa xảy ra -->
+    <div v-if="view && !view.preview && battle.clock < battle.comboUntil" class="pointer-events-none absolute inset-x-0 top-10 flex justify-center">
+      <span class="combo-pop rounded-full border border-gold-400 bg-ink-900/85 px-3 py-0.5 text-sm font-bold text-gold-200">Liên kích! {{ battle.comboName }}</span>
+    </div>
+
     <!-- Vượt Ải: thanh khí huyết hai bên -->
     <div v-if="view" class="pointer-events-none absolute inset-x-3 bottom-2 flex items-end justify-between gap-3">
       <div class="w-[44%]">
@@ -130,6 +142,9 @@ onBeforeUnmount(() => {
         </div>
         <div v-if="view.enemy.mods?.length" class="mb-0.5 flex flex-wrap justify-end gap-0.5">
           <span v-for="m in view.enemy.mods" :key="m" class="rounded px-1 text-[10px] text-white [text-shadow:none]" :class="C.ENEMY_MODS[m].kind === 'boss' ? 'bg-cinnabar-500/80' : 'bg-ink-600/90'">{{ C.ENEMY_MODS[m].name }}</span>
+        </div>
+        <div v-if="!view.preview && statusList.length" class="mb-0.5 flex flex-wrap justify-end gap-0.5">
+          <span v-for="st in statusList" :key="st.id" class="flex items-center gap-0.5 rounded px-1 text-[10px] font-bold text-ink-900 [text-shadow:none]" :style="{ background: ELEMENTS[st.element].css }">{{ st.name }}</span>
         </div>
         <div class="hp-track">
           <div class="hp-fill ml-auto from-cinnabar-500 to-gold-400 bg-gradient-to-l" :style="{ width: (view.enemy.hp / view.enemy.maxHp) * 100 + '%' }"></div>
@@ -158,6 +173,26 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.combo-pop {
+  animation: combo-pop 1.6s ease-out both;
+}
+@keyframes combo-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
 .hud-plaque {
   border: 1px solid rgb(217 165 58 / 0.45);
   border-radius: 8px;
