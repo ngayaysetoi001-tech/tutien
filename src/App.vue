@@ -9,6 +9,7 @@ import ScreenHost from './components/ScreenHost.vue'
 import BottomNav from './components/BottomNav.vue'
 import LogSheet from './components/LogSheet.vue'
 import { useUiStore } from './stores/uiStore.js'
+import { groupOf } from './game/screens.js'
 import OfflineModal from './components/OfflineModal.vue'
 import EventModal from './components/EventModal.vue'
 import StoryModal from './components/StoryModal.vue'
@@ -34,6 +35,7 @@ function buzz(e) {
   if (b && !b.disabled && b.className.includes('btn')) navigator.vibrate(8)
 }
 
+const base = import.meta.env.BASE_URL
 let unbindAudio = null
 
 // Cỡ chữ người dùng chọn: đổi font-size gốc (mọi cỡ chữ rem trong giao diện co giãn theo)
@@ -99,8 +101,12 @@ onBeforeUnmount(() => {
         <GameCanvas :active="ui.hasCanvas && !ui.meditate" />
       </div>
 
-      <section class="min-h-0 flex-1">
-        <ScreenHost v-if="game.ready" />
+      <section class="relative min-h-0 flex-1">
+        <!-- Tranh nền mờ theo nhóm màn hình (public/banners), mờ dần xuống đáy -->
+        <Transition name="bg-fade" mode="out-in">
+          <div v-if="game.ready" :key="groupOf(ui.tab)" class="group-bg" :style="{ backgroundImage: `url(${base}banners/${groupOf(ui.tab)}.webp)` }"></div>
+        </Transition>
+        <ScreenHost v-if="game.ready" class="relative" />
       </section>
 
       <BottomNav v-if="game.ready" />

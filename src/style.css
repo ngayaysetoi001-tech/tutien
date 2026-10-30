@@ -226,6 +226,26 @@ body {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+/* Tranh nền mờ theo nhóm màn hình */
+.group-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center top;
+  opacity: 0.45;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 80%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 80%);
+}
+.bg-fade-enter-active,
+.bg-fade-leave-active {
+  transition: opacity 0.25s;
+}
+.bg-fade-enter-from,
+.bg-fade-leave-to {
+  opacity: 0;
+}
+
 /* Người dùng bật giảm chuyển động trong hệ điều hành: tắt các hiệu ứng nhấp nháy liên tục */
 @media (prefers-reduced-motion: reduce) {
   .glow-ready:not(:disabled),
