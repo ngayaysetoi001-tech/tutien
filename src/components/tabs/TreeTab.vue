@@ -8,7 +8,7 @@ import { PATHS, PATH_IDS } from '../../game/paths.js'
 import { REALMS } from '../../game/constants.js'
 import { TREES, TREE_COLS, TREE_EDGES, TREE_POS, TREE_SKILLS, treeMaxLevel, treeUpgradeCost } from '../../game/skilltree.js'
 import { comboHints, skillDesc, statusLine } from '../../game/skills.js'
-import { PATH_GLYPH, skillImg } from '../glyphs.js'
+import { PATH_GLYPH, itemPic, skillImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -43,7 +43,7 @@ const activeIds = computed(() => game.activeTreeIds)
   <div class="space-y-3">
     <!-- Đầu trang: điểm kỹ năng -->
     <div class="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2">
-      <Icon name="sparkles" :size="22" class="shrink-0 text-gold-300" />
+      <img :src="itemPic('diem_ky_nang')" alt="" class="h-9 w-9 shrink-0" draggable="false" />
       <div class="min-w-0 flex-1">
         <div class="text-sm font-bold text-gold-200">Điểm kỹ năng: {{ pts.toFixed(1) }}</div>
         <div class="text-xs text-slate-400">+{{ (game.skillPointRate * 60).toFixed(2) }} điểm/phút, nhận theo thời gian</div>

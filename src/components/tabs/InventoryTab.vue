@@ -5,7 +5,7 @@ import { useGameStore } from '../../stores/gameStore.js'
 import { INVENTORY_GROUPS } from '../../game/constants.js'
 import { ITEMS } from '../../game/data.js'
 import { fmt } from '../../game/format.js'
-import { GROUP_COLOR, GROUP_GLYPH, itemGlyph } from '../glyphs.js'
+import { GROUP_COLOR, GROUP_GLYPH, itemGlyph, itemImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -41,6 +41,7 @@ const open = computed(() => !!sel.value && count.value > 0)
         <ItemIcon
           v-for="[id, n] in entries(group.key)"
           :key="id"
+          :src="itemImg(id, group.key)"
           :glyph="itemGlyph(id, group.key)"
           :color="GROUP_COLOR[group.key]"
           :label="ITEMS[id].name.replace(/ Tàn Quyển/, '')"

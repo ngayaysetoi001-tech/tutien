@@ -91,6 +91,17 @@ export function itemGlyph(id, group) {
   if (id.startsWith('pb_')) return TREASURE_GLYPH[id.slice(3)] ?? 'scroll'
   return GROUP_GLYPH[group] ?? 'gem'
 }
+/** Ảnh vẽ (public/items/*.png) của vật phẩm chung. */
+export const itemPic = (name) => `${import.meta.env.BASE_URL}items/${name}.png`
+const GROUP_PIC = { herbs: 'thao_duoc', ores: 'khoang_thach', scrolls: 'tan_quyen', pills: 'dan_duoc' }
+/** Ảnh của một vật phẩm trong túi: tàn quyển/mảnh dùng tranh của công pháp, linh thú, pháp bảo, võ kỹ tương ứng; còn lại theo nhóm. */
+export function itemImg(id, group) {
+  if (id.startsWith('qk_')) return skillImg(id.slice(3))
+  if (id.startsWith('cp_')) return artImg(id.slice(3))
+  if (id.startsWith('ln_')) return petImg(id.slice(3))
+  if (id.startsWith('pb_')) return treasureImg(id.slice(3))
+  return GROUP_PIC[group] ? itemPic(GROUP_PIC[group]) : ''
+}
 export const GROUP_COLOR = { herbs: '#5fd36a', ores: '#9fb4d8', scrolls: '#e8d9a8', pills: '#f6c85f' }
 export const SLOT_GLYPH = { weapon: 'sword', armor: 'robe', helm: 'helm', boots: 'boots', ring: 'ring', jade: 'gem' }
 
