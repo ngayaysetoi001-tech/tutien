@@ -30,7 +30,7 @@ const ATK_FPS = 18
 const ATK_START = 1 // bắt đầu từ khung thứ 2: sự kiện trúng đòn tới cùng lúc nên đòn phải chạm đích sớm (khung 4)
 const ATK_FRAME = { w: 760, h: 440, feet: 428, charH: 330 }
 // Mũi kiếm ở từng khung (toạ độ trong khung 760x440; null = không dùng): vệt sáng đi theo mũi kiếm từ khung 2 tới khung 5
-const HERO_ATK_TIP = { kiem: [null, [243, 276], [151, 350], [642, 244], [621, 221]] }
+const HERO_ATK_TIP = { kiem: [null, [121, 352], [345, 260], [637, 270], [602, 217]] }
 const TRAIL_LIFE = 0.28 // giây một điểm của vệt sáng sống
 const HERO_HEIGHT = { sword: 175, meditate: 125 } // chiều cao hiển thị (đơn vị nhân vật)
 
