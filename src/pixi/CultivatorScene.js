@@ -11,12 +11,16 @@
 //   scene.destroy()
 // Hiệu ứng tạm thời được kích hoạt qua event bus (xem game/events.js).
 // =====================================================================
-import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import { on } from '../game/events.js'
 import { REALMS } from '../game/constants.js'
 import { THEMES, drawDecor } from './themes.js'
 import { Vfx } from './vfx.js'
 import * as ART from './art.js'
+
+// Tranh nhân vật (public/heroes): tư thế chiến đấu theo đạo lộ và tư thế thiền; thiếu tranh thì dùng hình vẽ bằng code
+const HERO_ART = ['kiem', 'dao', 'the', 'phu', 'meditate']
+const HERO_HEIGHT = { sword: 175, meditate: 125 } // chiều cao hiển thị (đơn vị nhân vật)
 
 // ---- Bảng màu nền trời theo đại cảnh giới: [đỉnh, giữa, chân trời] ----
 const SKY = [
@@ -93,6 +97,8 @@ export class CultivatorScene {
     this.time = 0
     // Trạng thái điều khiển từ bên ngoài
     this.realmIdx = 0
+    this.path = null // đạo lộ: chọn tranh tư thế chiến đấu
+    this.heroTex = {}
     this.fill = 0
     this.particlesOn = true
     // Trạng thái hiệu ứng nội bộ
@@ -154,6 +160,8 @@ export class CultivatorScene {
     app.canvas.style.display = 'block'
 
     this.glowTex = glowTexture()
+    await this.loadHeroArt()
+    if (this.destroyed) return
     this.buildLayers()
     this.layout()
     this.setPose('meditate')
@@ -161,6 +169,21 @@ export class CultivatorScene {
 
     app.renderer.on('resize', () => this.layout())
     app.ticker.add((ticker) => this.update(Math.min(ticker.deltaMS / 1000, 0.1)))
+  }
+
+  /** Nạp tranh nhân vật; lỗi (mất mạng, thiếu file) thì bỏ qua và dùng hình vẽ bằng code. */
+  async loadHeroArt() {
+    this.heroTex = {}
+    const base = import.meta.env.BASE_URL
+    await Promise.all(
+      HERO_ART.map(async (id) => {
+        try {
+          this.heroTex[id] = await Assets.load(`${base}heroes/${id}.png`)
+        } catch {
+          /* dùng hình dự phòng */
+        }
+      }),
+    )
   }
 
   destroy() {
@@ -210,7 +233,11 @@ export class CultivatorScene {
   }
 
   /** Cập nhật trạng thái từ store (gọi từ watcher của component). */
-  setState({ realmIdx, fill, particles, weapon, companion }) {
+  setState({ realmIdx, fill, particles, weapon, companion, path }) {
+    if (path !== undefined && path !== this.path) {
+      this.path = path
+      if (this.app) this.redrawHero()
+    }
     if (realmIdx !== undefined && realmIdx !== this.realmIdx) {
       this.realmIdx = realmIdx
       if (this.app) {
@@ -253,6 +280,9 @@ export class CultivatorScene {
     this.char = new Container()
     this.bodyGfx = new Graphics()
     this.swordGfx = new Graphics()
+    this.heroSprite = new Sprite() // tranh nhân vật (thay cho hình vẽ bằng code khi có tranh)
+    this.heroSprite.anchor.set(0.5, 1)
+    this.heroSprite.visible = false
     this.particleLayer = new Container()
     this.fxGfx = new Graphics() // vòng sóng đột phá
     this.boltLayer = new Container()
@@ -275,7 +305,7 @@ export class CultivatorScene {
 
     this.decorLayer.addChild(this.decorGfx)
     this.mountainLayers.forEach((layer, i) => layer.addChild(this.mountainGfx[i]))
-    this.char.addChild(this.heroFx, this.ribbonGfx, this.bodyGfx, this.faceGfx, this.swordGfx)
+    this.char.addChild(this.heroFx, this.ribbonGfx, this.bodyGfx, this.faceGfx, this.swordGfx, this.heroSprite)
     this.enemyGlow.anchor.set(0.5)
     this.enemyGlow.blendMode = 'add'
     this.enemyGlow.tint = 0xff3030
@@ -530,12 +560,22 @@ export class CultivatorScene {
   setPose(pose) {
     this.pose = pose
     if (!this.app) return
-    this.swordGfx.visible = pose === 'sword'
+    this.swordGfx.visible = pose === 'sword' && !this.heroArt
     this.redrawHero()
   }
 
   /** Vẽ lại thân, kiếm và mặt khi đổi tư thế / cảnh giới / vũ khí. */
   redrawHero() {
+    // Có tranh: dùng sprite, ẩn hình vẽ bằng code (hào quang heroFx vẫn vẽ sau lưng)
+    const tex = this.pose === 'sword' ? this.heroTex[this.path ?? 'kiem'] ?? this.heroTex.kiem : this.heroTex.meditate
+    this.heroArt = !!tex
+    this.heroSprite.visible = this.heroArt
+    for (const g of [this.bodyGfx, this.faceGfx, this.swordGfx, this.ribbonGfx]) g.visible = !this.heroArt && (g !== this.swordGfx || this.pose === 'sword')
+    if (this.heroArt) {
+      this.heroSprite.texture = tex
+      this.heroSprite.scale.set(HERO_HEIGHT[this.pose === 'sword' ? 'sword' : 'meditate'] / tex.height)
+      return
+    }
     this.bodyGfx.clear()
     this.swordGfx.clear()
     ART.drawHeroBody(this.bodyGfx, { pose: this.pose, realmIdx: this.realmIdx })
@@ -549,6 +589,7 @@ export class CultivatorScene {
 
   /** Mắt: nhắm khi thiền; sáng lên khi linh khí đầy (sẵn sàng đột phá); mở và chớp khi đứng. */
   updateFace(t) {
+    if (this.heroArt) return
     let state
     if (this.pose === 'sword') state = t % 4.2 < 0.13 ? 'blink' : 'open'
     else state = this.fill >= 1 && !this.hasEnemy ? 'glow' : 'closed'

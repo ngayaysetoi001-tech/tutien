@@ -27,6 +27,7 @@ function pushState() {
     fill: game.progress,
     particles: game.settings.particles,
     weapon: game.equippedItems[0]?.rarity ?? null,
+    path: game.path,
     // Bạch Linh xuất hiện sau chương "Đồng Môn"; thêm một đuôi mỗi 3 bậc tu vi (tối đa 9)
     companion: game.story.done >= 2 ? Math.min(9, 1 + Math.floor(Math.max(game.stageIdx, game.stats.maxStage) / 3)) : 0,
   })
@@ -46,7 +47,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [game.realmIdx, game.progress, game.settings.particles, game.equippedItems[0]?.rarity ?? null, game.story.done, game.stageIdx],
+  () => [game.realmIdx, game.progress, game.settings.particles, game.equippedItems[0]?.rarity ?? null, game.story.done, game.stageIdx, game.path],
   pushState,
 )
 
