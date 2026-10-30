@@ -102,7 +102,6 @@ const activeIds = computed(() => game.activeTreeIds)
               :label="n.name"
               :badge="unlocked(n) ? level(n) : ''"
               :dot="canUp(n)"
-              :progress="unlocked(n) && !maxed(n) ? Math.min(1, pts / cost(n)) : -1"
               @click="sel = n.id"
             />
           </div>
