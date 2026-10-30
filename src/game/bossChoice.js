@@ -17,15 +17,11 @@ const STAT_NAME = { hp: 'khí huyết', atk: 'công kích', def: 'phòng ngự' 
 export function bossChoiceOptions({ n, kind, path = null }, rng = Math.random) {
   const w = WEIGHT[kind] ?? 1
   const pick = (arr) => arr[Math.floor(rng() * arr.length)]
-  const kinds = ['stones', 'stat', 'art', 'skill', 'exp']
+  const kinds = ['stat', 'art', 'skill', 'exp'] // không có linh thạch: linh thạch chỉ tăng theo thời gian (thu nhập ải)
   const chosen = []
   while (chosen.length < 3) chosen.push(kinds.splice(Math.floor(rng() * kinds.length), 1)[0])
 
   const build = {
-    stones: () => ({
-      label: 'Kho linh thạch lớn',
-      effects: [{ type: 'stones', base: 40 * w * (1 + 0.02 * n) }],
-    }),
     stat: () => {
       const stat = pick(['hp', 'atk', 'def'])
       const amount = { hp: 10 * w + n, atk: 2 * w + Math.round(n / 8), def: 2 * w + Math.round(n / 10) }[stat]

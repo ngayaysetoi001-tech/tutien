@@ -147,8 +147,8 @@ function pickPath(id) {
 
     <!-- Tốc độ: một hàng chip -->
     <button class="flex w-full items-center justify-around rounded-lg border border-ink-600 bg-ink-900/60 px-1 py-2 text-sm" @click="sheet = 'rates'">
-      <span class="flex items-center gap-1 text-jade-300"><Icon name="lotus" :size="16" /><b>{{ fmt(game.expRate) }}</b><span class="text-xs text-slate-500">/s</span></span>
-      <span class="flex items-center gap-1 text-gold-300"><Icon name="stone" :size="16" /><b>{{ fmt(game.stonesRate) }}</b><span class="text-xs text-slate-500">/s</span></span>
+      <span class="flex items-center gap-1 text-jade-300"><Icon name="lotus" :size="16" /><b>{{ fmt(game.expRate.mul(60)) }}</b><span class="text-xs text-slate-500">/phút</span></span>
+      <span class="flex items-center gap-1 text-gold-300"><Icon name="stone" :size="16" /><b>{{ fmt(game.stonesRate.mul(60)) }}</b><span class="text-xs text-slate-500">/phút</span></span>
       <span class="flex items-center gap-1 text-slate-200"><Icon name="bolt" :size="16" /><b>{{ fmtPercent(game.successChance) }}</b></span>
       <Icon name="info" :size="14" class="text-slate-500" />
     </button>
@@ -276,8 +276,8 @@ function pickPath(id) {
       <!-- Tốc độ và thống kê -->
       <template v-else-if="sheet === 'rates'">
         <div class="space-y-1 text-sm">
-          <div class="flex justify-between"><span>Linh khí / giây</span><b class="text-jade-300">{{ fmt(game.expRate) }}</b></div>
-          <div class="flex justify-between"><span>Linh thạch / giây</span><b class="text-gold-300">{{ fmt(game.stonesRate) }}</b></div>
+          <div class="flex justify-between"><span>Linh khí / phút</span><b class="text-jade-300">{{ fmt(game.expRate.mul(60)) }}</b></div>
+          <div class="flex justify-between"><span>Linh thạch / phút</span><b class="text-gold-300">{{ fmt(game.stonesRate.mul(60)) }}</b></div>
           <div class="flex justify-between"><span>Tỉ lệ đột phá</span><b>{{ fmtPercent(game.successChance) }}</b></div>
           <div v-if="game.bonus.exp > 0" class="flex justify-between"><span>Thưởng linh khí vĩnh viễn</span><b class="text-jade-300">+{{ fmtPercent(game.bonus.exp) }}</b></div>
           <div class="flex justify-between"><span>Luyện Đan</span><b>Cấp {{ game.alchemy.level }}</b></div>

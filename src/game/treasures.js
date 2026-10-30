@@ -9,7 +9,7 @@
 //   heal_tick   cứ `interval` giây hồi `value` x khí huyết tối đa
 //   nth_hit     mỗi `n` đòn thường, một đòn gây thêm `value` x công kích
 //   lethal      mỗi trận chặn một đòn chí mạng, hồi `value` x khí huyết tối đa
-//   boss_kill   hạ boss: hồi `value` x khí huyết và thêm `value` x 0.4 linh thạch của ải đó
+//   boss_kill   hạ boss: hồi `value` x khí huyết
 //   cast_haste  mỗi lần tung võ kỹ tấn công: tăng `value` tốc độ ra đòn trong 3 giây
 //   lifesteal   hút máu nền `value`
 //   start_shield  đầu mỗi ải: lá chắn `value` x khí huyết trong 10 giây
@@ -22,7 +22,7 @@ export const TREASURES = {
   can_khon_dinh: { name: 'Càn Khôn Đỉnh', element: 'tho', kind: 'heal_tick', base: 0.12, interval: 20, minAi: 10, text: 'Cứ 20 giây hồi khí huyết' },
   that_tinh_kiem: { name: 'Thất Tinh Kiếm', element: 'kim', kind: 'nth_hit', base: 2, n: 7, minAi: 15, text: 'Mỗi 7 đòn thường, một đòn gây thêm sát thương lớn' },
   ho_than_phu: { name: 'Hộ Thân Linh Phù', element: 'thuy', kind: 'lethal', base: 0.2, minAi: 25, text: 'Mỗi ải chặn một đòn chí mạng và hồi khí huyết' },
-  tu_linh_binh: { name: 'Tụ Linh Bình', element: 'moc', kind: 'boss_kill', base: 0.25, minAi: 20, text: 'Hạ boss: hồi khí huyết và thêm linh thạch' },
+  tu_linh_binh: { name: 'Tụ Linh Bình', element: 'moc', kind: 'boss_kill', base: 0.25, minAi: 20, text: 'Hạ boss: hồi khí huyết' },
   phong_loi_phien: { name: 'Phong Lôi Phiến', element: 'hoa', kind: 'cast_haste', base: 0.25, minAi: 30, text: 'Tung võ kỹ tấn công: ra đòn nhanh hơn 3 giây' },
   huyet_sat_chau: { name: 'Huyết Sát Châu', element: 'hoa', kind: 'lifesteal', base: 0.04, minAi: 40, text: 'Mọi đòn đánh hút máu' },
   hon_nguyen_chung: { name: 'Hỗn Nguyên Chung', element: 'tho', kind: 'start_shield', base: 0.15, minAi: 50, text: 'Đầu mỗi ải có lá chắn 10 giây' },
@@ -62,7 +62,7 @@ export function treasureDesc(id, tier = 1, synergy = false) {
     case 'heal_tick': return `Mỗi ${t.interval}s hồi ${pct(v)} khí huyết tối đa.`
     case 'nth_hit': return `Mỗi ${t.n} đòn thường, một đòn gây thêm ${pct(v)} công kích.`
     case 'lethal': return `Mỗi ải chặn một đòn chí mạng, hồi ${pct(v)} khí huyết.`
-    case 'boss_kill': return `Hạ boss: hồi ${pct(v)} khí huyết, +${pct(v * 0.4)} linh thạch ải đó.`
+    case 'boss_kill': return `Hạ boss: hồi ${pct(v)} khí huyết.`
     case 'cast_haste': return `Tung võ kỹ tấn công: +${pct(v)} tốc độ ra đòn trong 3s.`
     case 'lifesteal': return `Hút ${pct(v)} sát thương gây ra thành khí huyết.`
     case 'start_shield': return `Đầu mỗi ải: lá chắn ${pct(v)} khí huyết trong 10s.`

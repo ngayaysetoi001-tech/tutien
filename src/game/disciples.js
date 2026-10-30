@@ -66,8 +66,8 @@ export function outputPerHour(d, stageIdx, { sectElement = null, herbPerk = 0, b
   const m = discipleMult(d, sectElement) * (1 + bonus) // bonus: Trận Pháp Sư +25%
   if (d.job === 'herb') return { kind: 'item', id: bestCrop(stageIdx).id, perHour: 12 * m * (1 + herbPerk) }
   if (d.job === 'ore') return { kind: 'item', id: mineInfo(stageIdx).ore, perHour: 0.8 * mineInfo(stageIdx).perHour * m }
-  // Trấn Thủ: tương đương ~60 lần hạ quái mỗi giờ ở bí cảnh cùng bậc (đủ có ý nghĩa so với cày bí cảnh)
-  if (d.job === 'guard') return { kind: 'stones', id: 'stones', perHour: new Decimal(1.45).pow(stageIdx).mul(2 * 60 * m) }
+  // Trấn Thủ: mỗi giờ thu 2 phút thu nhập linh thạch tham chiếu của bậc (linh thạch chỉ có từ thời gian, không có thưởng hạ quái)
+  if (d.job === 'guard') return { kind: 'stones', id: 'stones', perHour: refCost(stageIdx, 120 * m) }
   return null
 }
 

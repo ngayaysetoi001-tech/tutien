@@ -626,7 +626,7 @@ export const useGameStore = defineStore('game', {
       if (!this.canUpgradeArray) return
       this.spiritStones = this.spiritStones.sub(this.arrayCost)
       this.arrayLevel += 1
-      this.addLog(`Tụ Linh Trận lên cấp ${this.arrayLevel}: ${fmt(this.expRate)} linh khí/giây.`, 'good')
+      this.addLog(`Tụ Linh Trận lên cấp ${this.arrayLevel}: ${fmt(this.expRate.mul(60))} linh khí/phút.`, 'good')
     },
 
     // ------------------------------------------------------------
@@ -1378,7 +1378,6 @@ export const useGameStore = defineStore('game', {
           stats: this.combat, best: from, grit: this.campaign.grit, seconds, stageIdx: this.stageIdx,
         })
         if (climb.wins > 0) {
-          this.spiritStones = this.spiritStones.add(climb.stones)
           for (const tier of climb.gear) {
             this.addGear(EQ.generateItem(EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)], tier, EQ.DROP_RARITY_WEIGHTS))
           }
@@ -1389,7 +1388,7 @@ export const useGameStore = defineStore('game', {
         }
         this.campaign.grit = climb.grit
       }
-      this.offlineReport.campaign = { from, to: this.campaign.best, items, stones: climb?.stones ?? new Decimal(0), gear: climb?.gear.length ?? 0 }
+      this.offlineReport.campaign = { from, to: this.campaign.best, items, gear: climb?.gear.length ?? 0 }
       if (this.campaign.best > from) this.addLog(`Vắng mặt vượt thêm ${this.campaign.best - from} ải (ải ${from} -> ${this.campaign.best}).`, 'event')
     },
 
@@ -1815,18 +1814,14 @@ export const useGameStore = defineStore('game', {
     // ------------------------------------------------------------
     // Tiến độ Vượt Ải (battleStore gọi)
     // ------------------------------------------------------------
-    /** Vượt ải mới `n`: cập nhật ải cao nhất và kỷ lục, xoá Kiên Trì, thưởng lần đầu cho boss. Trả về linh thạch thưởng thêm (hoặc null). */
+    /** Vượt ải mới `n`: cập nhật ải cao nhất và kỷ lục, xoá Kiên Trì (thu nhập thụ động tăng theo ải, không có thưởng linh thạch một lần). */
     recordAi(n) {
       const c = this.campaign
       c.best = Math.max(c.best, n)
       c.record = Math.max(c.record, n)
       c.grit = 0
       const kind = C.aiKind(n)
-      if (kind === 'normal') return null
-      const bonus = C.firstClearStones(n)
-      this.spiritStones = this.spiritStones.add(bonus)
-      this.addLog(`Vượt ải ${n} (${C.AI_KINDS[kind].name})! Thưởng thêm ${fmt(bonus)} linh thạch. Thu nhập thụ động tăng.`, 'good')
-      return bonus
+      if (kind !== 'normal') this.addLog(`Vượt ải ${n} (${C.AI_KINDS[kind].name})! Thu nhập thụ động tăng.`, 'good')
     },
 
     // ------------------------------------------------------------

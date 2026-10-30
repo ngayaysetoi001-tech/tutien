@@ -154,19 +154,9 @@ export const OVERLEVEL_GRACE = 6 // tu vi vượt ải quá 6 bậc thì thưở
 export const overlevel = (stageIdx, n, decay) => Math.pow(decay, Math.max(0, stageIdx - equivStage(n) - OVERLEVEL_GRACE))
 
 /** Linh thạch rơi khi hạ yêu thú ải n. */
-export function aiStoneReward(n, kind, stageIdx = 0) {
-  return new Decimal(1.45).pow(equivStage(n)).mul(2 * AI_KINDS[kind].reward * (1 + 0.02 * (n - 1)) * overlevel(stageIdx, n, BALANCE.killStoneDecay))
-}
-
 /** Thưởng linh khí khi hạ yêu thú: số giây sản lượng (nhỏ, vì thu nhập chính là thụ động theo ải). */
 export const aiExpSeconds = (n, kind, stageIdx = 0) =>
   (1.5 + 0.03 * Math.min(n, 200)) * AI_KINDS[kind].reward * overlevel(stageIdx, n, BALANCE.killExpDecay)
-
-/** Thưởng một lần khi lần đầu vượt ải n (Tiểu Boss trở lên): linh thạch cộng thêm. */
-export function firstClearStones(n) {
-  const kind = aiKind(n)
-  return kind === 'normal' ? new Decimal(0) : new Decimal(1.45).pow(equivStage(n)).mul(10 * AI_KINDS[kind].reward)
-}
 
 /** Cống Hiến tông môn khi hạ boss (Tiểu Boss trở lên). */
 export function aiContribution(n, kind) {
@@ -191,7 +181,7 @@ export function rollAiLoot(n, kind, rng = Math.random, luck = 0) {
 // Thu nhập thụ động theo ải cao nhất đã vượt (`best`)
 // ---------------------------------------------------------------------
 export const AI_EXP_PER_CLEAR = 0.02 // mỗi ải đã vượt cộng 2% tốc độ linh khí gốc
-export const AI_STONE_PER_CLEAR = 0.04 // linh thạch/giây = số ải x hệ số x giá trị của ải đó
+export const AI_STONE_PER_CLEAR = 0.16 // linh thạch/giây = số ải x hệ số x giá trị của ải đó
 
 export const INCOME_AI_BASE = 10 // trần ải được tính thu nhập = BASE + PER_STAGE x bậc tu vi
 export const INCOME_AI_PER_STAGE = 8 // nhờ vậy kiếp mới có trang bị cũ cũng không hưởng thu nhập ải cao ngay từ bậc đầu
@@ -219,14 +209,14 @@ export const stoneRef = (stageIdx) => campaignStonesPerSecond(INCOME_AI_BASE + I
 
 /** Số giây thu nhập tham chiếu của từng khoản chi. */
 export const COST_SECONDS = {
-  building: 120, // công trình Động Phủ, nhân (1 + 0.3 x cấp)
-  forge: 45, // rèn một món
-  enhance: 9, // cường hoá, nhân (cấp hiện tại + 1)
-  reroll: 20, // đổi dòng phụ, nhân (độ hiếm + 1), khoá một dòng gấp đôi
-  seed: 5, // hạt giống
-  recruit: 30, // thu nhận đệ tử, nhân 2^số đệ tử đang có
-  discipleLevel: 10, // nâng đệ tử, nhân 1.5^(cấp - 1)
-  refresh: 15, // làm mới bảng nhiệm vụ
+  building: 24, // công trình Động Phủ, nhân (1 + 0.3 x cấp)
+  forge: 9, // rèn một món
+  enhance: 1.8, // cường hoá, nhân (cấp hiện tại + 1)
+  reroll: 4, // đổi dòng phụ, nhân (độ hiếm + 1), khoá một dòng gấp đôi
+  seed: 1, // hạt giống
+  recruit: 6, // thu nhận đệ tử, nhân 2^số đệ tử đang có
+  discipleLevel: 2, // nâng đệ tử, nhân 1.5^(cấp - 1)
+  refresh: 3, // làm mới bảng nhiệm vụ
 }
 
 /** `seconds` giây thu nhập tham chiếu của bậc `stageIdx`. */
@@ -284,7 +274,7 @@ export const gritStats = (stats, grit) => {
  */
 export function simulateOfflineClimb({ stats, best, grit = 0, seconds, stageIdx = 0, rng = Math.random }) {
   const attempts = Math.min(MAX_OFFLINE_ATTEMPTS, Math.floor((seconds * OFFLINE_CLIMB_EFFICIENCY) / ATTEMPT_SECONDS))
-  const out = { best, grit, wins: 0, attempts, stones: new Decimal(0), gear: [] }
+  const out = { best, grit, wins: 0, attempts, gear: [] }
   for (let i = 0; i < attempts; i++) {
     const n = out.best + 1
     const { tmpl, kind } = pickAiMonster(n, rng)
@@ -294,7 +284,6 @@ export function simulateOfflineClimb({ stats, best, grit = 0, seconds, stageIdx 
       out.best = n
       out.grit = 0
       out.wins++
-      out.stones = out.stones.add(aiStoneReward(n, kind, stageIdx)).add(firstClearStones(n))
       if (out.gear.length < MAX_OFFLINE_GEAR && rng() < AI_KINDS[kind].gear) out.gear.push(gearTierOf(n))
     } else {
       out.grit = Math.min(GRIT_MAX, out.grit + 1)
@@ -313,7 +302,7 @@ export function milestoneReward(tier) {
   const n = tier + 1
   const stat = ['hp', 'atk', 'def', 'speed'][tier % 4]
   const amount = { hp: 30 * n, atk: 5 * n, def: 4 * n, speed: 1 }[stat]
-  const effects = [{ type: 'stones', base: 100 * Math.pow(2.2, tier) }, { type: 'stat', stat, amount }]
+  const effects = [{ type: 'stat', stat, amount }]
   if (tier >= 1) {
     const ai = MILESTONES[tier].ai
     const pool = Object.keys(ARTS).filter((id) => ARTS[id].minAi <= ai)

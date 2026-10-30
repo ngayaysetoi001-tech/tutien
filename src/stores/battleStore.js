@@ -34,7 +34,7 @@ const fx = (name, payload) => {
   if (ui.tab === 'battle' && !ui.meditate) emit(name, payload)
 }
 
-const emptyRun = () => ({ kills: 0, stones: new Decimal(0), items: {}, gear: [], wins: 0 })
+const emptyRun = () => ({ kills: 0, items: {}, gear: [], wins: 0 })
 
 export const useBattleStore = defineStore('battle', {
   state: () => ({
@@ -548,11 +548,9 @@ export const useBattleStore = defineStore('battle', {
       const n = this.ai
       const kind = this.enemy.tier
       const tmpl = MONSTERS[this.enemy.id]
-      const stones = C.aiStoneReward(n, kind, game.stageIdx).mul(1 + game.artBonus.stones + game.extraPerk.stones)
       const loot = [...C.rollAiLoot(n, kind, Math.random, game.lootLuck), ...rollArtDrops(n, kind, Math.random, game.lootLuck), ...rollPetDrops(n, kind, Math.random, game.lootLuck), ...rollTreasureDrops(n, kind, Math.random, game.lootLuck)]
         .filter(({ id }) => !(id.startsWith('qk_') && SK.SKILLS[id.slice(3)]?.path && SK.SKILLS[id.slice(3)].path !== game.path)) // võ kỹ độc quyền chỉ rơi cho đúng đạo lộ
 
-      game.spiritStones = game.spiritStones.add(stones)
       game.gainExp(game.expRate.mul(C.aiExpSeconds(n, kind, game.stageIdx)))
       this.run.kills += 1
       game.stats.kills += 1
@@ -560,7 +558,6 @@ export const useBattleStore = defineStore('battle', {
         game.stats.bossKills += 1
         game.addContribution(C.aiContribution(n, kind)) // Cống Hiến tông môn
       }
-      this.run.stones = this.run.stones.add(stones)
       // Dòng đặc tính: hạ yêu thú hồi máu / có lá chắn
       const bp = game.battlePerk
       if (bp.killHeal > 0) this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * bp.killHeal))
@@ -568,14 +565,9 @@ export const useBattleStore = defineStore('battle', {
         this.shield = Math.max(this.clock < this.shieldUntil ? this.shield : 0, Math.round(this.maxHp * bp.killShield))
         this.shieldUntil = this.clock + 8
       }
-      // Tụ Linh Bình: hạ boss thì hồi khí huyết và thêm linh thạch
+      // Tụ Linh Bình: hạ boss thì hồi khí huyết
       const bk = game.treasureFx.bossKill
-      if (bk > 0 && kind !== 'normal') {
-        this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * bk))
-        const extraStones = stones.mul(bk * 0.4)
-        game.spiritStones = game.spiritStones.add(extraStones)
-        this.run.stones = this.run.stones.add(extraStones)
-      }
+      if (bk > 0 && kind !== 'normal') this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * bk))
       // Trang bị rơi: tỉ lệ theo loại ải; phẩm cấp theo bối cảnh (tối đa phẩm cao nhất)
       if (Math.random() < C.AI_KINDS[kind].gear * (1 + game.lootLuck)) {
         const slot = EQ.SLOT_IDS[Math.floor(Math.random() * EQ.SLOT_IDS.length)]
@@ -591,13 +583,12 @@ export const useBattleStore = defineStore('battle', {
         this.run.items[id] = (this.run.items[id] ?? 0) + count
       }
       const lootText = loot.length ? ', ' + loot.map((l) => `${itemName(l.id)} x${l.count}`).join(', ') : ''
-      game.addLog(`Hạ ${this.enemy.name} (ải ${n}): +${fmt(stones)} linh thạch${lootText}.`, loot.length ? 'good' : 'info')
+      game.addLog(`Hạ ${this.enemy.name} (ải ${n})${lootText}.`, loot.length ? 'good' : 'info')
       fx('battle-enemy-die', { boss: this.enemy.boss })
       this.enemy = null
 
       if (n > game.campaign.best) {
-        const bonus = game.recordAi(n) // ải mới: cập nhật tiến độ, thưởng lần đầu, xoá Kiên Trì
-        if (bonus) this.run.stones = this.run.stones.add(bonus)
+        game.recordAi(n) // ải mới: cập nhật tiến độ, tăng thu nhập thụ động, xoá Kiên Trì
         if (kind !== 'normal') game.offerBossChoice(n, kind) // chọn 1 trong 3 phần thưởng
       }
       this.run.wins += 1

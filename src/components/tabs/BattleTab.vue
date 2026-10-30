@@ -62,7 +62,6 @@ const milestoneText = computed(() => {
   const statLabel = { hp: 'khí huyết', atk: 'công kích', def: 'phòng ngự', speed: 'Thân pháp' }
   return C.milestoneReward(i)
     .map((fx) => {
-      if (fx.type === 'stones') return 'linh thạch'
       if (fx.type === 'stat') return `+${fx.amount} ${statLabel[fx.stat]} vĩnh viễn`
       if (fx.type === 'item') return `${itemName(fx.id)} x${fx.count}`
       if (fx.type === 'expBonus') return `+${Math.round(fx.amount * 100)}% linh khí vĩnh viễn`
@@ -182,7 +181,7 @@ function stepFarm(d) {
       <div class="mb-1 flex items-center justify-between text-xs"><b class="text-slate-200">Thu nhập thụ động</b><span class="text-slate-400">Ải {{ best }} · kỷ lục {{ game.campaign.record }}</span></div>
       <div v-if="best > 0" class="flex items-center justify-around text-sm">
         <span class="flex items-center gap-1 text-jade-300"><Icon name="lotus" :size="15" />+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}%</span>
-        <span class="flex items-center gap-1 text-gold-300"><Icon name="stone" :size="15" />{{ fmt(stoneIncome) }}/s</span>
+        <span class="flex items-center gap-1 text-gold-300"><Icon name="stone" :size="15" />{{ fmt(stoneIncome.mul(60)) }}/phút</span>
         <span v-if="itemIncome.length" class="flex items-center gap-1 text-slate-300"><Icon name="herb" :size="15" />{{ itemIncome.length }} loại/giờ</span>
         <Icon name="info" :size="14" class="text-slate-500" />
       </div>
@@ -194,7 +193,7 @@ function stepFarm(d) {
     </button>
 
     <div class="px-1 text-xs text-slate-500">
-      Từ lúc mở game: hạ {{ battle.run.kills }} yêu thú · +{{ fmt(battle.run.stones) }} linh thạch
+      Từ lúc mở game: hạ {{ battle.run.kills }} yêu thú
       <span v-if="battle.run.gear.length"> · trang bị: {{ battle.run.gear.slice(-3).join(', ') }}</span>
       <span v-if="runItems.length"> · <span v-for="([id, n], i) in runItems" :key="id">{{ i ? ', ' : '' }}{{ itemName(id) }} x{{ n }}</span></span>
     </div>
@@ -210,8 +209,8 @@ function stepFarm(d) {
       </template>
       <template v-else-if="sheet === 'income'">
         <template v-if="best > 0">
-          <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome) }}/giây)</div>
-          <div class="text-gold-300">+{{ fmt(stoneIncome) }} linh thạch/giây</div>
+          <div class="text-jade-300">+{{ Math.round(C.campaignExpBonus(best, game.stageIdx) * 100) }}% tốc độ linh khí (≈ +{{ fmt(expIncome.mul(60)) }}/phút)</div>
+          <div class="text-gold-300">+{{ fmt(stoneIncome.mul(60)) }} linh thạch/phút</div>
           <div v-if="incomeAi < best" class="mt-1 text-xs text-slate-500">Đang tính đến ải {{ incomeAi }} (trần theo cảnh giới, đột phá để mở rộng thêm).</div>
           <div v-if="itemIncome.length" class="mt-1 text-slate-300">Mỗi giờ: <span v-for="(it, i) in itemIncome" :key="it.id">{{ i ? ', ' : '' }}{{ itemName(it.id) }} ~{{ it.perHour.toFixed(1) }}</span></div>
         </template>

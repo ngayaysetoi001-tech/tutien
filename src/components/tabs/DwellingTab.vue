@@ -54,7 +54,7 @@ function maxBatches(r) {
         <div class="text-xs text-jade-300">Cấp {{ game.arrayLevel }}</div>
       </div>
       <p class="mt-1 text-xs text-slate-400">
-        Hội tụ linh khí thiên địa về động phủ, tăng tốc độ hấp thụ linh khí. Hiện tại: {{ fmt(game.expRate) }} linh khí/giây.
+        Hội tụ linh khí thiên địa về động phủ, tăng tốc độ hấp thụ linh khí. Hiện tại: {{ fmt(game.expRate.mul(60)) }} linh khí/phút.
       </p>
       <button class="btn-jade mt-2 w-full" :disabled="!game.canUpgradeArray" @click="game.upgradeArray()">
         Nâng cấp <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(game.arrayCost) }}

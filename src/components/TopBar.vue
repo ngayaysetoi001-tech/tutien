@@ -13,9 +13,9 @@ const game = useGameStore()
 const ui = useUiStore()
 
 const barLabel = computed(() => {
-  if (game.isMaxStage) return `Cực hạn · +${fmt(game.expRate)}/giây`
+  if (game.isMaxStage) return `Cực hạn · +${fmt(game.expRate.mul(60))}/phút`
   const state = game.isFull ? 'Đã đầy' : fmtPercent(game.progress)
-  return `${state} → ${game.nextStageName} · +${fmt(game.expRate)}/giây`
+  return `${state} → ${game.nextStageName} · +${fmt(game.expRate.mul(60))}/phút`
 })
 const showBreakChip = computed(() => game.canBreakthrough && ui.tab !== 'character')
 </script>

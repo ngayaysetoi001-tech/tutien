@@ -42,7 +42,6 @@ const capHours = computed(() => Math.round(game.offlineCap / 3600))
           <template v-if="game.offlineReport.campaign.to > game.offlineReport.campaign.from">Ải {{ game.offlineReport.campaign.from }} → ải {{ game.offlineReport.campaign.to }}</template>
           <template v-else>Vẫn dừng ở ải {{ game.offlineReport.campaign.to }}</template>
         </div>
-        <div v-if="game.offlineReport.campaign.stones.gt(0)" class="text-gold-300">+{{ fmt(game.offlineReport.campaign.stones) }} linh thạch từ các ải mới</div>
         <div v-if="game.offlineReport.campaign.gear" class="text-gold-300">+{{ game.offlineReport.campaign.gear }} trang bị (vào túi trang bị)</div>
         <div v-if="farmItems.length" class="text-jade-300">
           <span v-for="([id, n], i) in farmItems" :key="id">{{ i ? ', ' : '' }}{{ itemName(id) }} x{{ n }}</span>

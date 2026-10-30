@@ -298,17 +298,21 @@ ok('Kiên Trì cộng chỉ số, xoá khi vượt ải mới', () => {
   assert.equal(s.campaign.grit, 0)
   assert.equal(b.gritMult(), 1)
 })
-ok('vượt boss: tiến độ, kỷ lục và thưởng lần đầu; ải thường không thưởng thêm', () => {
+ok('vượt ải: cập nhật tiến độ và kỷ lục, tăng thu nhập thụ động, KHÔNG có thưởng linh thạch một lần', () => {
   const s = freshStore()
   s.init()
+  s.stageIdx = 10
   const stones = s.spiritStones
-  assert.equal(s.recordAi(1), null)
-  assert.ok(s.spiritStones.eq(stones))
-  const bonus = s.recordAi(5)
-  assert.ok(bonus && bonus.gt(0))
-  assert.ok(s.spiritStones.gt(stones))
+  const rate0 = s.stonesRate
+  s.recordAi(1)
+  assert.ok(s.spiritStones.eq(stones), 'ải thường không thưởng linh thạch')
+  s.recordAi(5)
+  assert.ok(s.spiritStones.eq(stones), 'boss cũng không thưởng linh thạch')
   assert.equal(s.campaign.best, 5)
   assert.equal(s.campaign.record, 5)
+  assert.ok(s.stonesRate.gt(rate0), 'thu nhập linh thạch theo thời gian tăng')
+  assert.equal(typeof C.aiStoneReward, 'undefined')
+  assert.equal(typeof C.firstClearStones, 'undefined')
 })
 ok('thu nhập thụ động tăng theo ải cao nhất (linh khí và linh thạch)', () => {
   const s = freshStore()
@@ -711,8 +715,6 @@ ok('vượt ải: loại ải, chương, bối cảnh quay vòng, độ khó và
   assert.ok(C.campaignStonesPerSecond(50).gt(C.campaignStonesPerSecond(10)))
   assert.deepEqual(C.campaignItemsPerHour(0), [])
   for (const it of C.campaignItemsPerHour(35)) assert.ok(['herbs', 'ores'].includes(ALL_ITEMS[it.id].group) && it.perHour > 0)
-  // thưởng lần đầu chỉ có ở boss
-  assert.ok(C.firstClearStones(3).eq(0) && C.firstClearStones(5).gt(0) && C.firstClearStones(10).gt(C.firstClearStones(5)))
   // người chơi mạnh hơn thắng nhiều hơn; tử trận ở ải quá khó
   const weak = { hp: 100, atk: 10, def: 5, speed: 10 }
   const strong = { hp: 400, atk: 50, def: 30, speed: 14 }
@@ -1792,7 +1794,7 @@ ok('rương mốc ải: chỉ nhận khi đạt mốc, theo thứ tự, thưởn
   const stones = s.spiritStones
   assert.equal(s.claimMilestone(), true)
   assert.equal(s.campaign.milestone, 1)
-  assert.ok(s.bonus.hp > hp0 && s.spiritStones.gt(stones))
+  assert.ok(s.bonus.hp > hp0 && s.spiritStones.eq(stones), 'thưởng chỉ số, không có linh thạch')
   assert.equal(s.claimMilestone(), false, 'mốc 25 chưa đạt')
   s.campaign.record = 60
   assert.equal(s.claimMilestone(), true)
@@ -1822,9 +1824,7 @@ ok('phần thưởng mốc ải: tăng dần, có công pháp tàn quyển hợp
   let prev = null
   C.MILESTONES.forEach((m, i) => {
     const fx = C.milestoneReward(i)
-    const stones = fx.find((e) => e.type === 'stones').base
-    if (prev) assert.ok(stones > prev, 'linh thạch tăng dần')
-    prev = stones
+    assert.ok(!fx.some((e) => e.type === 'stones'), 'rương mốc không còn linh thạch')
     assert.ok(fx.some((e) => e.type === 'stat'))
     const item = fx.find((e) => e.type === 'item')
     if (i === 0) assert.ok(!item)
@@ -2343,7 +2343,7 @@ ok('chọn thưởng boss: 3 lựa chọn khác loại, hiệu lực hợp lệ,
       for (const o of opts) {
         assert.ok(o.label.length > 5 && o.effects.length >= 1)
         for (const e of o.effects) {
-          assert.ok(['stones', 'stat', 'item', 'expBonus'].includes(e.type))
+          assert.ok(['stat', 'item', 'expBonus'].includes(e.type), 'không có thưởng linh thạch')
           if (e.type === 'item') assert.ok(ALL_ITEMS[e.id], e.id)
         }
       }
@@ -2358,14 +2358,15 @@ ok('chọn thưởng boss: 3 lựa chọn khác loại, hiệu lực hợp lệ,
       }
     }
   }
-  const stones = (kind) => BCH.bossChoiceOptions({ n: 30, kind }, seq(0, 0, 0, 0, 0, 0)).find((o) => o.id === 'stones')?.effects[0].base
-  const rngStones = (kind) => {
-    for (let i = 0; i < 100; i++) {
-      const o = BCH.bossChoiceOptions({ n: 30, kind }).find((x) => x.id === 'stones')
-      if (o) return o.effects[0].base
+  for (let i = 0; i < 100; i++) assert.ok(!BCH.bossChoiceOptions({ n: 30, kind: 'big' }).some((o) => o.id === 'stones'))
+  // thưởng lớn dần theo loại boss: số tàn quyển
+  const count = (kind) => {
+    for (let i = 0; i < 200; i++) {
+      const o = BCH.bossChoiceOptions({ n: 30, kind }).find((x) => x.id === 'art')
+      if (o) return o.effects[0].count
     }
   }
-  assert.ok(rngStones('lord') > rngStones('big') && rngStones('big') > rngStones('mini'))
+  assert.ok(count('lord') > count('big') && count('big') > count('mini'))
 })
 
 ok('chọn thưởng boss trong game: mở khi lần đầu hạ boss, không mở với ải thường hay ải đã vượt, chọn áp dụng, tự chọn sau 10 phút', () => {
@@ -3410,14 +3411,14 @@ ok('Thiên Mệnh tối đa: căn cốt kiếp sau luôn là Thiên Linh Căn', 
 ok('Linh Điền: trồng tốn linh thạch, chưa chín thì không thu, chín thì nhận thảo dược', () => {
   const s = freshStore()
   s.init()
-  s.spiritStones = new Decimal(100)
+  s.spiritStones = new Decimal(1000)
   assert.equal(GD.plotCount(0), 2)
   assert.equal(GD.plotCount(24), 6)
   assert.equal(s.plant(2, 'linh_thao'), false) // luống 3 chưa mở
   assert.equal(s.plant(0, 'tu_van_thao'), false) // chưa đủ bậc
   assert.equal(s.plant(0, 'linh_thao'), true)
   assert.equal(s.plant(0, 'linh_thao'), false) // luống đã có cây
-  assert.ok(s.spiritStones.lt(100))
+  assert.ok(s.spiritStones.lt(1000))
   assert.equal(s.harvest(0), 0) // chưa chín
   const later = Date.now() + 301 * 1000
   const n = s.harvest(0, later)
@@ -4274,16 +4275,14 @@ ok('nhiệm vụ và thành tựu theo ải: mẫu "Vượt thêm ải" đo kỷ
   assert.equal(s2.quests.length, QS.BOARD_SIZE)
 })
 
-ok('Vượt Ải: thưởng linh khí và linh thạch giảm dần khi cày ải quá yếu so với tu vi, không giảm khi tu vi thấp hơn', () => {
+ok('Vượt Ải: thưởng linh khí giảm dần khi cày ải quá yếu so với tu vi, không giảm khi tu vi thấp hơn', () => {
   const n = 7 // bậc tương đương = 3
   const on = C.aiExpSeconds(n, 'normal', 3)
   assert.ok(on <= 6, 'mỗi quái thường cho tối đa vài giây sản lượng')
   assert.equal(C.aiExpSeconds(n, 'normal', 3 + C.OVERLEVEL_GRACE), on, 'chưa vượt ngưỡng ân hạn thì chưa giảm')
   assert.ok(C.aiExpSeconds(n, 'normal', 3 + C.OVERLEVEL_GRACE + 3) < on * 0.4)
   assert.equal(C.aiExpSeconds(n, 'normal', 0), on)
-  const stone = C.aiStoneReward(n, 'normal', 3)
-  assert.ok(C.aiStoneReward(n, 'normal', 3 + C.OVERLEVEL_GRACE + 4).lt(stone.mul(0.5)))
-  assert.ok(C.aiStoneReward(n, 'mini', 3).gt(stone.mul(2)), 'boss thưởng nhiều hơn quái thường')
+  assert.ok(C.aiExpSeconds(n, 'mini', 3) > on * 2, 'boss thưởng nhiều hơn quái thường')
   assert.ok(C.aiContribution(1, 'normal') === 0 && C.aiContribution(5, 'mini') >= 1 && C.aiContribution(100, 'lord') > C.aiContribution(10, 'big'))
 })
 
@@ -4316,14 +4315,14 @@ ok('trần phần thưởng linh khí: kỳ ngộ không vượt 0.8% yêu cầu
   drainTimers()
 })
 
-ok('đệ tử Trấn Thủ cho lượng linh thạch tương đương hàng chục lần hạ quái mỗi giờ (có ý nghĩa kinh tế)', () => {
-  const d = DUNGEONS[2]
-  const kill = C.aiStoneReward(2 * d.power + 1, 'normal', d.power) // ải cùng bậc với bậc đệ tử đang trấn thủ
+ok('đệ tử Trấn Thủ: mỗi giờ thu 2 phút thu nhập linh thạch tham chiếu của bậc, tăng theo cấp và theo bậc; Hái Thuốc vẫn có thảo dược', () => {
   const disc = { uid: 'x', name: 'A', element: 'kim', grade: 0, level: 1, job: 'guard', since: 0 }
-  const out = DS.outputPerHour(disc, d.power, {})
-  assert.equal(out.kind, 'stones')
-  const killsPerHour = out.perHour.div(kill).toNumber()
-  assert.ok(killsPerHour >= 30 && killsPerHour <= 150, `tương đương ${killsPerHour.toFixed(0)} lần hạ quái/giờ`)
+  for (const st of [0, 6, 12, 20]) {
+    const out = DS.outputPerHour(disc, st, {})
+    assert.equal(out.kind, 'stones')
+    assert.ok(Math.abs(out.perHour.div(C.stoneRef(st)).toNumber() - 120 * DS.discipleMult(disc, null)) < 1e-6, 'bậc ' + st)
+  }
+  assert.ok(DS.outputPerHour({ ...disc, level: 10 }, 6, {}).perHour.gt(DS.outputPerHour(disc, 6, {}).perHour))
   const herb = DS.outputPerHour({ ...disc, job: 'herb' }, 0, {})
   assert.ok(herb.perHour >= 10)
 })
