@@ -135,6 +135,7 @@ function createPlayerState(minRoot = 0) {
       warp: false, // đang tăng tốc (không lưu)
       auto: Object.fromEntries(AUTOMATIONS.map((a) => [a.id, false])), // tự động hoá đã mở khoá: bật / tắt từng cái
       autoCraft: null, // id công thức tự luyện
+      haptic: true, // rung nhẹ khi bấm nút (nếu thiết bị hỗ trợ)
       lastBackup: 0, // thời điểm xuất save gần nhất (0 = chưa từng)
       fontScale: 'md', // cỡ chữ: sm | md | lg
       salvageBelow: 1, // tự phân giải đồ có độ hiếm dưới ngưỡng này (1..3), khi bật tự động hoá 'salvage'

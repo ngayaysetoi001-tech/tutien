@@ -55,7 +55,8 @@ body {
   }
   .btn-gold {
     @apply btn border-gold-500/60 text-gold-300;
-    background: linear-gradient(180deg, rgb(246 200 95 / 0.28), rgb(217 165 58 / 0.1));
+    background: linear-gradient(180deg, rgb(246 200 95 / 0.34), rgb(217 165 58 / 0.12));
+    border-color: rgb(246 200 95 / 0.7);
   }
   .btn-ghost {
     @apply btn border-ink-600 text-slate-300;
@@ -80,7 +81,9 @@ body {
   .panel {
     @apply relative rounded-xl;
     border: 1px solid var(--gold-dim);
-    background: linear-gradient(180deg, rgb(22 29 46 / 0.94), rgb(10 14 25 / 0.96));
+    background:
+      radial-gradient(120% 60% at 50% 0%, rgb(60 80 130 / 0.22), transparent 70%),
+      linear-gradient(180deg, rgb(22 29 46 / 0.94), rgb(10 14 25 / 0.96));
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 6px 18px rgb(0 0 0 / 0.45);
   }
   .panel::before {
@@ -108,7 +111,7 @@ body {
   }
   /* Tiêu đề nhỏ có đường kẻ trang trí hai bên */
   .title-rule {
-    @apply flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-gold-400;
+    @apply flex items-center gap-2 font-serif text-xs font-bold uppercase tracking-widest text-gold-400;
   }
   .title-rule::before,
   .title-rule::after {
@@ -148,8 +151,11 @@ body {
   }
   .nav-btn[data-active='true'] {
     @apply text-gold-300;
-    background: linear-gradient(180deg, rgb(246 200 95 / 0.16), rgb(246 200 95 / 0.03));
+    background: linear-gradient(180deg, rgb(246 200 95 / 0.18), rgb(246 200 95 / 0.03));
     box-shadow: inset 0 -2px 0 var(--gold-line);
+  }
+  .nav-btn[data-active='true'] svg {
+    filter: drop-shadow(0 0 5px rgb(246 200 95 / 0.8));
   }
 }
 
@@ -206,4 +212,12 @@ body {
 /* Vùng an toàn trên điện thoại có tai thỏ */
 .safe-bottom {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* Người dùng bật giảm chuyển động trong hệ điều hành: tắt các hiệu ứng nhấp nháy liên tục */
+@media (prefers-reduced-motion: reduce) {
+  .glow-ready:not(:disabled),
+  .bar-fill::after {
+    animation: none;
+  }
 }

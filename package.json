@@ -13,6 +13,7 @@
     "econ": "node scripts/economy-sim.mjs"
   },
   "dependencies": {
+    "@fontsource/noto-serif": "^5.3.0",
     "break_infinity.js": "^2.2.0",
     "pinia": "^2.3.1",
     "pixi.js": "^8.6.6",

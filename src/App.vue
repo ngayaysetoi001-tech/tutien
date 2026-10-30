@@ -27,6 +27,13 @@ const onVisibility = () => {
   if (document.visibilityState === 'hidden') saveNow()
 }
 
+// Rung nhẹ khi bấm nút hành động (chỉ khi bật trong Cài Đặt và thiết bị hỗ trợ)
+function buzz(e) {
+  if (!game.settings.haptic || !navigator.vibrate) return
+  const b = e.target.closest?.('button')
+  if (b && !b.disabled && b.className.includes('btn')) navigator.vibrate(8)
+}
+
 let unbindAudio = null
 
 // Cỡ chữ người dùng chọn: đổi font-size gốc (mọi cỡ chữ rem trong giao diện co giãn theo)
@@ -58,6 +65,7 @@ onMounted(() => {
   game.startLoop() // vòng lặp tick + autosave mỗi 5s
   window.addEventListener('beforeunload', saveNow)
   document.addEventListener('visibilitychange', onVisibility)
+  document.addEventListener('click', buzz)
 })
 
 onBeforeUnmount(() => {
@@ -66,6 +74,7 @@ onBeforeUnmount(() => {
   saveNow()
   window.removeEventListener('beforeunload', saveNow)
   document.removeEventListener('visibilitychange', onVisibility)
+  document.removeEventListener('click', buzz)
 })
 </script>
 

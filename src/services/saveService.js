@@ -404,6 +404,7 @@ export function deserialize(save, defaults) {
       auto: Object.fromEntries(AUTOMATION_IDS.map((id) => [id, d.settings?.auto?.[id] === true])),
       autoCraft: RECIPES.some((r) => r.id === d.settings?.autoCraft) ? d.settings.autoCraft : null,
       salvageBelow: Math.floor(num(d.settings?.salvageBelow, 1, 1, 3)),
+      haptic: d.settings?.haptic !== false,
       lastBackup: num(d.settings?.lastBackup, 0, 0, Date.now()),
       fontScale: ['sm', 'md', 'lg'].includes(d.settings?.fontScale) ? d.settings.fontScale : 'md',
     },

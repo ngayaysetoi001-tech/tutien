@@ -96,6 +96,10 @@ function onReset() {
       <input v-model="game.settings.notify" type="checkbox" class="h-4 w-4 accent-emerald-500" @change="onNotifyChange" />
     </label>
     <label class="card flex items-center justify-between text-sm">
+      <span>Rung nhẹ khi bấm nút<br /><span class="text-xs text-slate-500">Chỉ trên thiết bị hỗ trợ rung (Android)</span></span>
+      <input v-model="game.settings.haptic" type="checkbox" class="h-4 w-4 accent-emerald-500" />
+    </label>
+    <label class="card flex items-center justify-between text-sm">
       <span>Tự động lưu mỗi 5 giây</span>
       <input v-model="game.settings.autoSave" type="checkbox" class="h-4 w-4 accent-emerald-500" />
     </label>

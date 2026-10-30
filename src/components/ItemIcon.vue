@@ -30,8 +30,8 @@ watch(
 </script>
 
 <template>
-  <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected, 'is-flash': flash, 'is-round': !!src }">
-    <span class="item-icon__box" :style="{ borderColor: frame || undefined, background: tint ? `radial-gradient(circle at 50% 35%, ${tint}44, rgb(12 16 30 / 0.92))` : undefined }">
+  <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected, 'is-flash': flash, 'is-round': !!src, 'has-frame': !!frame && !locked, 'is-legend': frame === '#f472b6' }">
+    <span class="item-icon__box" :style="{ '--frame': frame || undefined, background: tint ? `radial-gradient(circle at 50% 35%, ${tint}44, rgb(12 16 30 / 0.92))` : undefined }">
       <img v-if="src && !locked" :src="src" alt="" class="item-icon__img" draggable="false" />
       <Icon v-else :name="locked ? 'lock' : glyph" :size="26" :style="{ color: locked ? '#64748b' : color }" />
       <span v-if="badge !== ''" class="item-icon__badge">{{ badge }}</span>
@@ -61,7 +61,7 @@ watch(
   width: 100%;
   aspect-ratio: 1;
   max-width: 64px;
-  border: 1.5px solid var(--gold-dim);
+  border: 1.5px solid var(--frame, var(--gold-dim));
   border-radius: 10px;
   background: radial-gradient(circle at 50% 35%, rgb(40 52 84 / 0.7), rgb(12 16 30 / 0.9));
   transition: transform 0.12s, box-shadow 0.12s;
@@ -80,6 +80,35 @@ watch(
 }
 .item-icon:active .item-icon__box {
   transform: scale(0.94);
+}
+/* Khung có màu (độ hiếm / hệ): viền đôi và ánh sáng cùng màu */
+.has-frame .item-icon__box {
+  box-shadow: 0 0 9px color-mix(in srgb, var(--frame) 40%, transparent), inset 0 0 7px color-mix(in srgb, var(--frame) 22%, transparent);
+}
+.has-frame .item-icon__box::after {
+  content: '';
+  position: absolute;
+  inset: 2.5px;
+  border: 1px solid color-mix(in srgb, var(--frame) 38%, transparent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.is-legend .item-icon__box {
+  animation: legend-glow 2.4s ease-in-out infinite;
+}
+@keyframes legend-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgb(244 114 182 / 0.35), inset 0 0 6px rgb(244 114 182 / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 18px rgb(244 114 182 / 0.75), inset 0 0 10px rgb(244 114 182 / 0.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-legend .item-icon__box {
+    animation: none;
+  }
 }
 .is-dim .item-icon__box {
   opacity: 0.45;

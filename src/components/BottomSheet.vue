@@ -16,6 +16,7 @@ const emit = defineEmits(['close'])
     <Transition name="sheet">
       <div v-if="open" class="sheet-back" @click.self="emit('close')">
         <div class="sheet panel" role="dialog">
+          <div class="sheet__grab" aria-hidden="true"></div>
           <div class="sheet__head">
             <Icon v-if="glyph" :name="glyph" :size="22" :style="{ color }" />
             <b class="sheet__title" :style="{ color }">{{ title }}</b>
@@ -47,6 +48,13 @@ const emit = defineEmits(['close'])
   flex-direction: column;
   border-radius: 16px 16px 0 0;
   padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+}
+.sheet__grab {
+  width: 38px;
+  height: 4px;
+  margin: -4px auto 8px;
+  border-radius: 2px;
+  background: rgb(217 165 58 / 0.45);
 }
 .sheet__head {
   display: flex;
