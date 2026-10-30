@@ -37,7 +37,7 @@ import * as EQ from '../game/equipment.js'
 import { enemyStats, simulateFight } from '../game/battle.js'
 import * as C from '../game/campaign.js'
 import { MIN_STAGE, daoGain, perkById, perkCost } from '../game/reincarnation.js'
-import { AUTOMATIONS, AUTOMATION_INTERVAL, SALVAGE_BAG_LIMIT, automationById, automationUnlocked } from '../game/automation.js'
+import { AUTOMATIONS, AUTOMATION_INTERVAL, SALVAGE_MAX, SALVAGE_MIN, automationById, automationUnlocked } from '../game/automation.js'
 import { CHALLENGES, challengeReward } from '../game/challenges.js'
 import {
   DAILY_BONUS_REWARD, DAILY_BONUS_TIME, DAILY_TASK_COUNT, DAILY_TASK_REWARD, DAILY_TEMPLATE_IDS, STREAK_DAYS, dailyArtPool, dailyReward, dayKey, emptyDaily, nextRewardDay, previousDayKey,
@@ -133,6 +133,7 @@ function createPlayerState(minRoot = 0) {
       warp: false, // đang tăng tốc (không lưu)
       auto: Object.fromEntries(AUTOMATIONS.map((a) => [a.id, false])), // tự động hoá đã mở khoá: bật / tắt từng cái
       autoCraft: null, // id công thức tự luyện
+      salvageBelow: 1, // tự phân giải đồ có độ hiếm dưới ngưỡng này (1..3), khi bật tự động hoá 'salvage'
     },
     buffs: { success: 0, guard: 0 }, // hiệu ứng đan dược dùng một lần
     alchemy: { level: 1, exp: 0 }, // cấp Luyện Đan
@@ -1104,13 +1105,26 @@ export const useGameStore = defineStore('game', {
       if (on('craft') && this.settings.autoCraft) {
         for (let k = 0; k < 5 && this.canCraft(this.settings.autoCraft) && this.spiritStones.gte(this.stonesRate.mul(30)); k++) this.craft(this.settings.autoCraft, 1)
       }
-      if (on('salvage') && this.gear.bag.length > SALVAGE_BAG_LIMIT) {
-        const worn = Object.values(this.gear.equipped)
-        for (const it of [...this.gear.bag]) {
-          if (this.gear.bag.length <= SALVAGE_BAG_LIMIT) break
-          if (it.rarity === 0 && !it.legend && !worn.includes(it.uid)) this.sellGear(it.uid)
-        }
+      if (on('salvage')) this.autoSalvage()
+    },
+
+    /**
+     * Phân giải mọi món không mặc có độ hiếm dưới ngưỡng `settings.salvageBelow`. Luôn giữ món đang mặc,
+     * đồ Huyền Thoại và món tốt nhất của mỗi ô (để không mất đồ duy nhất khi chưa có gì tốt hơn). Trả về số món đã phân giải.
+     */
+    autoSalvage() {
+      const below = Math.min(SALVAGE_MAX, Math.max(SALVAGE_MIN, Math.floor(this.settings.salvageBelow ?? SALVAGE_MIN)))
+      const keep = new Set(Object.values(this.gear.equipped))
+      for (const slot of EQ.SLOT_IDS) {
+        let best = null
+        for (const it of this.gear.bag) if (it.slot === slot && (!best || EQ.gearScore(it) > EQ.gearScore(best))) best = it
+        if (best) keep.add(best.uid)
       }
+      let n = 0
+      for (const it of [...this.gear.bag]) {
+        if (it.rarity < below && !it.legend && !keep.has(it.uid) && this.sellGear(it.uid)) n++
+      }
+      return n
     },
 
     /** Mỗi ô mặc món có điểm cao nhất trong túi (nếu cao hơn món đang mặc). Trả về số ô đã đổi. */

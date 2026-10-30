@@ -3,10 +3,11 @@
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import {
-  BAG_LIMIT, LEGENDS, MAX_ENHANCE, SLOTS, SLOT_IDS, affixCount, affixLine, affixText, enhanceCost, itemColor, itemFullName, itemStats, perkText,
+  BAG_LIMIT, LEGENDS, RARITIES, MAX_ENHANCE, SLOTS, SLOT_IDS, affixCount, affixLine, affixText, enhanceCost, itemColor, itemFullName, itemStats, perkText,
   rerollCost, sellValue, statsText,
 } from '../../game/equipment.js'
 import { fmt } from '../../game/format.js'
+import { automationById, automationUnlocked } from '../../game/automation.js'
 import { SLOT_GLYPH } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
@@ -23,6 +24,11 @@ const equipped = computed(() => SLOT_IDS.map((slot, i) => [slot, game.equippedIt
 const canEnhance = (it) => it.enh < MAX_ENHANCE && game.spiritStones.gte(enhanceCost(it))
 const canReroll = (it) => !it.legend && affixCount(it.rarity) > 0
 const legendText = (it) => LEGENDS[it.legend]?.text
+// Tự phân giải đồ yếu: mở ở ải 40 (cùng điều kiện với mục Tự động hoá ở Cài Đặt)
+const salvageAuto = automationById('salvage')
+const salvageUnlocked = computed(() => automationUnlocked(salvageAuto, game))
+const salvageOptions = [1, 2, 3].map((n) => ({ n, text: n === 1 ? 'Phàm' : 'Phàm + ' + RARITIES.slice(1, n).map((r) => r.name).join(' + ') }))
+const salvageNow = computed(() => game.gear.bag.filter((it) => it.rarity < game.settings.salvageBelow && !it.legend && !isEquipped(it.uid)).length)
 const item = computed(() => (sel.value ? game.gear.bag.find((x) => x.uid === sel.value) ?? null : null))
 // So với món đang mặc cùng ô: chênh lệch từng chỉ số (xanh = tốt hơn, đỏ = kém hơn)
 const STAT_LABEL = { hp: 'Khí huyết', atk: 'Công', def: 'Thủ', speed: 'Thân pháp', exp: 'Linh khí' }
@@ -64,6 +70,32 @@ const open = computed(() => !!item.value)
           @click="it && ((sel = it.uid), (lockIdx = -1))"
         />
       </div>
+    </div>
+
+    <!-- Tự phân giải đồ yếu -->
+    <div class="rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2">
+      <div class="flex items-center justify-between gap-2">
+        <span class="flex items-center gap-1.5 text-sm font-bold text-slate-200"><Icon name="refine" :size="16" class="text-gold-300" />Tự phân giải đồ yếu</span>
+        <button
+          class="min-h-[36px] rounded-full border px-3 text-xs font-bold"
+          :class="game.settings.auto.salvage && salvageUnlocked ? 'border-jade-500/60 bg-jade-500/20 text-jade-200' : 'border-ink-600 bg-ink-900 text-slate-400'"
+          :disabled="!salvageUnlocked"
+          @click="game.settings.auto.salvage = !game.settings.auto.salvage"
+        >{{ salvageUnlocked ? (game.settings.auto.salvage ? 'BẬT' : 'TẮT') : 'Mở ở ải 40' }}</button>
+      </div>
+      <template v-if="salvageUnlocked">
+        <div class="mt-1.5 text-xs text-slate-400">Phân giải đồ không mặc có độ hiếm dưới ngưỡng (giữ món tốt nhất mỗi ô và đồ Huyền Thoại):</div>
+        <div class="mt-1 grid grid-cols-3 gap-1">
+          <button
+            v-for="o in salvageOptions"
+            :key="o.n"
+            class="min-h-[40px] rounded-lg border px-1 text-xs font-bold"
+            :class="game.settings.salvageBelow === o.n ? 'border-gold-400 bg-gold-500/20 text-gold-200' : 'border-ink-600 bg-ink-900 text-slate-400'"
+            @click="game.settings.salvageBelow = o.n"
+          >{{ o.text }}</button>
+        </div>
+        <button class="btn-ghost mt-1.5 min-h-[40px] w-full text-xs" :disabled="salvageNow === 0" @click="game.autoSalvage()">Phân giải ngay {{ salvageNow }} món</button>
+      </template>
     </div>
 
     <div>

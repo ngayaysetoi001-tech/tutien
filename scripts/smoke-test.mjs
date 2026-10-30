@@ -1983,14 +1983,49 @@ ok('tự luyện đan chọn công thức; tự phân giải chỉ đồ Phàm k
   t.init()
   t.campaign.record = 40
   t.settings.auto.salvage = true
-  for (let i = 0; i < 35; i++) t.gear.bag.push({ uid: 'p' + i, slot: 'weapon', tier: 0, rarity: 0, enh: 0, affixes: [] })
-  t.gear.bag.push({ uid: 'good', slot: 'weapon', tier: 0, rarity: 2, enh: 0, affixes: [] })
+  const mk = (uid, slot, rarity, tier = 0) => t.gear.bag.push({ uid, slot, tier, rarity, enh: 0, affixes: [] })
+  for (let i = 0; i < 5; i++) mk('p' + i, 'weapon', 0)
+  mk('l1', 'weapon', 1)
+  mk('b1', 'weapon', 2)
+  mk('top', 'weapon', 3, 2)
+  mk('a1', 'armor', 0) // đồ Phàm duy nhất của ô y phục: được giữ vì là món tốt nhất của ô
+  mk('a2', 'armor', 0)
   t.gear.bag.push({ ...EQ.generateLegend('weapon', 0), uid: 'legend' })
   t.gear.equipped.weapon = 'p0'
-  t.runAutomation()
-  assert.equal(t.gear.bag.length, 30)
-  assert.ok(t.gear.bag.some((x) => x.uid === 'p0'), 'đồ đang mặc được giữ')
-  assert.ok(t.gear.bag.some((x) => x.uid === 'good') && t.gear.bag.some((x) => x.uid === 'legend'))
+  t.runAutomation() // ngưỡng mặc định 1: chỉ Phàm
+  const ids = () => t.gear.bag.map((x) => x.uid)
+  assert.ok(ids().includes('p0'), 'đồ đang mặc được giữ')
+  assert.ok(!ids().includes('p1') && !ids().includes('p4'), 'Phàm không mặc bị phân giải')
+  assert.ok(['l1', 'b1', 'top', 'legend'].every((x) => ids().includes(x)))
+  assert.equal(ids().filter((x) => x === 'a1' || x === 'a2').length, 1, 'ô y phục còn đúng một món (món tốt nhất)')
+  // nâng ngưỡng: Linh cũng bị phân giải, Bảo trở lên giữ
+  t.settings.salvageBelow = 2
+  assert.equal(t.autoSalvage(), 1)
+  assert.ok(!ids().includes('l1') && ids().includes('b1'))
+  t.settings.salvageBelow = 3
+  t.autoSalvage()
+  assert.ok(!ids().includes('b1') && ids().includes('top') && ids().includes('legend'), 'ngưỡng 3 giữ Tiên và Huyền Thoại')
+  assert.ok(ids().includes('p0'), 'vẫn giữ đồ đang mặc')
+  // tắt tự động hoá thì không tự phân giải
+  const u = freshStore()
+  u.init()
+  u.campaign.record = 40
+  for (let i = 0; i < 4; i++) u.gear.bag.push({ uid: 'q' + i, slot: 'ring', tier: 0, rarity: 0, enh: 0, affixes: [] })
+  u.gear.bag.push({ uid: 'qq', slot: 'ring', tier: 1, rarity: 1, enh: 0, affixes: [] })
+  u.runAutomation()
+  assert.equal(u.gear.bag.length, 5)
+  // save giữ ngưỡng, kẹp trong 1..3
+  u.settings.salvageBelow = 2
+  u.save()
+  const u2 = freshStore(true)
+  u2.init()
+  assert.equal(u2.settings.salvageBelow, 2)
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.settings.salvageBelow = 99
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const u3 = freshStore(true)
+  u3.init()
+  assert.equal(u3.settings.salvageBelow, 3)
 })
 
 ok('save/load giữ cài đặt tự động hoá; bỏ khoá lạ và công thức lạ', () => {
