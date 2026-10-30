@@ -5,7 +5,6 @@
 // =====================================================================
 import { ARTS, artFragmentId } from './arts.js'
 import { PETS, petFragmentId } from './pets.js'
-import { SKILLS, fragmentId } from './skills.js'
 import { TREASURES, treasureFragmentId } from './treasures.js'
 import { bestCrop, discipleMult } from './disciples.js'
 import { mineInfo } from './garden.js'
@@ -63,9 +62,6 @@ export function missionEffects(m, stageIdx, success, ctx = {}, rng = Math.random
     const pool = Object.keys(TREASURES).filter((id) => TREASURES[id].minAi <= record)
     if (pool.length) fx.push({ type: 'item', id: treasureFragmentId(pick(pool)), count: m.treasure })
   }
-  if (m.skill) {
-    const pool = Object.keys(SKILLS).filter((id) => !SKILLS[id].path || SKILLS[id].path === ctx.path)
-    fx.push({ type: 'item', id: fragmentId(pick(pool)), count: m.skill })
-  }
+  if (m.skill) fx.push({ type: 'skillPoints', amount: m.skill * 2 })
   return fx
 }

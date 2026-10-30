@@ -53,11 +53,6 @@ export const GLYPHS = {
 }
 
 // ---------- id -> biểu tượng ----------
-export const SKILL_GLYPH = {
-  ngu_kiem: 'sword', liet_hoa: 'flame', huyen_bang: 'snow', thanh_moc: 'leaf', hau_tho: 'mountain', phong_loi: 'wind',
-  doc_chu: 'skull', loi_dinh: 'bolt', tuyet_sat: 'dagger', huyet_thuc: 'drop', bao_nhan: 'fist', phan_chan: 'burst',
-  thien_ha: 'star', van_kiem: 'swords', kim_than: 'helm', ngu_loi: 'cloudbolt', dan_hoa: 'fireball', tran_dia: 'cracks',
-}
 export const ART_GLYPH = {
   thanh_tam: 'lotus', cuong_the: 'heart', pha_quan: 'fist', kim_cang: 'shield', truy_phong: 'wind',
   tu_bao: 'coin', ho_phap: 'eye', thien_nhan: 'star', ngu_hanh: 'burst', luan_hoi: 'reborn',
@@ -72,9 +67,8 @@ export const TREASURE_GLYPH = {
 }
 export const PATH_GLYPH = { kiem: 'sword', dao: 'flame', the: 'shield', phu: 'scroll' }
 
-/** Ảnh vẽ (public/skills/*.png) của kỹ năng: nút cây kỹ năng (kiem_1...) và 8 kỹ năng chung có tranh. */
-const GENERIC_IMG = new Set(['ngu_kiem', 'liet_hoa', 'loi_dinh', 'hau_tho', 'phong_loi', 'huyen_bang', 'phan_chan', 'thanh_moc'])
-export const skillImg = (id) => (/^(kiem|dao|the|phu)_[1-8]$/.test(id) || GENERIC_IMG.has(id) ? `${import.meta.env.BASE_URL}skills/${id}.png` : '')
+/** Ảnh vẽ (public/skills/*.png) của nút cây kỹ năng (kiem_1...). */
+export const skillImg = (id) => (/^(kiem|dao|the|phu)_[1-8]$/.test(id) ? `${import.meta.env.BASE_URL}skills/${id}.png` : '')
 /** Ảnh vẽ (public/arts/*.png) của 10 công pháp. */
 export const artImg = (id) => (id in ART_GLYPH ? `${import.meta.env.BASE_URL}arts/${id}.png` : '')
 /** Ảnh vẽ (public/pets/*.png) của 8 linh thú. */
@@ -83,9 +77,8 @@ export const petImg = (id) => (id in PET_GLYPH ? `${import.meta.env.BASE_URL}pet
 export const treasureImg = (id) => (id in TREASURE_GLYPH ? `${import.meta.env.BASE_URL}treasures/${id}.png` : '')
 export const GROUP_GLYPH = { herbs: 'herb', ores: 'stone', scrolls: 'scroll', pills: 'pill' }
 
-/** Biểu tượng của một vật phẩm trong túi (tàn quyển theo võ kỹ / công pháp / linh thú tương ứng). */
+/** Biểu tượng của một vật phẩm trong túi (tàn quyển theo công pháp / linh thú / pháp bảo tương ứng). */
 export function itemGlyph(id, group) {
-  if (id.startsWith('qk_')) return SKILL_GLYPH[id.slice(3)] ?? 'scroll'
   if (id.startsWith('cp_')) return ART_GLYPH[id.slice(3)] ?? 'scroll'
   if (id.startsWith('ln_')) return PET_GLYPH[id.slice(3)] ?? 'scroll'
   if (id.startsWith('pb_')) return TREASURE_GLYPH[id.slice(3)] ?? 'scroll'
@@ -94,9 +87,8 @@ export function itemGlyph(id, group) {
 /** Ảnh vẽ (public/items/*.png) của vật phẩm chung. */
 export const itemPic = (name) => `${import.meta.env.BASE_URL}items/${name}.png`
 const GROUP_PIC = { herbs: 'thao_duoc', ores: 'khoang_thach', scrolls: 'tan_quyen', pills: 'dan_duoc' }
-/** Ảnh của một vật phẩm trong túi: tàn quyển/mảnh dùng tranh của công pháp, linh thú, pháp bảo, võ kỹ tương ứng; còn lại theo nhóm. */
+/** Ảnh của một vật phẩm trong túi: tàn quyển/mảnh dùng tranh của công pháp, linh thú, pháp bảo tương ứng; còn lại theo nhóm. */
 export function itemImg(id, group) {
-  if (id.startsWith('qk_')) return skillImg(id.slice(3))
   if (id.startsWith('cp_')) return artImg(id.slice(3))
   if (id.startsWith('ln_')) return petImg(id.slice(3))
   if (id.startsWith('pb_')) return treasureImg(id.slice(3))

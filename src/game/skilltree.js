@@ -102,4 +102,6 @@ export const activeTreeIds = (path, realmIdx) =>
 
 /** Điểm kỹ năng nhận mỗi giây: 1 điểm / 10 phút ở đầu game, tăng 12% mỗi bậc tu vi. */
 export const SKILL_POINT_BASE = 1 / 600
+/** Điểm kỹ năng rơi thêm khi hạ boss (theo loại ải): thay cho tàn quyển võ kỹ cũ. */
+export const SKILL_POINT_DROP = { mini: 0.1, big: 0.3, lord: 1 }
 export const skillPointRate = (stageIdx) => SKILL_POINT_BASE * (1 + 0.12 * stageIdx)

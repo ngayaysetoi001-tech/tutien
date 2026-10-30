@@ -49,7 +49,7 @@ scripts/       smoke-test.mjs
 ## Giai đoạn 2 (đã có)
 
 - **Ngũ hành:** mỗi nhân vật một hệ (Kim/Mộc/Thủy/Hỏa/Thổ), yêu thú cũng có hệ; hệ khắc +20% sát thương, bị khắc -15%. Tab Bí Cảnh hiện mũi tên lợi/hại cho từng bí cảnh.
-- **Võ kỹ** (chiêu thức chủ động, xem mục "Võ Kỹ và Công Pháp"): học bằng tàn quyển, 5 cấp, ô mở theo đại cảnh giới, tự thi triển khi hồi chiêu xong.
+- **Kỹ năng chiến đấu** (xem mục "Đạo Lộ và cây kỹ năng"): nằm hết trong cây kỹ năng của đạo lộ, tự mở theo cảnh giới, nâng bằng điểm kỹ năng, tự thi triển khi hồi chiêu xong.
 - **Trang bị:** vũ khí / y phục / pháp bảo, 5 phẩm cấp x 4 độ hiếm, cường hoá +10; rèn ở Động Phủ hoặc boss rơi. Pháp bảo còn tăng tốc độ linh khí.
 - **Kỳ ngộ ngẫu nhiên:** 8 sự kiện có lựa chọn và rủi ro (có cả giao chiến mô phỏng); chiến đấu tự tạm dừng khi hộp thoại hiện.
 - **Thành tựu:** 11 thành tựu nhiều mốc, nhận thưởng linh thạch và chỉ số vĩnh viễn.
@@ -183,13 +183,11 @@ Chiến đấu không còn là chọn bí cảnh mà là **chuỗi ải vô hạ
 
 Nhịp đo được: kiếp đầu 15-27 giờ ảo (người chơi trực tuyến) và 23-28 giờ (ghé 30 phút/lần); kiếp 2 còn 7-11 giờ; kiếp 3 trở đi 5-8 giờ. Mỗi bậc đầu 1-6 phút, giữa 4-40 phút, cuối 1-7 giờ. Ải cao nhất cuối kiếp 1 khoảng 150-190.
 
-## Võ Kỹ và Công Pháp
+## Công Pháp (chỉ số bị động)
 
-Màn **Công Pháp** có hai tab con (`src/components/tabs/SkillsTab.vue`):
+Màn **Công Pháp** (`src/components/tabs/SkillsTab.vue`) chỉ còn hệ **Công Pháp** (`src/game/arts.js`): tăng bị động, 10 loại (linh khí, khí huyết, công kích, phòng ngự, Thân pháp, linh thạch, thu nhập thụ động từ ải, tỉ lệ rơi đồ, sát thương khi khắc hệ, Đạo Vận khi luân hồi). Học xong là cộng chỉ số trực tiếp cho nhân vật (không cần ô trang bị), cấp 1-10, mỗi cấp cộng +1,5-2,5%, thăng cấp bằng Công Pháp Tàn Quyển. Công pháp cùng hệ ngũ hành với tông môn được +50%. Tàn quyển rơi từ Tiểu Boss trở lên (công pháp mạnh hơn mở dần theo số ải) và bán ở cửa hàng tông môn từ Chân Truyền. Bốn cột cộng hưởng (Thể, Công, Tốc, Đạo) đầy dần theo tổng cấp, mở thưởng ở mốc 5 / 12 / 20.
 
-- **Võ Kỹ** (`src/game/skills.js`) là chiêu thức chủ động, 13 loại, tự thi triển khi hồi chiêu xong. Ngoài sát thương, hồi máu, lá chắn, tăng tốc và làm chậm còn có: **Độc** (sát thương mỗi giây), **Choáng** (địch mất lượt), **Tuyệt Sát** (gấp đôi khi địch dưới 30% khí huyết), **Hút máu**, **Cuồng Bạo** (tăng công kích), **Phản Chấn** (phản sát thương) và **Tuyệt kỹ** (Thiên Hà Tuyệt Kích, sát thương rất lớn, cần Nguyên Anh để trang bị). Bốn ô, ô thứ tư mở ở Hóa Thần. Tàn quyển rơi ở ải theo chương và bán ở cửa hàng tông môn.
-- **Công Pháp** (`src/game/arts.js`) là tăng bị động, 10 loại: linh khí, khí huyết, công kích, phòng ngự, Thân pháp, linh thạch, thu nhập thụ động từ ải, tỉ lệ rơi đồ, sát thương khi khắc hệ, Đạo Vận khi luân hồi. Học xong là cộng chỉ số trực tiếp cho nhân vật (không cần ô trang bị, mọi công pháp đã học đều có hiệu lực), cấp 1-10, mỗi cấp cộng +1,5-2,5%, thăng cấp bằng Công Pháp Tàn Quyển. Công pháp cùng hệ ngũ hành với tông môn được +50%. Tàn quyển rơi từ Tiểu Boss trở lên (công pháp mạnh hơn mở dần theo số ải) và bán ở cửa hàng tông môn từ Chân Truyền.
-- Cả hai được giữ nguyên khi luân hồi. Save cũ tải bình thường: 6 võ kỹ cũ giữ nguyên cấp và ô trang bị.
+**Đã bỏ hệ Võ Kỹ chung** (13 võ kỹ học bằng tàn quyển, gắn ô, nhánh tiến hoá): mọi kỹ năng chiến đấu nay nằm trong cây kỹ năng. Save cũ tải bình thường: mỗi cấp võ kỹ chung đã học đổi thành 3 điểm kỹ năng, mỗi tàn quyển võ kỹ còn trong túi đổi thành 0,4 điểm (chỉ một lần).
 
 ## Đạo Lộ và cây kỹ năng
 
@@ -200,13 +198,15 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 | Kiếm Tu (Kim) | +15% công kích, +10% chí mạng, chí mạng mạnh hơn, +15% sát thương võ kỹ | Ngự Kiếm Quyết, Phi Kiếm Liên Hoàn, Phong Lôi Kiếm Quyết, Vạn Kiếm Quy Tông | Tru Tiên Nhất Kiếm | Kiếm Tâm Thông Minh, Đạp Vân Bộ, Kiếm Ý Hộ Thể |
 | Đao Tu (Hỏa) | +20% công kích, +5% chí mạng, chí mạng mạnh hơn một chút | Liệt Hỏa Trảm, Tâm Nguyệt Đao, Hỏa Hoàn Thuật, Phá Quân Đao | Thiên Hỏa Phần Thế | Đao Ý Cuồng Phong, Chiến Ý Sôi Trào, Bất Khuất Huyết Đao |
 | Thể Tu (Thổ) | +15% khí huyết, +15% phòng ngự, mọi đòn hút 5% sát thương | Bách Lôi Quyền, Đoạn Kim Chưởng, Hắc Hổ Đảo Tâm, Chưởng Tâm Lôi | Thái Sơn Áp Đỉnh | Kim Cương Nộ Mục, Huyền Quy Tế Thể, Bất Hoại Kim Thân |
-| Phù Tu (Thủy) | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ chung, +10% công pháp | Hỏa Phù Thuật, Lôi Phù Chấn, Băng Phù Phong Tỏa, Ngũ Hành Phù Trận | Thiên Lôi Chân Phù | Linh Phù Hộ Thể, Tụ Linh Phù, Phản Phù Chú |
+| Phù Tu (Thủy) | kỹ năng hồi chiêu nhanh hơn 15%, +10% sát thương kỹ năng tấn công, +10% công pháp | Hỏa Phù Thuật, Lôi Phù Chấn, Băng Phù Phong Tỏa, Ngũ Hành Phù Trận | Thiên Lôi Chân Phù | Linh Phù Hộ Thể, Tụ Linh Phù, Phản Phù Chú |
 
 - **Tự mở theo cảnh giới:** chọn đạo lộ rồi đủ đại cảnh giới thì nút tự mở ở cấp 1 (Võ Kỹ 1 ở Trúc Cơ, Tuyệt Kỹ ở Nguyên Anh, nút chốt ở Luyện Hư...) và **tự thi triển trong trận, không chiếm ô võ kỹ**. Kỹ năng chung (học bằng tàn quyển) vẫn gắn vào ô như cũ.
 - **Nâng cấp bằng điểm kỹ năng:** nhận theo thời gian (khoảng 1 điểm mỗi 10 phút ở đầu game, tăng 12% mỗi bậc), cả khi vắng mặt. Võ Kỹ và Bí Kỹ tối đa cấp 10 (tốn số điểm bằng cấp hiện tại), Tuyệt Kỹ tối đa cấp 5 (gấp đôi). Cấp nút và điểm giữ qua luân hồi.
+- **Trạng thái đặc trưng của đạo lộ:** Võ Kỹ 1-3 (chiêu tấn công, hoặc sát thương theo thời gian) gây trạng thái lên địch trong 4 giây: Kiếm Tu **Phá Giáp** (giảm 15% phòng ngự), Đao Tu **Thiêu** (cháy 15% công kích mỗi giây), Phù Tu **Băng** (làm chậm 20%), Thể Tu **Choáng Váng** (địch chậm ra đòn 0,7 giây mỗi lần trúng). **Liên kích:** Võ Kỹ 4 (chiêu chốt) và Tuyệt Kỹ gây thêm 40% sát thương khi địch đang mang trạng thái của đạo lộ (Phá Giáp Trảm, Hỏa Thiêu Phần Thế, Băng Phù Vỡ, Chấn Động Địa Sơn).
+- **Điểm kỹ năng còn rơi từ boss:** Tiểu Boss 0,1, Đại Boss 0,3, Chúa Tể 1 điểm (kể cả khi vắng mặt), là lựa chọn "Điểm kỹ năng" khi chọn thưởng boss và thưởng thám hiểm. Thay cho tàn quyển võ kỹ cũ.
 - **Bí Kỹ** là kỹ năng buff trong trận (tăng chí mạng, tăng tốc, lá chắn, tăng công, hút máu, phản sát thương, hồi máu), độc lập với Công Pháp. Đơn Nhất tắt cả cây.
 - Tranh icon cắt từ bảng vẽ và nằm ở `public/skills/`.
-- Save cũ: Pháp Tu, Đan Sư, Trận Pháp Sư thành Phù Tu; võ kỹ độc quyền cũ bị bỏ (đã thay bằng cây kỹ năng).
+- Save cũ: Pháp Tu, Đan Sư, Trận Pháp Sư thành Phù Tu; võ kỹ độc quyền cũ bị bỏ (đã thay bằng cây kỹ năng). Kiếp Thử Thách Đơn Nhất chỉ dùng được Võ Kỹ 1.
 
 ## Đặc tính yêu thú và kỹ năng boss
 
@@ -258,8 +258,8 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 
 ## Giao diện (biểu tượng + 5 nhóm)
 
-- **Thanh dưới 5 nhóm**: Tu Luyện (Nhân Vật, Động Phủ, Linh Điền, Luân Hồi), Vượt Ải (Vượt Ải, Võ Kỹ, Công Pháp, Linh Thú), Hành Trang (Trang Bị, Túi Đồ), Môn Phái (Tông Môn, Đệ Tử), Thêm (Cốt Truyện, Thành Tựu, Cài Đặt). Màn con chọn bằng chip ở đầu màn hình; nhóm/màn hiện dần khi mở khoá.
-- **Lưới biểu tượng + bảng trượt**: Võ Kỹ, Công Pháp, Linh Thú, Trang Bị, Túi Đồ hiển thị bằng ô icon (khung theo độ hiếm, màu theo ngũ hành, huy hiệu cấp, thanh tiến độ tàn quyển, chấm đỏ khi làm được); bấm ô để mở chi tiết và nút hành động.
+- **Thanh dưới 5 nhóm**: Tu Luyện (Nhân Vật, Kỹ Năng, Công Pháp, Linh Thú, Động Phủ, Linh Điền, Luân Hồi), Vượt Ải (Vượt Ải), Hành Trang (Trang Bị, Pháp Bảo, Túi Đồ), Môn Phái (Tông Môn, Đệ Tử), Thêm (Cốt Truyện, Hành Trình, Thành Tựu, Cài Đặt). Màn con chọn bằng chip ở đầu màn hình; nhóm/màn hiện dần khi mở khoá.
+- **Lưới biểu tượng + bảng trượt**: Kỹ Năng, Công Pháp, Linh Thú, Trang Bị, Túi Đồ hiển thị bằng ô icon (khung theo độ hiếm, màu theo ngũ hành, huy hiệu cấp, thanh tiến độ tàn quyển, chấm đỏ khi làm được); bấm ô để mở chi tiết và nút hành động.
 - **Nhân Vật dạng bảng điều khiển**: chip chỉ số, hàng tốc độ, ô "Việc cần làm" (điểm danh, thiên phú, đạo lộ, thử thách) mở bảng trượt.
 - **Phong cách chung**: phông Noto Serif gói sẵn (offline vẫn đẹp, có tiếng Việt), khung icon phát sáng theo màu độ hiếm/hệ (Huyền Thoại nhấp nháy, tắt khi bật giảm chuyển động), panel nền sâu hơn, thanh nắm ở bảng trượt, rung nhẹ khi bấm nút (bật/tắt trong Cài Đặt).
 - **Bố cục riêng từng màn**: Trang Bị dạng búp bê (6 ô quanh nhân vật), Công Pháp có 4 cột cộng hưởng đầy dần với vạch mốc 5/12/20, Pháp Bảo gắn trên bệ thờ phát sáng theo hệ, Linh Thú ra trận là thẻ chân dung. Tranh vẽ tay nằm ở `public/{nav,skills,arts,pets,treasures,gear,items,banners}`; tranh nền mờ theo nhóm ở `public/banners`.
@@ -268,9 +268,9 @@ Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó 
 ## Trang Bị, Pháp Bảo, Võ Kỹ, Công Pháp (làm lại)
 
 - **Trang Bị 6 ô** (`src/game/equipment.js`): Vũ khí, Y phục, Mũ, Giày, Nhẫn, Ngọc bội. Mỗi ô một thiên hướng chỉ số và dòng phụ riêng; tổng chỉ số 6 ô bằng 3 ô cũ nên cân bằng không đổi. Bộ trang bị mặc 2 / 4 / 6 món cùng phẩm cấp. Đồ Huyền Thoại có cho cả 6 ô. Đổi dòng phụ có thể khoá một dòng (đắt gấp đôi). Save cũ: ô Pháp bảo cũ thành Ngọc bội.
-- **Pháp Bảo** (`src/game/treasures.js`, tab Hành Trang > Pháp Bảo): hệ thống riêng, mỗi pháp bảo một thần thông kích hoạt trong trận (hồi máu theo chu kỳ, mỗi 7 đòn đánh thêm, chặn đòn chí mạng, hút máu, lá chắn đầu ải, chí mạng với boss...). Mảnh rơi từ Đại Boss và Chúa Tể; luyện hoá rồi nâng 5 phẩm; 2 ô, mở thêm theo cảnh giới (tối đa 4); có võ kỹ đang gắn cùng hệ ngũ hành thì thần thông mạnh thêm 30%.
-- **Võ Kỹ**: chiêu tấn công gây trạng thái theo hệ (Hỏa: Thiêu, Thủy: Băng làm chậm, Kim: Phá Giáp, Mộc: Độc qua chiêu độc). Liên kích: tung chiêu đúng hệ khi địch mang trạng thái hợp thì gây thêm sát thương (Băng Vỡ, Hàn Hỏa Giao Tranh, Độc Hỏa Công Tâm, Phá Giáp Quán Thủy). Võ kỹ đạt cấp tối đa chọn nhánh Cường Lực (+30%) hoặc Tốc Biến (-25% hồi chiêu).
-- **Nguồn Pháp Bảo**: ngoài boss, Mảnh Pháp Bảo còn là thưởng thám hiểm khó (Săn Tìm Linh Thú, Vực Sâu Thượng Cổ) và bán ở cửa hàng tông môn từ Trưởng Lão (150 Cống Hiến). Mỗi võ kỹ có hai tên nhánh riêng (ví dụ Liệt Hỏa Chưởng: Phần Thiên Chưởng / Liệt Diễm Liên Châu).
+- **Pháp Bảo** (`src/game/treasures.js`, tab Hành Trang > Pháp Bảo): hệ thống riêng, mỗi pháp bảo một thần thông kích hoạt trong trận (hồi máu theo chu kỳ, mỗi 7 đòn đánh thêm, chặn đòn chí mạng, hút máu, lá chắn đầu ải, chí mạng với boss...). Mảnh rơi từ Đại Boss và Chúa Tể; luyện hoá rồi nâng 5 phẩm; 2 ô, mở thêm theo cảnh giới (tối đa 4); có kỹ năng đang dùng cùng hệ ngũ hành thì thần thông mạnh thêm 30%.
+- **Trạng thái và liên kích** nay theo đạo lộ (xem mục "Đạo Lộ và cây kỹ năng"), không còn theo hệ ngũ hành và không còn nhánh tiến hoá.
+- **Nguồn Pháp Bảo**: ngoài boss, Mảnh Pháp Bảo còn là thưởng thám hiểm khó (Săn Tìm Linh Thú, Vực Sâu Thượng Cổ) và bán ở cửa hàng tông môn từ Trưởng Lão (150 Cống Hiến).
 - **Dòng đặc tính có tên** trên trang bị: sát thương lên boss, hạ yêu thú hồi máu, hạ yêu thú có lá chắn, đòn thường gây Thiêu, mỗi 5 đòn giảm hồi chiêu (xuất hiện ở các ô phù hợp, lẫn với dòng phụ thường).
 - **Tiện ích**: dải "Có bản mới, bấm để cập nhật" (so `version.json` mỗi lần build với bản đang chạy, không cần service worker); nhắc sao lưu save khi chơi trên 2 giờ và quá 7 ngày chưa xuất; cỡ chữ Nhỏ / Vừa / Lớn trong Cài Đặt; khoá món đồ, lọc theo ô và sắp xếp túi trang bị; nút "Gắn tốt nhất" cho võ kỹ và pháp bảo; trạng thái và liên kích hiện trên cảnh trận; thẻ Khởi đầu có thêm bước trang bị, liên kích, pháp bảo. Pháp bảo hậu kỳ (ải 90 / 120 / 150): Vạn Lôi Ấn, Tinh Hà Bảo Bình, Huyền Vũ Giáp Ấn. Đo cân bằng nhiều kiếp: `node scripts/economy-sim.mjs --rebirth --hours 90 --seeds 2`; `--no-combo` đo mức bot không tối ưu liên kích.
 - **Linh thạch chỉ tăng theo thời gian**: hạ quái, lần đầu vượt ải, rương mốc, thưởng chọn của boss và Tụ Linh Bình không còn cho linh thạch; vượt ải chỉ làm thu nhập linh thạch thụ động (theo ải cao nhất, có trần theo bậc) tăng lên. Mọi tốc độ hiển thị (linh khí, linh thạch) tính theo PHÚT. Giá các khoản chi (`stoneRef`, `COST_SECONDS`, `refCost`, `craftCost` ở `src/game/campaign.js`) tính bằng N giây thu nhập tham chiếu của bậc mở khoá (công trình, rèn, cường hoá, đổi dòng phụ, hạt giống, đệ tử, luyện đan, làm mới nhiệm vụ; Trấn Thủ thu 2 phút thu nhập mỗi giờ); Tụ Linh Trận vẫn giá nhân theo cấp.

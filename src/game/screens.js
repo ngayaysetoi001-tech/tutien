@@ -58,7 +58,7 @@ export const UNLOCKS = {
   pets: { text: 'Hạ Tiểu Boss đầu tiên (ải 5)', test: (g) => screenUnlocked('skills', g), progress: (g) => Math.min(1, g.campaign.record / 5) },
   skills: {
     text: 'Hạ Tiểu Boss đầu tiên (ải 5)',
-    test: (g) => g.campaign.record >= 5 || Object.keys(g.skills.owned).length > 0 || Object.keys(g.arts.owned).length > 0 || Object.keys(g.inventory.scrolls).length > 0,
+    test: (g) => g.campaign.record >= 5 || Object.keys(g.arts.owned).length > 0 || Object.keys(g.inventory.scrolls).length > 0,
     progress: (g) => Math.min(1, g.campaign.record / 5),
   },
   treasure: {

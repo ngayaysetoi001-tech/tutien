@@ -9,7 +9,6 @@
 //   skillDmg        +% sát thương võ kỹ tấn công
 //   lifesteal       hút máu nền cho mọi đòn đánh
 //   cd              giảm hồi chiêu võ kỹ
-//   slots           thêm ô võ kỹ chung
 //   pill            +% hiệu quả đan tăng chỉ số vĩnh viễn
 //   double          +điểm phần trăm tỉ lệ luyện đan ra gấp đôi
 //   array           +% hiệu quả Tụ Linh Trận
@@ -41,8 +40,8 @@ export const PATHS = {
   phu: {
     name: 'Phù Tu', css: '#a78bfa',
     desc: 'Phù chú liên miên, thần thông biến hoá khôn lường.',
-    perk: { cd: 0.15, slots: 1, arts: 0.1 },
-    perkText: 'Võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ chung, +10% hiệu quả công pháp',
+    perk: { cd: 0.15, skillDmg: 0.1, arts: 0.1 },
+    perkText: 'Kỹ năng hồi chiêu nhanh hơn 15%, +10% sát thương kỹ năng tấn công, +10% hiệu quả công pháp',
   },
 }
 

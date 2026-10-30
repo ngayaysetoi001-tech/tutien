@@ -10,7 +10,7 @@
 // Tuỳ chọn: --hours N (trần giờ ảo mỗi kiếp), --seeds N, --rebirth (chơi thêm các kiếp sau),
 //   --goal N (bậc mục tiêu, mặc định 26), --no-pets / --no-dwell / --no-exped / --no-talent (tắt từng hệ thống để đo đóng góp),
 //   --autobreak (bật tự động đột phá bậc nhỏ), --act N (bot chỉ hành động mỗi N giây ảo: 1800 = ghé 30 phút/lần),
-//   --snap N (giây giữa hai dòng trạng thái), --no-exp-pills (không dùng Tụ Khí Đan)
+//   --snap N (giây giữa hai dòng trạng thái), --no-exp-pills (không dùng Tụ Khí Đan), --path kiem|dao|the|phu (đạo lộ bot chọn)
 // =====================================================================
 
 // ---------- Môi trường giả ----------
@@ -22,7 +22,6 @@ const opt = (name, def) => {
 const MAX_HOURS = opt('hours', 80)
 const SEEDS = opt('seeds', 1)
 const REBIRTH = args.includes('--rebirth')
-const NO_COMBO = args.includes('--no-combo') // bot không tối ưu liên kích (đo mức tối thiểu)
 const NO_EXP_PILLS = args.includes('--no-exp-pills') // bỏ qua Tụ Khí Đan để đo nhịp tự nhiên
 const GOAL = opt('goal', 26) // bậc mục tiêu mỗi kiếp (mặc định Hợp Thể Hậu Kỳ để so với các lần đo cũ; 32 = Độ Kiếp Hậu Kỳ)
 const OFF = (k) => args.includes('--no-' + k) // tắt từng hệ thống để đo đóng góp: --no-pets --no-dwell --no-exped --no-talent
@@ -69,7 +68,6 @@ const { STAGES, MAX_STAGE_IDX } = await import('../src/game/constants.js')
 const { RECIPES, ITEMS } = await import('../src/game/data.js')
 const { FORGE, SLOT_IDS, forgeCost } = await import('../src/game/equipment.js')
 const { awakenOffer } = await import('../src/game/arts.js')
-const { SKILLS, fragmentId, canEquip: canEquipSkill, COMBOS, STATUS_OF_ELEMENT } = await import('../src/game/skills.js')
 const { ARTS } = await import('../src/game/arts.js')
 const { CROPS, plotCount } = await import('../src/game/garden.js')
 const { SECTS } = await import('../src/game/sect.js')
@@ -234,25 +232,6 @@ function createBot(s, b) {
         s.useItem(id, 99)
       }
     }
-    // Học & trang bị võ kỹ: ưu tiên chiêu tấn công theo sát thương trên hồi chiêu, rồi chiêu hỗ trợ
-    const ATTACK = ['damage', 'dot', 'stun', 'execute', 'ultimate']
-    const score = (id) => (ATTACK.includes(SKILLS[id].kind) ? 100 : 0) + SKILLS[id].power / SKILLS[id].cd
-    for (const id of Object.keys(SKILLS)) {
-      s.learnSkill(id)
-      if (s.skills.owned[id]) while (s.upgradeSkill(id));
-    }
-    let owned = Object.keys(s.skills.owned).filter((id) => canEquipSkill(id, s.realmIdx, s.path)).sort((x, y) => score(y) - score(x))
-    // Người chơi biết liên kích: chọn các chiêu đầu bảng, rồi xếp chiêu gây trạng thái trước chiêu ăn liên kích (cùng bộ khi có thể)
-    if (!NO_COMBO) {
-      const top = owned.slice(0, s.skillSlots)
-      const feeds = (a, b) => ATTACK.includes(SKILLS[b].kind) && COMBOS.some((c) => c.element === SKILLS[b].element && c.status === STATUS_OF_ELEMENT[SKILLS[a].element])
-      // Nếu trong kho có chiêu cung cấp trạng thái cho một chiêu đang gắn mà chưa được chọn, đổi chiêu yếu nhất lấy nó
-      const missing = owned.slice(s.skillSlots).find((a) => ATTACK.includes(SKILLS[a].kind) && top.some((b) => b !== a && feeds(a, b)))
-      if (missing && top.length >= s.skillSlots) top[top.length - 1] = missing
-      top.sort((a, b) => (top.some((x) => x !== a && feeds(a, x)) ? 0 : 1) - (top.some((x) => x !== b && feeds(b, x)) ? 0 : 1))
-      owned = [...top, ...owned.filter((x) => !top.includes(x))]
-    }
-    for (let i = 0; i < s.skillSlots && i < owned.length; i++) if (s.skills.slots[i] !== owned[i]) s.equipSkill(owned[i], i)
     // Học, thăng cấp công pháp bị động (ưu tiên linh khí, công, khí huyết, thu nhập ải...)
     const ART_ORDER = ['thanh_tam', 'ho_phap', 'pha_quan', 'cuong_the', 'kim_cang', 'tu_bao', 'truy_phong', 'thien_nhan', 'ngu_hanh', 'luan_hoi']
     for (const id of ART_ORDER) {
@@ -263,8 +242,6 @@ function createBot(s, b) {
     }
     // Cây kỹ năng của đạo lộ: dồn điểm kỹ năng nhận theo thời gian
     s.autoSpendSkillPoints()
-    // Nhánh tiến hoá võ kỹ cấp tối đa: Cường Lực
-    for (const id of Object.keys(s.skills.owned)) if (s.skills.owned[id] >= 5 && s.skills.branch[id] == null) s.chooseBranch(id, 0)
     // Pháp Bảo: luyện hoá, nâng phẩm, gắn theo thứ tự ưu tiên
     const TR_ORDER = ['can_khon_dinh', 'that_tinh_kiem', 'ho_than_phu', 'huyet_sat_chau', 'van_loi_an', 'tinh_ha_binh', 'tu_linh_binh', 'huyen_vu_an', 'hon_nguyen_chung', 'phong_loi_phien', 'thien_co_la_ban']
     for (const id of TR_ORDER) {

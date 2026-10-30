@@ -19,7 +19,7 @@ export const CHALLENGES = {
   },
   don_nhat: {
     name: 'Đơn Nhất', goalStage: 18, reward: 150,
-    desc: 'Chỉ trang bị được một võ kỹ.',
+    desc: 'Chỉ dùng được một kỹ năng (Võ Kỹ 1 của đạo lộ).',
   },
 }
 export const CHALLENGE_IDS = Object.keys(CHALLENGES)

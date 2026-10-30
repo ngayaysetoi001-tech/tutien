@@ -5,7 +5,6 @@ import { useGameStore } from '../../stores/gameStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { fmt, fmtDuration, fmtPercent } from '../../game/format.js'
 import { ELEMENTS } from '../../game/elements.js'
-import { SKILLS } from '../../game/skills.js'
 import { PATHS, PATH_IDS, PATH_MIN_REALM } from '../../game/paths.js'
 import { CHALLENGES } from '../../game/challenges.js'
 import { GRADE_COLORS, GRADE_NAMES, TALENTS, TALENT_REROLL_COST } from '../../game/talents.js'
@@ -26,7 +25,7 @@ const game = useGameStore()
 const ui = useUiStore()
 const backupHidden = ref(false) // ẩn nhắc sao lưu đến khi tải lại trang
 const sheet = ref(null) // 'daily' | 'talent' | 'path' | 'challenge' | 'rates'
-const learned = computed(() => Object.keys(game.skills.owned).length)
+const treePic = computed(() => skillImg(`${game.path ?? 'kiem'}_1`))
 const worn = computed(() => game.equippedItems.filter(Boolean).length)
 const elColor = computed(() => ELEMENTS[game.element].css)
 
@@ -47,9 +46,9 @@ const tour = computed(() =>
     { id: 'break', icon: 'bolt', text: 'Đột phá khi thanh linh khí đầy', done: game.stats.breakthroughs > 0, go: null },
     { id: 'array', icon: 'home', text: 'Nâng Tụ Linh Trận ở Động Phủ', done: game.arrayLevel > 0, go: 'dwelling' },
     { id: 'battle', icon: 'dungeon', text: 'Vượt ải đầu tiên ở Vượt Ải', done: game.campaign.record > 0, go: 'battle' },
-    { id: 'skill', icon: 'arts', text: 'Học và gắn một võ kỹ', done: game.skills.slots.some(Boolean), go: 'skills' },
+    { id: 'skill', icon: 'arts', text: 'Chọn Đạo Lộ để mở cây kỹ năng', done: !!game.path, go: 'tree', show: screenUnlocked('tree', game) },
     { id: 'gear', icon: 'gear', text: 'Mặc món trang bị đầu tiên', done: game.equippedItems.some(Boolean), go: 'gear', show: screenUnlocked('gear', game) },
-    { id: 'combo', icon: 'swords', text: 'Gắn 2 võ kỹ khác hệ để tạo liên kích', done: game.skills.slots.filter(Boolean).length >= 2, go: 'skills', show: screenUnlocked('skills', game) && game.skillSlots >= 2 },
+    { id: 'combo', icon: 'swords', text: 'Nâng cấp một kỹ năng bằng điểm kỹ năng', done: Object.keys(game.skills.tree).length > 0, go: 'tree', show: screenUnlocked('tree', game) && !!game.path },
     { id: 'treasure', icon: 'refine', text: 'Luyện hoá và gắn một Pháp Bảo', done: game.treasures.slots.some(Boolean), go: 'treasure', show: screenUnlocked('treasure', game) },
   ].filter((t) => t.show !== false),
 )
@@ -179,11 +178,11 @@ function pickPath(id) {
           </span>
           <span v-if="t.hot" class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-cinnabar-500 shadow-[0_0_6px_rgb(229_73_58)]"></span>
         </button>
-        <button class="flex min-h-[56px] items-center gap-2 rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2 text-left transition active:scale-[0.97]" @click="ui.go('skills')">
-          <img :src="skillImg('ngu_kiem')" alt="" class="h-8 w-8 rounded-full" draggable="false" />
+        <button class="flex min-h-[56px] items-center gap-2 rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2 text-left transition active:scale-[0.97]" @click="ui.go('tree')">
+          <img :src="treePic" alt="" class="h-8 w-8 rounded-full" draggable="false" />
           <span>
-            <span class="block text-sm font-bold text-white">Võ Kỹ</span>
-            <span class="block text-xs text-slate-400">{{ learned }}/{{ Object.keys(SKILLS).length }} · {{ game.skillSlots }} ô</span>
+            <span class="block text-sm font-bold text-white">Kỹ Năng</span>
+            <span class="block text-xs text-slate-400">{{ game.activeTreeIds.length }}/8 nút · {{ game.skills.points.toFixed(1) }} điểm</span>
           </span>
         </button>
         <button class="flex min-h-[56px] items-center gap-2 rounded-lg border border-ink-600 bg-ink-900/60 px-2.5 py-2 text-left transition active:scale-[0.97]" @click="ui.go('gear')">

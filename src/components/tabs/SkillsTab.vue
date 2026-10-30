@@ -1,14 +1,12 @@
 <script setup>
-// SkillsTab.vue - Công Pháp: ba tab Võ Kỹ / Công Pháp / Linh Thú dùng chung một bố cục.
-//   Võ Kỹ / Linh Thú: hàng ô đang gắn ghim ở đầu; Công Pháp là bị động (học xong cộng chỉ số ngay, không có ô) nên ghim tổng cộng thêm.
+// SkillsTab.vue - Công Pháp (bị động) và Linh Thú dùng chung một bố cục (kỹ năng chiến đấu nằm ở TreeTab).
+//   Linh Thú: hàng ô đang gắn ghim ở đầu; Công Pháp là bị động (học xong cộng chỉ số ngay, không có ô) nên ghim tổng cộng thêm.
 //    kho là danh sách gọn (icon, tên, 1 dòng hiệu quả, nút Gắn/Học/Nâng ngay trên hàng),
 //   gom nhóm: có thể học/nâng, đang dùng, đã học, chưa học, chưa mở (thu gọn). Bấm hàng để xem chi tiết.
 import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { ELEMENTS, ELEMENT_IDS } from '../../game/elements.js'
-import { BRANCHES, LEARN_COST, branchInfo, comboHints, MAX_SKILL_SLOTS, SKILLS, SKILL_MAX_LEVEL, canEquip, fragmentId, skillDesc, statusLine, upgradeCost } from '../../game/skills.js'
-import { PATHS } from '../../game/paths.js'
 import {
   ARTS, ART_LEARN_COST, ART_MAX_LEVEL, AWAKEN_POOL, RESONANCE, RESONANCE_STEPS, SYSTEMS, SYSTEM_IDS, artDesc, artFragmentId, artUpgradeCost, awakenOffer,
   resonanceTier, systemLevels,
@@ -16,14 +14,14 @@ import {
 import { perkText } from '../../game/equipment.js'
 import { REALMS } from '../../game/constants.js'
 import { MAX_PET_SLOTS, PETS, PET_LEARN_COST, PET_MAX_LEVEL, petDesc, petFragmentId, petUpgradeCost } from '../../game/pets.js'
-import { ART_GLYPH, PET_GLYPH, SKILL_GLYPH, artImg, petImg, skillImg } from '../glyphs.js'
+import { ART_GLYPH, PET_GLYPH, artImg, petImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
 
 const game = useGameStore()
 const ui = useUiStore()
-const imgOf = (id) => (sub.value === 'skills' ? skillImg(id) : sub.value === 'arts' ? artImg(id) : sub.value === 'pets' ? petImg(id) : '')
+const imgOf = (id) => (sub.value === 'arts' ? artImg(id) : sub.value === 'pets' ? petImg(id) : '')
 const elCss = (e) => ELEMENTS[e].css
 
 /** Ô trống đầu tiên đã mở; hết ô thì thay ô cuối. */
@@ -34,21 +32,6 @@ function freeSlot(slots, count) {
 
 // ---------- Cấu hình theo loại: gom về cùng một giao diện ----------
 const KINDS = {
-  skills: {
-    label: 'Võ Kỹ', icon: 'swords', slotTitle: 'Ô võ kỹ', defs: SKILLS, glyph: SKILL_GLYPH, fragLabel: 'Tàn quyển', learnCost: LEARN_COST, maxLevel: SKILL_MAX_LEVEL,
-    owned: () => game.skills.owned, slots: () => game.skills.slots, slotCount: () => game.skillSlots, maxSlots: MAX_SKILL_SLOTS,
-    frags: (id) => game.itemCount(fragmentId(id)),
-    upCost: upgradeCost,
-    desc: (id, lv) => skillDesc(id, lv),
-    locked: (id) => !canEquip(id, game.realmIdx, game.path),
-    lockText: (id) => (SKILLS[id].path && SKILLS[id].path !== game.path ? `Cần ${PATHS[SKILLS[id].path].name}` : `Cần ${REALMS[SKILLS[id].minRealm ?? 0].name}`),
-    slotHint: (i) => (i >= 4 ? 'Đạo lộ Pháp Tu' : REALMS[[0, 1, 2, 4][i]].name),
-    learn: (id) => game.learnSkill(id),
-    equip: (id) => game.equipSkill(id, freeSlot(game.skills.slots, game.skillSlots)),
-    unequip: (i) => game.unequipSkill(i),
-    upgrade: (id) => game.upgradeSkill(id),
-    words: { equip: 'Gắn', unequip: 'Tháo', up: 'Nâng', learn: 'Học' },
-  },
   arts: {
     label: 'Công Pháp', icon: 'arts', passive: true, defs: ARTS, glyph: ART_GLYPH, fragLabel: 'Tàn quyển', learnCost: ART_LEARN_COST, maxLevel: ART_MAX_LEVEL,
     owned: () => game.arts.owned, slots: () => [],
@@ -77,8 +60,8 @@ const KINDS = {
     words: { equip: 'Ra trận', unequip: 'Cất', up: 'Nuôi', learn: 'Thu phục' },
   },
 }
-// Màn 'pets' (Linh Thú) đứng riêng ngang hàng Công Pháp; màn 'skills' có hai tab Võ Kỹ / Công Pháp
-const KIND_IDS = ui.tab === 'pets' ? ['pets'] : ['skills', 'arts']
+// Màn 'pets' (Linh Thú) đứng riêng ngang hàng Công Pháp
+const KIND_IDS = ui.tab === 'pets' ? ['pets'] : ['arts']
 
 // ---------- Trạng thái một mục ----------
 const lvOf = (kd, id) => kd.owned()[id] ?? 0
@@ -89,7 +72,7 @@ const canLearnOf = (kd, id) => lvOf(kd, id) === 0 && !kd.locked(id) && kd.frags(
 const readyOf = (kd, id) => canLearnOf(kd, id) || canUpOf(kd, id)
 const kindHot = (key) => Object.keys(KINDS[key].defs).some((id) => readyOf(KINDS[key], id))
 
-// Mở tab đầu tiên có việc để làm (không có thì Võ Kỹ)
+// Mở tab đầu tiên có việc để làm
 const sub = ref(KIND_IDS.find(kindHot) ?? KIND_IDS[0])
 const k = computed(() => KINDS[sub.value])
 const elFilter = ref('') // lọc theo ngũ hành (Võ Kỹ, Linh Thú)
@@ -139,7 +122,7 @@ const PILLAR_MAX = RESONANCE_STEPS[RESONANCE_STEPS.length - 1]
 const nextStep = (sys) => RESONANCE_STEPS.find((n) => sysLv.value[sys] < n) ?? null
 const awakeKey = (id) => game.arts.awaken[id] ?? null
 const sheetDef = computed(() => (sel.value ? k.value.defs[sel.value] : null))
-const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS[def.path].css : '')
+const frameOf = () => ''
 </script>
 
 <template>
@@ -192,7 +175,6 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
     <div v-else class="sticky top-0 z-10 -mx-0.5 rounded-lg border border-ink-600 bg-ink-900 px-2 pb-1.5 pt-1">
       <div class="mb-1 flex items-center justify-between text-xs">
         <b class="text-gold-300">{{ k.slotTitle }}</b>
-        <button v-if="sub === 'skills'" class="min-h-[32px] rounded-full border border-ink-600 px-3 font-bold text-slate-300" @click="game.autoEquipSkills()">Gắn tốt nhất</button>
         <span v-if="sub === 'pets'" class="text-slate-500">cùng hệ: +25%</span>
       </div>
       <div v-if="sub === 'pets'" class="grid grid-cols-2 gap-2">
@@ -325,24 +307,7 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
         <p v-if="sub === 'pets'" class="text-slate-400">{{ sheetDef.text }}</p>
         <p>{{ k.desc(sel, lvOf(k, sel) || 1) }}</p>
         <p v-if="lvOf(k, sel) && !maxedOf(k, sel) && sub !== 'pets'" class="text-xs text-jade-300">Cấp sau: {{ k.desc(sel, lvOf(k, sel) + 1) }}</p>
-        <p v-if="sub === 'skills' && statusLine(sel)" class="mt-1 text-xs text-gold-200">{{ statusLine(sel) }}</p>
-        <ul v-if="sub === 'skills' && comboHints(sel, game.skills.slots.slice(0, game.skillSlots)).length" class="mt-1 space-y-0.5 text-xs">
-          <li v-for="h in comboHints(sel, game.skills.slots.slice(0, game.skillSlots))" :key="h.text" :class="h.ok ? 'text-jade-300' : 'text-slate-500'">{{ h.ok ? '✓' : '○' }} {{ h.text }}</li>
-        </ul>
         <p v-if="sub === 'arts'" class="mt-1 text-xs" :style="{ color: SYSTEMS[sheetDef.sys].css }">Hệ {{ SYSTEMS[sheetDef.sys].name }}: tổng cấp {{ sysLv[sheetDef.sys] }}. Cộng hưởng {{ RESONANCE_STEPS.map((n, i) => n + ' → ' + resText(sheetDef.sys, i)).join(' · ') }}</p>
-        <!-- Nhánh tiến hoá (võ kỹ cấp tối đa) -->
-        <div v-if="sub === 'skills' && lvOf(k, sel) >= SKILL_MAX_LEVEL" class="mt-2">
-          <div class="mb-1 text-xs font-bold text-gold-300">Nhánh tiến hoá</div>
-          <div class="grid grid-cols-2 gap-1.5">
-            <button
-              v-for="(b, i) in BRANCHES"
-              :key="b.name"
-              class="min-h-[52px] rounded-lg border px-2 py-1 text-left text-sm"
-              :class="game.skills.branch[sel] === i ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ink-600 bg-ink-900/60 text-slate-300'"
-              @click="game.chooseBranch(sel, i)"
-            ><b>{{ branchInfo(sel, i).name }}</b><span class="block text-xs text-slate-400">{{ b.name }}: {{ b.text }}</span></button>
-          </div>
-        </div>
         <!-- Ngộ đạo (công pháp cấp tối đa) -->
         <div v-if="sub === 'arts' && lvOf(k, sel) >= ART_MAX_LEVEL" class="mt-2">
           <div class="mb-1 text-xs font-bold text-gold-300">Ngộ đạo: chọn một đặc tính</div>

@@ -4,7 +4,6 @@
 // BOSS_CHOICE_SECONDS giây tự lấy lựa chọn đầu tiên.
 // =====================================================================
 import { ARTS, artFragmentId } from './arts.js'
-import { SKILLS, fragmentId } from './skills.js'
 
 export const BOSS_CHOICE_SECONDS = 600
 const WEIGHT = { mini: 1, big: 2, lord: 4 } // độ lớn phần thưởng theo loại boss
@@ -34,11 +33,8 @@ export function bossChoiceOptions({ n, kind, path = null }, rng = Math.random) {
       return { label: `${ARTS[id].name} Tàn Quyển x${count}`, effects: [{ type: 'item', id: artFragmentId(id), count }] }
     },
     skill: () => {
-      // chỉ võ kỹ dùng được: không độc quyền của đạo lộ khác
-      const pool = Object.keys(SKILLS).filter((id) => !SKILLS[id].path || SKILLS[id].path === path)
-      const id = pick(pool)
-      const count = 1 + w
-      return { label: `${SKILLS[id].name} Tàn Quyển x${count}`, effects: [{ type: 'item', id: fragmentId(id), count }] }
+      const amount = Math.round((1.5 + w * 1.5) * 10) / 10
+      return { label: `+${amount} Điểm kỹ năng`, effects: [{ type: 'skillPoints', amount }] }
     },
     exp: () => {
       const amount = 0.003 * w

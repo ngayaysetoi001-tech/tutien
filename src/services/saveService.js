@@ -9,13 +9,11 @@ import { MAX_STAGE_IDX, SAVE_KEY, SAVE_VERSION, SPIRIT_ROOTS, TIME_BANK_CAP } fr
 import { DUNGEONS, ITEMS, RECIPES } from '../game/data.js'
 import { AIS_PER_CHAPTER, GRIT_MAX, MILESTONES } from '../game/campaign.js'
 import { ELEMENTS } from '../game/elements.js'
-import { SKILLS, SKILL_MAX_LEVEL } from '../game/skills.js'
 import { ARTS, ART_MAX_LEVEL, awakenOffer } from '../game/arts.js'
 import { MAX_PET_SLOTS, PETS, PET_MAX_LEVEL } from '../game/pets.js'
 import { MAX_PARTY, MISSIONS } from '../game/expedition.js'
 import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL } from '../game/dwelling.js'
 import { LEGACY_PATH, PATHS } from '../game/paths.js'
-import { MAX_SKILL_SLOTS } from '../game/skills.js'
 import { TREE_SKILLS, treeMaxLevel } from '../game/skilltree.js'
 import { MAX_TREASURE_SLOTS, TREASURES, TREASURE_MAX_TIER } from '../game/treasures.js'
 import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
@@ -33,6 +31,9 @@ import { CHAPTERS, ENDINGS, EXTRAS } from '../game/story.js'
 import { LORE } from '../game/lore.js'
 
 /** Trích phần dữ liệu cần lưu từ state của store -> object JSON thuần. */
+/** Id 13 võ kỹ chung của phiên bản cũ (chỉ để chuyển đổi save). */
+const LEGACY_SKILL_IDS = ['ngu_kiem', 'liet_hoa', 'huyen_bang', 'thanh_moc', 'hau_tho', 'phong_loi', 'doc_chu', 'loi_dinh', 'tuyet_sat', 'huyet_thuc', 'bao_nhan', 'phan_chan', 'thien_ha']
+
 export function serialize(state, now = Date.now()) {
   return {
     version: SAVE_VERSION,
@@ -135,26 +136,21 @@ export function deserialize(save, defaults) {
   for (const [k, v] of Object.entries(d.usage && typeof d.usage === 'object' ? d.usage : {})) {
     if (ITEMS[k]) usage[k] = Math.floor(num(v, 0))
   }
-  // Võ kỹ: chỉ giữ võ kỹ tồn tại, cấp hợp lệ; ô trang bị phải là võ kỹ đã học (save cũ có 3 ô, nay 4)
-  const owned = {}
+  // Save cũ có 13 võ kỹ chung (học bằng tàn quyển, gắn ô): nay bỏ hẳn, quy thành điểm kỹ năng
+  // (mỗi cấp đã học = 3 điểm, mỗi tàn quyển còn trong túi = 0,4 điểm)
+  let legacyPoints = 0
   for (const [k, v] of Object.entries(d.skills?.owned && typeof d.skills.owned === 'object' ? d.skills.owned : {})) {
-    if (SKILLS[k]) owned[k] = Math.floor(num(v, 1, 1, SKILL_MAX_LEVEL))
+    if (LEGACY_SKILL_IDS.includes(k)) legacyPoints += 3 * Math.floor(num(v, 1, 1, 5))
   }
-  const slots = Array.from({ length: MAX_SKILL_SLOTS }, (_, i) => {
-    const id = d.skills?.slots?.[i]
-    return owned[id] ? id : null
-  })
+  for (const [k, v] of Object.entries(inv.scrolls && typeof inv.scrolls === 'object' ? inv.scrolls : {})) {
+    if (k.startsWith('qk_') && LEGACY_SKILL_IDS.includes(k.slice(3))) legacyPoints += 0.4 * Math.floor(num(v, 0))
+  }
   // Cây kỹ năng: chỉ nút có thật, cấp trong khoảng hợp lệ; điểm kỹ năng không âm
   const tree = {}
   for (const [k, v] of Object.entries(d.skills?.tree && typeof d.skills.tree === 'object' ? d.skills.tree : {})) {
     if (TREE_SKILLS[k]) tree[k] = Math.floor(num(v, 1, 1, treeMaxLevel(k)))
   }
-  const skillPoints = num(d.skills?.points, 0, 0, 1e9)
-  // Nhánh tiến hoá: chỉ võ kỹ đã đạt cấp tối đa, giá trị 0 hoặc 1
-  const branch = {}
-  for (const [k, v] of Object.entries(d.skills?.branch && typeof d.skills.branch === 'object' ? d.skills.branch : {})) {
-    if (owned[k] === SKILL_MAX_LEVEL && (v === 0 || v === 1)) branch[k] = v
-  }
+  const skillPoints = num(d.skills?.points, 0, 0, 1e9) + Math.round(legacyPoints * 10) / 10
   // Pháp Bảo: giữ pháp bảo tồn tại, phẩm hợp lệ; ô gắn phải là pháp bảo đã luyện hoá, không trùng
   const trOwned = {}
   for (const [k, v] of Object.entries(d.treasures?.owned && typeof d.treasures.owned === 'object' ? d.treasures.owned : {})) {
@@ -328,7 +324,7 @@ export function deserialize(save, defaults) {
     garden: { plots },
     mineAt: num(d.mineAt, Date.now(), 0, Date.now()),
     element: ELEMENTS[d.element] ? d.element : defaults.element,
-    skills: { owned, slots, branch, tree, points: skillPoints },
+    skills: { tree, points: skillPoints },
     treasures: { owned: trOwned, slots: trSlots },
     arts: { owned: artsOwned, awaken: artsAwaken },
     pets: { owned: petsOwned, active: petActive },

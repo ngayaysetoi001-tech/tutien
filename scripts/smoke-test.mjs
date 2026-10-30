@@ -477,35 +477,6 @@ ok('ngũ hành: Kim khắc Mộc, Mộc bị Kim khắc, hệ khác trung tính'
   assert.equal(elementMult(undefined, 'kim'), 1)
 })
 
-ok('học công pháp: cần đủ tàn quyển, tự trang bị, thăng cấp tốn tàn quyển', () => {
-  const s = freshStore()
-  s.init()
-  s.addItem('scrolls', SK.fragmentId('ngu_kiem'), 4)
-  assert.equal(s.learnSkill('ngu_kiem'), false)
-  s.addItem('scrolls', SK.fragmentId('ngu_kiem'), 1)
-  assert.equal(s.learnSkill('ngu_kiem'), true)
-  assert.equal(s.skills.owned.ngu_kiem, 1)
-  assert.equal(s.skills.slots[0], 'ngu_kiem')
-  assert.equal(s.itemCount(SK.fragmentId('ngu_kiem')), 0)
-  assert.equal(s.upgradeSkill('ngu_kiem'), false) // chưa đủ 5 tàn quyển
-  s.addItem('scrolls', SK.fragmentId('ngu_kiem'), 5)
-  assert.equal(s.upgradeSkill('ngu_kiem'), true)
-  assert.equal(s.skills.owned.ngu_kiem, 2)
-})
-
-ok('ô công pháp mở theo đại cảnh giới', () => {
-  const s = freshStore()
-  s.init()
-  assert.equal(s.skillSlots, 1)
-  s.skills.owned.liet_hoa = 1
-  assert.equal(s.equipSkill('liet_hoa', 1), false) // ô 2 chưa mở
-  s.stageIdx = 9
-  assert.equal(s.skillSlots, 2)
-  assert.equal(s.equipSkill('liet_hoa', 1), true)
-  s.stageIdx = 12
-  assert.equal(s.skillSlots, 3)
-})
-
 ok('rèn trang bị: tiêu nguyên liệu, mặc vào tăng chỉ số, cường hoá, phân giải', () => {
   const s = freshStore()
   s.init()
@@ -547,11 +518,9 @@ ok('trang bị ngọc bội tăng tốc độ linh khí; túi đầy tự phân 
 ok('trận đánh: công pháp được thi triển, boss rơi trang bị, thống kê hạ quái', () => {
   const s = freshStore()
   s.init()
-  s.stageIdx = 7
+  s.stageIdx = 9
   s.element = 'kim'
-  s.skills.owned.ngu_kiem = 3
-  s.skills.owned.thanh_moc = 1
-  s.skills.slots[0] = 'ngu_kiem'
+  s.path = 'kiem'
   useUiStoreEarly().tab = 'battle' // hiệu ứng chỉ phát khi đang xem màn Vượt Ải
   const casts = []
   const edges = new Set()
@@ -567,7 +536,7 @@ ok('trận đánh: công pháp được thi triển, boss rơi trang bị, thố
   off1()
   off2()
   assert.ok(casts.length >= 1, 'công pháp phải được thi triển')
-  assert.ok(casts.every((n) => n === 'Ngự Kiếm Thuật'))
+  assert.ok(casts.every((n) => n === 'Ngự Kiếm Quyết'))
   assert.ok(s.campaign.best >= 5, 'phải vượt được ải 5')
   assert.ok(s.gear.bag.length >= 1, 'boss rơi trang bị')
   assert.ok(s.stats.kills >= 1 && s.stats.bossKills >= 1)
@@ -576,12 +545,11 @@ ok('trận đánh: công pháp được thi triển, boss rơi trang bị, thố
 ok('lá chắn hấp thụ sát thương', () => {
   const s = freshStore()
   s.init()
-  s.stageIdx = 4
-  s.skills.owned.hau_tho = 1
-  s.skills.slots[0] = 'hau_tho'
+  s.stageIdx = 26
+  s.path = 'kiem'
   const b = useBattleStore()
   b.start()
-  b.castSkill('hau_tho', s.combat)
+  b.castSkill('kiem_8', s.combat)
   assert.ok(b.shield > 0)
   const hp = b.hp
   b.shield = 1e9
@@ -727,8 +695,8 @@ ok('save/load giữ công pháp, trang bị đang mặc, thành tựu, hệ ngũ
   const s = freshStore()
   s.init()
   s.element = 'hoa'
-  s.skills.owned.liet_hoa = 2
-  s.skills.slots[0] = 'liet_hoa'
+  s.skills.tree.dao_1 = 3
+  s.skills.points = 4.5
   const g = EQ.generateItem('weapon', 1)
   g.enh = 3
   s.addGear(g)
@@ -739,8 +707,8 @@ ok('save/load giữ công pháp, trang bị đang mặc, thành tựu, hệ ngũ
   const s2 = freshStore(true)
   s2.init()
   assert.equal(s2.element, 'hoa')
-  assert.equal(s2.skills.owned.liet_hoa, 2)
-  assert.equal(s2.skills.slots[0], 'liet_hoa')
+  assert.equal(s2.skills.tree.dao_1, 3)
+  assert.equal(s2.skills.points, 4.5)
   assert.equal(s2.gear.bag[0].enh, 3)
   assert.equal(s2.gear.equipped.weapon, g.uid)
   assert.equal(s2.achTier.kills, 2)
@@ -752,16 +720,17 @@ ok('nhập save hỏng: bỏ trang bị/công pháp không hợp lệ thay vì s
   const s = freshStore()
   s.init()
   const save = serialize(s)
-  save.data.skills = { owned: { khong_ton_tai: 3, ngu_kiem: 99 }, slots: ['khong_ton_tai', 'ngu_kiem', 'ngu_kiem'] }
+  save.data.skills = { owned: { khong_ton_tai: 3, ngu_kiem: 99 }, slots: ['khong_ton_tai', 'ngu_kiem', 'ngu_kiem'], tree: { kiem_1: 99, khong_co: 2 }, points: -5 }
   save.data.gear = {
     bag: [{ uid: 'a', slot: 'sword', tier: 0, rarity: 0, enh: 0 }, { uid: 'b', slot: 'weapon', tier: 9, rarity: 0, enh: 0 }, { uid: 'c', slot: 'weapon', tier: 0, rarity: 0, enh: 999 }, null],
     equipped: { weapon: 'a', armor: 'c', jade: null },
   }
   save.data.element = 'x'
   const patch = deserialize(save, { element: 'kim', spiritRoot: {}, name: 'n', createdAt: 1 })
-  assert.deepEqual(Object.keys(patch.skills.owned), ['ngu_kiem'])
-  assert.equal(patch.skills.owned.ngu_kiem, 5)
-  assert.equal(patch.skills.slots[0], null)
+  assert.deepEqual(Object.keys(patch.skills.tree), ['kiem_1'])
+  assert.equal(patch.skills.tree.kiem_1, 10)
+  assert.equal(patch.skills.points, 15, 'điểm âm về 0, võ kỹ chung cũ cấp 5 quy thành 15 điểm')
+  assert.ok(!('owned' in patch.skills) && !('slots' in patch.skills))
   assert.equal(patch.gear.bag.length, 1)
   assert.equal(patch.gear.bag[0].enh, EQ.MAX_ENHANCE)
   assert.equal(patch.gear.equipped.weapon, null) // 'a' không tồn tại
@@ -782,6 +751,7 @@ const arena = (opts = {}) => {
   s.init()
   s.stageIdx = opts.stage ?? 10
   s.settings.autoHeal = false
+  if (opts.path) s.path = opts.path
   const b = useBattleStore()
   b.start()
   b.enemy.maxHp = 1e9
@@ -792,52 +762,74 @@ const arena = (opts = {}) => {
   b.nextPlayer = 1e9
   return { s, b }
 }
-const learn = (s, id) => { s.skills.owned[id] = 1 }
+// Đấu trường cho kỹ năng trong cây: đủ cảnh giới để mở cả 8 nút của đạo lộ
+const treeArena = (path, opts = {}) => arena({ stage: 26, path, ...opts })
+const TTN = await import('../src/game/skilltree.js')
 
-ok('võ kỹ: dữ liệu hợp lệ, có mô tả, có nguồn tàn quyển (rơi ở ải hoặc cửa hàng)', () => {
-  const kinds = ['damage', 'dot', 'stun', 'execute', 'ultimate', 'heal', 'shield', 'haste', 'lifesteal', 'rage', 'reflect']
-  const dropped = new Set(ALL_DUNGEONS.flatMap((d) => d.loot.map((l) => l.item)))
-  for (const [id, sk] of Object.entries(SK.SKILLS)) {
+ok('kỹ năng trong cây: dữ liệu hợp lệ, có mô tả; không còn võ kỹ chung hay tàn quyển võ kỹ', () => {
+  const kinds = ['damage', 'dot', 'stun', 'execute', 'ultimate', 'heal', 'shield', 'haste', 'lifesteal', 'rage', 'reflect', 'crit']
+  assert.equal(Object.keys(TTN.TREE_SKILLS).length, 32)
+  for (const [id, sk] of Object.entries(TTN.TREE_SKILLS)) {
     assert.ok(kinds.includes(sk.kind), id + ' kind')
     assert.ok(sk.cd > 0 && sk.power > 0 && ['kim', 'moc', 'thuy', 'hoa', 'tho'].includes(sk.element), id)
     assert.ok(['damage', 'haste', 'heal', 'shield'].includes(SK.visualKind(sk.kind)))
     assert.ok(SK.skillDesc(id, 3).length > 10)
-    assert.ok(ALL_ITEMS[SK.fragmentId(id)], 'thiếu tàn quyển ' + id)
-    assert.ok(dropped.has(SK.fragmentId(id)), 'không bí cảnh nào rơi ' + id)
-    assert.ok(SECT_SHOP.some((e) => e.item === SK.fragmentId(id)), 'cửa hàng tông môn thiếu ' + id)
-    if (['dot', 'stun', 'lifesteal', 'rage', 'reflect'].includes(sk.kind)) assert.ok(sk.seconds > 0, id + ' seconds')
+    if (['dot', 'stun', 'lifesteal', 'rage', 'reflect', 'crit'].includes(sk.kind)) assert.ok(sk.seconds > 0, id + ' seconds')
   }
-  assert.equal(SK.SKILLS.thien_ha.kind, 'ultimate')
-  assert.ok(Object.keys(SK.SKILLS).length >= 12)
+  assert.ok(!SK.SKILLS && !SK.fragmentId && !SK.BRANCHES, 'đã bỏ hệ võ kỹ chung')
+  assert.ok(!Object.keys(ALL_ITEMS).some((id) => id.startsWith('qk_')), 'không còn tàn quyển võ kỹ')
+  assert.ok(!SECT_SHOP.some((e) => e.item?.startsWith('qk_')))
+  assert.ok(!ALL_DUNGEONS.some((d) => d.loot.some((l) => l.item.startsWith('qk_'))))
 })
 
-ok('ô võ kỹ: 4 ô (ô 4 mở ở Hóa Thần); tuyệt kỹ cần Nguyên Anh mới trang bị', () => {
+ok('boss rơi điểm kỹ năng theo loại ải; thưởng chọn boss và thám hiểm cũng cho điểm', () => {
+  assert.ok(TTN.SKILL_POINT_DROP.mini < TTN.SKILL_POINT_DROP.big && TTN.SKILL_POINT_DROP.big < TTN.SKILL_POINT_DROP.lord)
+  for (const kind of ['mini', 'big', 'lord']) {
+    const { s, b } = treeArena('kiem')
+    b.enemy.tier = kind
+    b.enemy.boss = true
+    b.enemy.hp = 0
+    const p0 = s.skills.points
+    b.onKill()
+    assert.ok(Math.abs(s.skills.points - p0 - TTN.SKILL_POINT_DROP[kind]) < 1e-9, kind)
+  }
+  const n = treeArena('kiem')
+  n.b.enemy.tier = 'normal'
+  n.b.enemy.hp = 0
+  const p1 = n.s.skills.points
+  n.b.onKill()
+  assert.equal(n.s.skills.points, p1, 'yêu thú thường không rơi điểm')
   const s = freshStore()
   s.init()
-  s.stageIdx = 12 // Kim Đan
-  assert.equal(s.skillSlots, 3)
-  s.stageIdx = 18 // Hóa Thần
-  assert.equal(s.skillSlots, 4)
-  assert.equal(SK.MAX_SKILL_SLOTS, 5) // 4 theo cảnh giới + 1 của Pháp Tu
-  s.stageIdx = 9 // Trúc Cơ: chưa đủ cho tuyệt kỹ
-  s.skills.owned.thien_ha = 1
-  assert.equal(SK.canEquip('thien_ha', s.realmIdx), false)
-  assert.equal(s.equipSkill('thien_ha', 0), false)
-  s.stageIdx = 15 // Nguyên Anh
-  assert.equal(s.equipSkill('thien_ha', 0), true)
-  // học tuyệt kỹ khi chưa đủ cảnh giới thì không tự trang bị
-  const s2 = freshStore()
-  s2.init()
-  s2.addItem('scrolls', SK.fragmentId('thien_ha'), SK.LEARN_COST)
-  assert.equal(s2.learnSkill('thien_ha'), true)
-  assert.ok(!s2.skills.slots.includes('thien_ha'))
+  assert.deepEqual(s.applyEffects([{ type: 'skillPoints', amount: 2.5 }]), ['+2.5 điểm kỹ năng'])
+  assert.equal(s.skills.points, 2.5)
 })
 
-ok('võ kỹ Độc Chú: sát thương mỗi giây đến hết hạn, không sang yêu thú kế', () => {
-  const { s, b } = arena()
-  learn(s, 'doc_chu')
+ok('save cũ: võ kỹ chung và tàn quyển đổi thành điểm kỹ năng, chỉ một lần', () => {
+  const s = freshStore()
+  s.init()
+  s.save()
+  const raw = JSON.parse(mem.get(SAVE_KEY))
+  raw.data.skills = { owned: { ngu_kiem: 2, thien_ha: 1 }, slots: ['ngu_kiem', null, null], branch: { ngu_kiem: 0 } }
+  raw.data.inventory.scrolls = { qk_liet_hoa: 5, cp_thanh_tam: 2 }
+  mem.set(SAVE_KEY, JSON.stringify(raw))
+  const s2 = freshStore(true)
+  s2.init()
+  assert.ok(Math.abs(s2.skills.points - (3 * 3 + 0.4 * 5)) < 1e-9, 'điểm ' + s2.skills.points)
+  assert.equal(s2.itemCount('qk_liet_hoa'), 0)
+  assert.equal(s2.itemCount('cp_thanh_tam'), 2, 'tàn quyển công pháp giữ nguyên')
+  assert.ok(!('owned' in s2.skills) && !('slots' in s2.skills) && !('branch' in s2.skills))
+  s2.save()
+  const s3 = freshStore(true)
+  s3.init()
+  assert.ok(Math.abs(s3.skills.points - s2.skills.points) < 1e-9, 'lưu lại rồi tải không cộng thêm')
+})
+
+
+ok('kỹ năng sát thương theo thời gian (Hỏa Hoàn Thuật): sát thương mỗi giây đến hết hạn, không sang yêu thú kế', () => {
+  const { s, b } = treeArena('dao')
   Math.random = () => 0.5
-  b.castSkill('doc_chu', s.combat)
+  b.castSkill('dao_3', s.combat)
   const hp0 = b.enemy.hp
   b.clock += 3.5
   b.processDot()
@@ -854,48 +846,44 @@ ok('võ kỹ Độc Chú: sát thương mỗi giây đến hết hạn, không s
   Math.random = realRandom
 })
 
-ok('võ kỹ Lôi Đình Chấn: gây sát thương và làm địch choáng (mất lượt ra đòn)', () => {
-  const { s, b } = arena()
-  learn(s, 'loi_dinh')
+ok('kỹ năng gây choáng (Phong Lôi Kiếm Quyết): gây sát thương và làm địch mất lượt ra đòn', () => {
+  const { s, b } = treeArena('kiem')
   b.nextEnemy = b.clock + 0.2
-  b.castSkill('loi_dinh', s.combat)
-  assert.ok(b.nextEnemy >= b.clock + SK.SKILLS.loi_dinh.seconds - 1e-9)
+  b.castSkill('kiem_3', s.combat)
+  assert.ok(b.nextEnemy >= b.clock + SK.skillDef('kiem_3').seconds - 1e-9)
   assert.ok(b.enemy.hp < 1e9)
-  // đang choáng thì readySkill không tung lại
-  s.skills.slots[0] = 'loi_dinh'
+  // đang choáng thì không tung lại chiêu gây choáng
   b.cd = {}
-  assert.equal(b.readySkill(), null)
+  assert.notEqual(b.readySkill(), 'kiem_3')
 })
 
-ok('võ kỹ Tuyệt Sát: gấp đôi sát thương khi địch dưới 30% khí huyết', () => {
-  const { s, b } = arena()
-  learn(s, 'tuyet_sat')
+ok('kỹ năng Tâm Nguyệt Đao: gấp đôi sát thương khi địch dưới 30% khí huyết', () => {
+  const { s, b } = treeArena('dao')
   const dmg = []
   const off = onEvent('battle-hit', (e) => e.skill && dmg.push(e.damage))
   useUiStoreEarly().tab = 'battle'
   Math.random = () => 0.5
   b.enemy.hp = b.enemy.maxHp
-  b.castSkill('tuyet_sat', s.combat)
+  b.castSkill('dao_2', s.combat)
   b.enemy.hp = b.enemy.maxHp * 0.2
-  b.castSkill('tuyet_sat', s.combat)
+  b.castSkill('dao_2', s.combat)
   Math.random = realRandom
   off()
   assert.equal(dmg.length, 2)
   assert.ok(Math.abs(dmg[1] / dmg[0] - 2) < 0.05, 'tỉ lệ ' + dmg[1] / dmg[0])
 })
 
-ok('võ kỹ Huyết Thực, Cuồng Bạo, Phản Chấn: hút máu, tăng công, phản sát thương', () => {
-  const { s, b } = arena()
-  for (const id of ['huyet_thuc', 'bao_nhan', 'phan_chan']) learn(s, id)
-  // Cuồng Bạo
+ok('Bí Kỹ: Bất Khuất Huyết Đao hút máu, Chiến Ý Sôi Trào tăng công, Bất Hoại Kim Thân phản sát thương', () => {
+  const { s, b } = treeArena('dao')
+  // Chiến Ý Sôi Trào
   const base = b.atkNow(s.combat)
-  b.castSkill('bao_nhan', s.combat)
-  assert.ok(b.atkNow(s.combat) > base * 1.3)
+  b.castSkill('dao_7', s.combat)
+  assert.ok(b.atkNow(s.combat) > base * 1.2)
   b.clock += 100
   assert.equal(b.atkNow(s.combat), base, 'hết hạn thì về bình thường')
   // Huyết Thực
   b.hp = 10
-  b.castSkill('huyet_thuc', s.combat)
+  b.castSkill('dao_8', s.combat)
   Math.random = () => 0.5
   b.basicAttack(s.combat)
   assert.ok(b.hp > 10, 'đòn đánh hồi máu')
@@ -903,21 +891,21 @@ ok('võ kỹ Huyết Thực, Cuồng Bạo, Phản Chấn: hút máu, tăng côn
   const h = b.hp
   b.basicAttack(s.combat)
   assert.equal(b.hp, h, 'hết hạn thì không hút')
-  // Phản Chấn
-  b.hp = b.maxHp
-  b.castSkill('phan_chan', s.combat)
-  const ehp = b.enemy.hp
-  b.nextEnemy = 0
-  b.enemy.atk = 50
-  b.enemyAct()
-  assert.ok(b.enemy.hp < ehp, 'địch bị phản lại sát thương')
+  // Bất Hoại Kim Thân (đạo lộ Thể)
+  const r = treeArena('the')
+  r.b.hp = r.b.maxHp
+  r.b.castSkill('the_8', r.s.combat)
+  const ehp = r.b.enemy.hp
+  r.b.nextEnemy = 0
+  r.b.enemy.atk = 50
+  r.b.enemyAct()
+  assert.ok(r.b.enemy.hp < ehp, 'địch bị phản lại sát thương')
   Math.random = realRandom
 })
 
-ok('võ kỹ phản chấn có thể hạ gục địch; thắng thì không bị tính là thua', () => {
-  const { s, b } = arena()
-  learn(s, 'phan_chan')
-  b.castSkill('phan_chan', s.combat)
+ok('phản sát thương có thể hạ gục địch; thắng thì không bị tính là thua', () => {
+  const { s, b } = treeArena('the')
+  b.castSkill('the_8', s.combat)
   b.enemy.hp = 1
   b.enemy.atk = 50
   b.nextEnemy = 0
@@ -1057,29 +1045,28 @@ ok('save/load giữ công pháp (cấp); loại công pháp lạ, cấp vượt 
   assert.equal(s3.arts.owned.pha_quan, 1)
   assert.ok(!('khong_co' in s3.arts.owned))
   assert.ok(!('slots' in s3.arts), 'bỏ ô trang bị của save cũ')
-  // save cũ không có công pháp và chỉ 3 ô võ kỹ vẫn tải được
+  // save cũ không có công pháp, có võ kỹ chung (đã bỏ) vẫn tải được
   delete raw.data.arts
   raw.data.skills = { owned: { ngu_kiem: 2 }, slots: ['ngu_kiem', null, null] }
   mem.set(SAVE_KEY, JSON.stringify(raw))
   const s4 = freshStore(true)
   s4.init()
   assert.deepEqual({ ...s4.arts.owned }, {})
-  assert.equal(s4.skills.slots.length, SK.MAX_SKILL_SLOTS)
-  assert.equal(s4.skills.slots[0], 'ngu_kiem')
+  assert.equal(s4.skills.points, 6, 'võ kỹ chung cũ cấp 2 quy thành 6 điểm')
 })
 
-ok('luân hồi giữ võ kỹ và công pháp; công pháp Luân Hồi Bí Điển tăng Đạo Vận nhận được', () => {
+ok('luân hồi giữ cấp kỹ năng trong cây và công pháp; công pháp Luân Hồi Bí Điển tăng Đạo Vận nhận được', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 15
-  s.skills.owned.ngu_kiem = 3
+  s.skills.tree.kiem_1 = 3
   s.arts.owned = { luan_hoi: 5, pha_quan: 2 }
   const plain = daoBase()
   assert.ok(s.daoPreview > plain, 'xem trước đã cộng thưởng')
   const gain = s.reincarnate()
   assert.equal(gain, s.reincarnation.dao)
   assert.ok(gain > plain)
-  assert.equal(s.skills.owned.ngu_kiem, 3)
+  assert.equal(s.skills.tree.kiem_1, 3)
   assert.equal(s.arts.owned.luan_hoi, 5)
 })
 function daoBase() { return Math.round(3 * Math.pow(1.4, 15 - 9)) }
@@ -1178,9 +1165,9 @@ ok('cây kỹ năng: nút tự mở theo đạo lộ và cảnh giới, thi tri�
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 8].map(unlockedAt), [0, 1, 3, 5, 6, 7, 8, 8], 'số nút mở theo đại cảnh giới')
   // đủ 8 nút ở đại cảnh giới 6; thứ tự thi triển: Tuyệt Kỹ, Võ Kỹ 4..1, rồi Bí Kỹ
   assert.deepEqual(TT2.activeTreeIds('kiem', 6), ['kiem_5', 'kiem_4', 'kiem_3', 'kiem_2', 'kiem_1', 'kiem_6', 'kiem_7', 'kiem_8'])
-  // Đơn Nhất tắt cây
+  // Đơn Nhất: chỉ dùng Võ Kỹ 1
   s.challenge = 'don_nhat'
-  assert.deepEqual(s.activeTreeIds, [])
+  assert.deepEqual(s.activeTreeIds, ['kiem_1'])
   s.challenge = null
   // trong trận: nút cây được tung dù không gắn vào ô; Đạo lộ khác thì không
   const b = useBattleStore()
@@ -1305,22 +1292,10 @@ ok('Kiếm Tu: +công kích, chí mạng mạnh hơn, +sát thương võ kỹ t�
   // hệ số chí mạng
   assert.equal(BT3.rollHit(100, 0, () => 0, 1, 1, 2.5).damage, Math.round(100 * 0.8 * 2.5))
   assert.equal(BT3.rollHit(100, 0, () => 0, 1, 1).damage, Math.round(100 * 0.8 * BT3.CRIT_MULT))
-  // võ kỹ tấn công mạnh hơn
-  const dmg = (path) => {
-    const x = arena()
-    x.s.path = path
-    x.s.skills.owned.ngu_kiem = 1
-    const hits = []
-    const off = onEvent('battle-hit', (e) => e.skill && hits.push(e.damage))
-    useUiStoreEarly().tab = 'battle'
-    Math.random = () => 0.5
-    x.b.enemy.def = 0
-    x.b.castSkill('ngu_kiem', { ...x.s.combat, atk: 100 })
-    Math.random = realRandom
-    off()
-    return hits[0]
-  }
-  assert.ok(dmg('kiem') / dmg(null) > 1.14 && dmg('kiem') / dmg(null) < 1.17)
+  // kỹ năng tấn công mạnh hơn
+  assert.ok(Math.abs(s.battlePerk.skillDmg - 0.15) < 1e-9)
+  s.path = null
+  assert.equal(s.battlePerk.skillDmg, 0)
 })
 
 ok('Thể Tu: +khí huyết, +phòng ngự, hút máu nền mọi đòn đánh', () => {
@@ -1339,21 +1314,18 @@ ok('Thể Tu: +khí huyết, +phòng ngự, hút máu nền mọi đòn đánh',
   assert.ok(b.hp > 10, 'đánh hút máu dù không có Huyết Thực')
 })
 
-ok('Phù Tu: thêm 1 ô võ kỹ chung, hồi chiêu nhanh hơn 15%, +10% hiệu quả công pháp', () => {
+ok('Phù Tu: hồi chiêu nhanh hơn 15%, +10% sát thương kỹ năng, +10% hiệu quả công pháp', () => {
   const s = freshStore()
   s.init()
-  s.stageIdx = 12
-  const slots0 = s.skillSlots
+  s.stageIdx = 26
   s.path = 'phu'
-  assert.equal(s.skillSlots, slots0 + 1)
-  s.stageIdx = 18
-  assert.equal(s.skillSlots, SK.MAX_SKILL_SLOTS, '4 theo cảnh giới + 1 của Phù Tu')
-  s.skills.owned.ngu_kiem = 1
+  assert.ok(Math.abs(s.battlePerk.cd - 0.15) < 1e-9)
+  assert.ok(Math.abs(s.battlePerk.skillDmg - 0.1) < 1e-9)
   const b = useBattleStore()
   b.start()
   b.clock = 100
-  b.castSkill('ngu_kiem', s.combat)
-  assert.ok(Math.abs(b.cd.ngu_kiem - 100 - SK.skillCooldown('ngu_kiem', 1) * 0.85) < 1e-9)
+  b.castSkill('phu_1', s.combat)
+  assert.ok(Math.abs(b.cd.phu_1 - 100 - SK.skillCooldown('phu_1', 1) * 0.85) < 1e-9)
 })
 
 ok('Đao Tu: +20% công kích, +5% chí mạng, chí mạng mạnh hơn một chút', () => {
@@ -1795,7 +1767,8 @@ ok('mọi gợi ý có tab đích đều trỏ tới màn đã mở (không dẫ
     s.spiritStones = RICH(s)
     s.exp = s.requirement
     s.addItem('herbs', 'linh_thao', 9)
-    s.addItem('scrolls', SK.fragmentId('liet_hoa'), 5)
+    s.path = 'kiem'
+    s.skills.points = 50
     s.addItem('scrolls', AR.artFragmentId('thanh_tam'), 5)
     s.addGear(EQ.generateItem('armor', 0))
     return s
@@ -2223,10 +2196,11 @@ ok('Kiếp Thử Thách Độc Hành: không tông môn, không đệ tử, côn
   assert.equal(s.joinSect('thien_kiem'), false)
 })
 
-ok('Kiếp Thử Thách Tay Không và Đơn Nhất: trang bị vô hiệu, chỉ một ô võ kỹ', () => {
+ok('Kiếp Thử Thách Tay Không và Đơn Nhất: trang bị vô hiệu, chỉ một kỹ năng', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 18
+  s.path = 'kiem'
   const c0 = s.combat
   s.addGear({ uid: 'x', slot: 'weapon', tier: 3, rarity: 3, enh: 5, affixes: [{ id: 'atk', v: 0.2 }] })
   s.equipGear('x')
@@ -2237,9 +2211,9 @@ ok('Kiếp Thử Thách Tay Không và Đơn Nhất: trang bị vô hiệu, ch�
   assert.ok(Object.values(s.gearPerk).every((v) => v === 0))
   assert.equal(s.activeGearSets.length, 0)
   s.challenge = 'don_nhat'
-  assert.ok(s.skillSlots >= 1 && s.skillSlots === 1)
+  assert.equal(s.activeTreeIds.length, 1)
   s.challenge = null
-  assert.ok(s.skillSlots > 1)
+  assert.ok(s.activeTreeIds.length > 1)
 })
 
 ok('save/load giữ Kiếp Thử Thách đang theo, đã xong, số lần hoàn thành; loại thử thách lạ', () => {
@@ -2410,21 +2384,20 @@ ok('chọn thưởng boss: 3 lựa chọn khác loại, hiệu lực hợp lệ,
       for (const o of opts) {
         assert.ok(o.label.length > 5 && o.effects.length >= 1)
         for (const e of o.effects) {
-          assert.ok(['stat', 'item', 'expBonus'].includes(e.type), 'không có thưởng linh thạch')
+          assert.ok(['stat', 'item', 'expBonus', 'skillPoints'].includes(e.type), 'không có thưởng linh thạch')
           if (e.type === 'item') assert.ok(ALL_ITEMS[e.id], e.id)
         }
       }
     }
   }
-  // võ kỹ độc quyền của đạo lộ khác không xuất hiện
-  for (let i = 0; i < 200; i++) {
-    for (const o of BCH.bossChoiceOptions({ n: 50, kind: 'big', path: 'the' })) {
-      for (const e of o.effects) if (e.type === 'item' && e.id.startsWith('qk_')) {
-        const sk = SK.SKILLS[e.id.slice(3)]
-        assert.ok(!sk.path || sk.path === 'the', 'sai đạo lộ: ' + e.id)
-      }
+  // lựa chọn điểm kỹ năng lớn dần theo loại boss
+  const pts = (kind) => {
+    for (let i = 0; i < 300; i++) {
+      const o = BCH.bossChoiceOptions({ n: 30, kind }).find((x) => x.id === 'skill')
+      if (o) return o.effects[0].amount
     }
   }
+  assert.ok(pts('lord') > pts('big') && pts('big') > pts('mini'))
   for (let i = 0; i < 100; i++) assert.ok(!BCH.bossChoiceOptions({ n: 30, kind: 'big' }).some((o) => o.id === 'stones'))
   // thưởng lớn dần theo loại boss: số tàn quyển
   const count = (kind) => {
@@ -3093,11 +3066,10 @@ ok('phần thưởng thám hiểm: thất bại chỉ còn 25% linh thạch và 
   assert.equal(bad.length, 2)
   assert.ok(Math.abs(bad[0].base - m.stones * 0.25) < 1e-9)
   assert.ok(ok1[0].base > bad[0].base * 3)
-  assert.ok(ok1.some((e) => e.id?.startsWith('cp_')) && ok1.some((e) => e.id?.startsWith('ln_')) && ok1.some((e) => e.id?.startsWith('qk_')))
+  assert.ok(ok1.some((e) => e.id?.startsWith('cp_')) && ok1.some((e) => e.id?.startsWith('ln_')) && ok1.some((e) => e.type === 'skillPoints'))
   for (const e of ok1) if (e.type === 'item') assert.ok(ALL_ITEMS[e.id], e.id)
   for (let i = 0; i < 100; i++) {
     for (const e of EX.missionEffects(m, 20, true, { record: 20, path: 'the' })) {
-      if (e.id?.startsWith('qk_')) { const sk = SK.SKILLS[e.id.slice(3)]; assert.ok(!sk.path || sk.path === 'the', e.id) }
       if (e.id?.startsWith('cp_')) assert.ok(AR.ARTS[e.id.slice(3)].minAi <= 20, e.id)
       if (e.id?.startsWith('ln_')) assert.ok(PT10.PETS[e.id.slice(3)].minAi <= 20, e.id)
     }
@@ -3416,7 +3388,7 @@ ok('luân hồi: cần Trúc Cơ, nhận Đạo Vận, đặt lại tiến trìn
   s.bonus.atk = 50
   s.spiritStones = new Decimal(999)
   s.addItem('herbs', 'linh_thao', 5)
-  s.skills.owned.ngu_kiem = 2
+  s.skills.tree.kiem_1 = 2
   const g1 = EQ.generateItem('weapon', 0)
   s.addGear(g1)
   s.alchemy.level = 6
@@ -3431,7 +3403,7 @@ ok('luân hồi: cần Trúc Cơ, nhận Đạo Vận, đặt lại tiến trìn
   assert.equal(s.reincarnation.dao, expected)
   assert.equal(s.reincarnation.count, 1)
   assert.equal(s.stats.reincarnations, 1)
-  assert.equal(s.skills.owned.ngu_kiem, 2)
+  assert.equal(s.skills.tree.kiem_1, 2)
   assert.equal(s.gear.bag.length, 1)
   assert.equal(s.alchemy.level, 6)
   assert.equal(s.stats.maxStage, 0)
@@ -3832,8 +3804,6 @@ ok('hạ boss cộng Cống Hiến cho tông môn; công pháp sát thương m�
   s.init()
   s.stageIdx = 7
   s.joinSect('xich_viem')
-  s.skills.owned.liet_hoa = 1
-  s.skills.slots[0] = 'liet_hoa'
   s.campaign.best = 4
   s.campaign.record = 4
   runFor(s, 20)
@@ -4495,9 +4465,12 @@ ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang b�
   assert.ok(ids(s).includes('sect'))
   s.joinSect('van_moc')
   assert.ok(!ids(s).includes('sect'))
-  s.addItem('scrolls', fragmentId('ngu_kiem'), 5)
+  s.stageIdx = 9
+  s.stats.maxStage = 9
+  s.path = 'kiem'
+  s.skills.points = 50
   assert.ok(ids(s).includes('skill'))
-  s.learnSkill('ngu_kiem')
+  s.skills.points = 0
   assert.ok(!ids(s).includes('skill'))
   const it = EQ.generateItem('weapon', 0)
   s.addGear(it)
@@ -4529,7 +4502,8 @@ ok('gợi ý: mọi gợi ý trỏ tới tab có thật, có nội dung và id d
   s.exp = s.requirement
   s.spiritStones = RICH(s)
   s.addItem('herbs', 'linh_thao', 9)
-  s.addItem('scrolls', fragmentId('liet_hoa'), 5)
+  s.path = 'kiem'
+  s.skills.points = 50
   s.addGear(EQ.generateItem('armor', 0))
   const hints = nextHints(s)
   assert.ok(hints.length >= 4)
@@ -4651,7 +4625,6 @@ ok('đạt Độ Kiếp Hậu Kỳ là cực hạn; save giữ bậc mới và c
   assert.equal(s3.stats.maxStage, MAX_STAGE_IDX)
   assert.equal(STORY.REALM_FLAVOR.length, CON9.REALMS?.length ?? 9)
   for (let i = 1; i < STORY.REALM_FLAVOR.length; i++) assert.ok(STORY.REALM_FLAVOR[i].length > 20)
-  assert.equal(s3.skillSlots >= 4, true)
   assert.equal(s3.petSlots, 2)
 })
 
@@ -4758,12 +4731,12 @@ ok('đổi dòng phụ có khoá một dòng: giữ dòng đã khoá, tốn gấ
   }
 })
 
-ok('võ kỹ gây trạng thái theo hệ: Hỏa Thiêu (cháy), Thủy Băng (làm chậm), Kim Phá Giáp (giảm thủ); chiêu hệ Thổ không gây', () => {
+ok('trạng thái theo đạo lộ: Kiếm Phá Giáp, Đao Thiêu, Phù Băng, Thể Choáng Váng; chỉ Võ Kỹ 1-3 gây trạng thái', () => {
   Math.random = () => 0.5
-  const a = arena()
-  learn(a.s, 'liet_hoa')
+  const a = treeArena('dao')
+  assert.ok(a.s.realmIdx >= 6, 'đủ cảnh giới mở cả cây')
   a.b.enemy.def = 100
-  a.b.castSkill('liet_hoa', a.s.combat)
+  a.b.castSkill('dao_1', a.s.combat)
   assert.ok(a.b.hasStatus('burn') && a.b.burnUntil > a.b.clock)
   const hp0 = a.b.enemy.hp
   a.b.clock += 2.5
@@ -4771,34 +4744,40 @@ ok('võ kỹ gây trạng thái theo hệ: Hỏa Thiêu (cháy), Thủy Băng (l
   assert.ok(a.b.enemy.hp < hp0, 'Thiêu gây sát thương mỗi giây')
   a.b.clock += 10
   assert.ok(!a.b.hasStatus('burn'), 'hết hạn')
-  const c = arena()
-  learn(c.s, 'huyen_bang')
-  c.b.castSkill('huyen_bang', c.s.combat)
+  const c = treeArena('phu')
+  c.b.castSkill('phu_1', c.s.combat)
   assert.ok(c.b.hasStatus('chill') && c.b.slowAmt >= SK.STATUS.chill.slow)
-  const d = arena()
-  learn(d.s, 'ngu_kiem')
+  const d = treeArena('kiem')
   d.b.enemy.def = 200
   assert.equal(d.b.enemyDef(), 200)
-  d.b.castSkill('ngu_kiem', d.s.combat)
+  d.b.castSkill('kiem_1', d.s.combat)
   assert.ok(d.b.hasStatus('pierce') && Math.abs(d.b.enemyDef() - 200 * SK.STATUS.pierce.defMult) < 1e-9, 'Phá Giáp giảm thủ 15%')
-  const e = arena()
-  learn(e.s, 'hau_tho')
-  e.b.castSkill('hau_tho', e.s.combat)
-  assert.ok(!e.b.hasStatus('burn') && !e.b.hasStatus('chill') && !e.b.hasStatus('pierce'))
+  const e = treeArena('the')
+  e.b.nextEnemy = e.b.clock + 0.1
+  e.b.castSkill('the_1', e.s.combat)
+  assert.ok(e.b.hasStatus('dizzy') && e.b.nextEnemy >= e.b.clock + SK.STATUS.dizzy.delay - 1e-9, 'Choáng Váng kéo dài chờ ra đòn của địch')
+  // chiêu chốt, Tuyệt Kỹ và Bí Kỹ không gây trạng thái
+  const f = treeArena('kiem')
+  f.b.castSkill('kiem_4', f.s.combat)
+  f.b.castSkill('kiem_5', f.s.combat)
+  f.b.castSkill('kiem_8', f.s.combat)
+  assert.ok(!f.b.hasStatus('pierce'), 'chỉ Võ Kỹ 1-3 gây trạng thái')
   // sang yêu thú mới thì hết trạng thái
-  a.b.burnUntil = a.b.chillUntil = a.b.pierceUntil = a.b.clock + 100
+  a.b.burnUntil = a.b.chillUntil = a.b.pierceUntil = a.b.dizzyUntil = a.b.clock + 100
   a.b.spawnEnemy()
-  assert.ok(!a.b.hasStatus('burn') && !a.b.hasStatus('chill') && !a.b.hasStatus('pierce'))
+  assert.ok(!['burn', 'chill', 'pierce', 'dizzy'].some((n) => a.b.hasStatus(n)))
   Math.random = realRandom
-  // mọi võ kỹ tấn công đều có dòng mô tả trạng thái
-  for (const id of Object.keys(SK.SKILLS)) if (SK.isAttack(SK.SKILLS[id].kind) && SK.STATUS_OF_ELEMENT[SK.SKILLS[id].element]) assert.ok(SK.statusLine(id).includes('Gây'), id)
+  // mọi Võ Kỹ 1-3 tấn công đều có dòng mô tả trạng thái, chiêu chốt có dòng liên kích
+  for (const id of Object.keys(TTN.TREE_SKILLS)) {
+    if (SK.statusOfSkill(id)) assert.ok(SK.statusLine(id).includes('Gây'), id)
+    if (SK.comboOfSkill(id)) assert.ok(SK.statusLine(id).includes('Liên kích'), id)
+  }
 })
 
-ok('liên kích: Băng rồi Kim gây thêm 45%; Thiêu rồi Thủy; Độc rồi Hỏa; không có trạng thái thì không có', () => {
-  const dmg = (setup, id) => {
+ok('liên kích theo đạo lộ: chiêu chốt và Tuyệt Kỹ gây thêm 40% khi địch mang trạng thái của đạo lộ; trạng thái khác thì không', () => {
+  const dmg = (path, id, setup) => {
     Math.random = () => 0.5
-    const x = arena()
-    learn(x.s, id)
+    const x = treeArena(path)
     x.b.enemy.def = 0
     setup(x.b)
     const hp0 = x.b.enemy.hp
@@ -4806,55 +4785,24 @@ ok('liên kích: Băng rồi Kim gây thêm 45%; Thiêu rồi Thủy; Độc r�
     Math.random = realRandom
     return hp0 - x.b.enemy.hp
   }
-  const plain = dmg(() => {}, 'ngu_kiem')
-  const combo = dmg((b) => { b.chillUntil = b.clock + 5 }, 'ngu_kiem')
-  assert.ok(Math.abs(combo / plain - 1.45) < 0.02, 'Băng Vỡ ' + combo / plain)
-  const hs = dmg(() => {}, 'huyen_bang')
-  const hsCombo = dmg((b) => { b.burnUntil = b.clock + 5 }, 'huyen_bang')
-  assert.ok(Math.abs(hsCombo / hs - 1.45) < 0.02, 'Hàn Hỏa ' + hsCombo / hs)
-  const lh = dmg(() => {}, 'liet_hoa')
-  const lhCombo = dmg((b) => { b.dotUntil = b.clock + 5; b.dotElem = 'moc' }, 'liet_hoa')
-  assert.ok(Math.abs(lhCombo / lh - 1.45) < 0.02, 'Độc Hỏa ' + lhCombo / lh)
-  // chiêu khác hệ với liên kích thì không ăn
-  const other = dmg((b) => { b.chillUntil = b.clock + 5 }, 'liet_hoa')
-  assert.ok(Math.abs(other / lh - 1) < 0.02)
-})
-
-ok('nhánh tiến hoá võ kỹ: chỉ khi cấp tối đa; Cường Lực +30% sát thương, Tốc Biến -25% hồi chiêu; save giữ đúng', () => {
-  const s = freshStore()
-  s.init()
-  s.skills.owned.ngu_kiem = SK.SKILL_MAX_LEVEL - 1
-  assert.equal(s.chooseBranch('ngu_kiem', 0), false, 'chưa tối đa')
-  s.skills.owned.ngu_kiem = SK.SKILL_MAX_LEVEL
-  assert.equal(s.chooseBranch('ngu_kiem', 2), false, 'nhánh lạ')
-  assert.equal(s.chooseBranch('ngu_kiem', 0), true)
-  assert.equal(SK.skillCooldown('ngu_kiem', 5, 1), SK.skillCooldown('ngu_kiem', 5) * 0.75)
-  assert.equal(SK.skillCooldown('ngu_kiem', 5, 0), SK.skillCooldown('ngu_kiem', 5))
-  // sát thương
-  const hit = (branch) => {
-    Math.random = () => 0.5
-    const x = arena()
-    x.s.skills.owned.ngu_kiem = SK.SKILL_MAX_LEVEL
-    if (branch != null) x.s.skills.branch.ngu_kiem = branch
-    x.b.enemy.def = 0
-    const hp0 = x.b.enemy.hp
-    x.b.castSkill('ngu_kiem', x.s.combat)
-    Math.random = realRandom
-    return { dmg: hp0 - x.b.enemy.hp, cd: x.b.cd.ngu_kiem - x.b.clock }
+  const none = () => {}
+  const cases = [
+    ['kiem', 'kiem_4', (b) => { b.pierceUntil = b.clock + 5 }, 'Phá Giáp Trảm'],
+    ['kiem', 'kiem_5', (b) => { b.pierceUntil = b.clock + 5 }, 'Phá Giáp Trảm'],
+    ['dao', 'dao_4', (b) => { b.burnUntil = b.clock + 5 }, 'Hỏa Thiêu Phần Thế'],
+    ['phu', 'phu_4', (b) => { b.chillUntil = b.clock + 5 }, 'Băng Phù Vỡ'],
+    ['the', 'the_4', (b) => { b.dizzyUntil = b.clock + 5 }, 'Chấn Động Địa Sơn'],
+  ]
+  for (const [path, id, setup, name] of cases) {
+    const plain = dmg(path, id, none)
+    const combo = dmg(path, id, setup)
+    assert.ok(Math.abs(combo / plain - 1.4) < 0.02, name + ' ' + combo / plain)
   }
-  const base = hit(null)
-  const power = hit(0)
-  const fast = hit(1)
-  assert.ok(Math.abs(power.dmg / base.dmg - 1.3) < 0.02)
-  assert.ok(Math.abs(fast.cd / base.cd - 0.75) < 0.02)
-  // save
-  s.skills.owned.liet_hoa = 3
-  s.skills.branch.liet_hoa = 1 // không hợp lệ: chưa tối đa
-  s.save()
-  const s2 = freshStore(true)
-  s2.init()
-  assert.equal(s2.skills.branch.ngu_kiem, 0)
-  assert.ok(!('liet_hoa' in s2.skills.branch), 'bỏ nhánh của võ kỹ chưa tối đa')
+  // trạng thái của đạo lộ khác không ăn; Võ Kỹ 1-3 không liên kích
+  const plain = dmg('kiem', 'kiem_4', none)
+  assert.ok(Math.abs(dmg('kiem', 'kiem_4', (b) => { b.burnUntil = b.clock + 5 }) / plain - 1) < 0.02)
+  const p2 = dmg('kiem', 'kiem_2', none)
+  assert.ok(Math.abs(dmg('kiem', 'kiem_2', (b) => { b.pierceUntil = b.clock + 5 }) / p2 - 1) < 0.02, 'Võ Kỹ 1-3 không ăn liên kích')
 })
 
 ok('công pháp theo bốn hệ: mỗi công pháp một hệ; tổng cấp hệ mở mốc cộng hưởng cộng dồn vào extraPerk', () => {
@@ -4995,11 +4943,10 @@ ok('pháp bảo trong trận: Càn Khôn Đỉnh hồi máu, Thất Tinh Kiếm 
 
 ok('pháp bảo trong trận: Phong Lôi Phiến tăng tốc, Hỗn Nguyên Chung có lá chắn đầu ải, Thiên Cơ La Bàn chí mạng với boss, Tụ Linh Bình khi hạ boss, cộng hưởng hệ', () => {
   Math.random = () => 0.5
-  const a = arena()
-  learn(a.s, 'ngu_kiem')
+  const a = arena({ path: 'kiem' })
   a.s.treasures.owned.phong_loi_phien = 1
   a.s.treasures.slots[0] = 'phong_loi_phien'
-  a.b.castSkill('ngu_kiem', a.s.combat)
+  a.b.castSkill('kiem_1', a.s.combat)
   assert.ok(a.b.hasteUntil > a.b.clock && a.b.hasteAmt >= TRS.treasureValue('phong_loi_phien', 1))
   // lá chắn đầu ải
   const b = arena()
@@ -5023,14 +4970,14 @@ ok('pháp bảo trong trận: Phong Lôi Phiến tăng tốc, Hỗn Nguyên Chun
   d.b.enemy.hp = 0
   d.b.onKill()
   assert.ok(d.b.hp > d.b.maxHp * 0.3, 'hồi máu khi hạ boss')
-  // cộng hưởng: có võ kỹ đang gắn cùng hệ (Kim) thì Thất Tinh Kiếm (Kim) mạnh hơn
+  // cộng hưởng: có kỹ năng đang dùng cùng hệ (Kim) thì Thất Tinh Kiếm (Kim) mạnh hơn
   const e = freshStore()
   e.init()
   e.treasures.owned.that_tinh_kiem = 1
   e.treasures.slots[0] = 'that_tinh_kiem'
   const plain = e.treasureFx.nth.mult
-  e.skills.owned.ngu_kiem = 1 // hệ Kim
-  e.skills.slots[0] = 'ngu_kiem'
+  e.stageIdx = 9
+  e.path = 'kiem' // Ngự Kiếm Quyết: hệ Kim
   assert.ok(Math.abs(e.treasureFx.nth.mult / plain - (1 + TRS.TREASURE_SYNERGY)) < 1e-9)
 })
 
@@ -5125,24 +5072,6 @@ ok('Mảnh Pháp Bảo thám hiểm chỉ từ pháp bảo đã mở theo ải, 
   const shop = SECT_SHOP.find((x) => x.item === TRS.treasureFragmentId('can_khon_dinh'))
   assert.equal(s.buyShop(shop.id), true)
   assert.equal(s.itemCount(TRS.treasureFragmentId('can_khon_dinh')), 1)
-})
-
-ok('mỗi võ kỹ có hai tên nhánh riêng, khác nhau và không trùng giữa các võ kỹ', () => {
-  const all = []
-  for (const id of Object.keys(SK.SKILLS)) {
-    const names = SK.BRANCH_NAMES[id]
-    assert.equal(names.length, 2, id)
-    assert.notEqual(names[0], names[1])
-    all.push(...names)
-    assert.equal(SK.branchInfo(id, 0).name, names[0])
-    assert.equal(SK.branchInfo(id, 1).kind, 'Tốc Biến')
-  }
-  assert.equal(new Set(all).size, all.length, 'tên nhánh không trùng')
-  const s = freshStore()
-  s.init()
-  s.skills.owned.liet_hoa = SK.SKILL_MAX_LEVEL
-  assert.equal(s.chooseBranch('liet_hoa', 1), true)
-  assert.ok(s.log.some((l) => l.text.includes(SK.BRANCH_NAMES.liet_hoa[1])), 'nhật ký ghi tên nhánh')
 })
 
 ok('dòng đặc tính có tên: có chữ mô tả, hợp ô, lưu / tải; không làm hỏng dòng phụ thường', () => {
@@ -5286,7 +5215,7 @@ ok('khoá đồ: món khoá không bị bán / phân giải thủ công hay tự
   assert.equal(s2.gear.bag.find((x) => x.uid === 'c').locked, true)
 })
 
-ok('tự gắn tốt nhất: pháp bảo theo phẩm cao nhất; võ kỹ ưu tiên chiêu tấn công mạnh; không gắn chiêu chưa đủ cảnh giới', () => {
+ok('tự gắn tốt nhất: pháp bảo theo phẩm cao nhất', () => {
   const s = freshStore()
   s.init()
   s.stageIdx = 12 // Kim Đan: 3 ô võ kỹ, 3 ô pháp bảo cần Hóa Thần?
@@ -5296,12 +5225,6 @@ ok('tự gắn tốt nhất: pháp bảo theo phẩm cao nhất; võ kỹ ưu ti
   assert.equal(s.treasures.slots[0], 'that_tinh_kiem', 'phẩm cao nhất trước')
   assert.equal(s.treasures.slots[1], 'ho_than_phu')
   assert.equal(s.autoEquipTreasures(), 0, 'lần hai không đổi gì')
-  s.skills.owned = { thanh_moc: 3, ngu_kiem: 2, liet_hoa: 1, thien_ha: 1 } // thien_ha cần Nguyên Anh mới gắn được
-  s.autoEquipSkills()
-  const slots = s.skills.slots.slice(0, s.skillSlots)
-  assert.ok(!slots.includes('thien_ha'), 'tuyệt kỹ chưa đủ cảnh giới')
-  assert.ok(slots.includes('ngu_kiem') && slots.includes('liet_hoa'), 'chiêu tấn công trước')
-  assert.equal(slots.length, s.skillSlots)
 })
 
 ok('pháp bảo hậu kỳ: Vạn Lôi Ấn (sát thương chí mạng), Tinh Hà Bảo Bình (sát thương võ kỹ), Huyền Vũ Giáp Ấn (phản sát thương) cộng vào chiến đấu', () => {
@@ -5327,25 +5250,24 @@ ok('pháp bảo hậu kỳ: Vạn Lôi Ấn (sát thương chí mạng), Tinh H�
   assert.ok(seen)
 })
 
-ok('gợi ý liên kích trong màn Võ Kỹ: báo có / thiếu chiêu gây trạng thái và chiêu ăn liên kích', () => {
-  const full = SK.comboHints('ngu_kiem', ['ngu_kiem', 'huyen_bang'])
-  assert.ok(full.some((h) => h.ok && h.text.includes('Băng Vỡ')), 'Kim ăn Băng từ Huyền Băng')
-  const lacking = SK.comboHints('ngu_kiem', ['ngu_kiem'])
-  assert.ok(lacking.some((h) => !h.ok && h.text.includes('thiếu chiêu gây Băng')))
-  const feeder = SK.comboHints('huyen_bang', ['ngu_kiem', 'huyen_bang'])
-  assert.ok(feeder.some((h) => h.ok && h.text.includes('Mở Băng Vỡ cho Ngự Kiếm Thuật')))
-  assert.deepEqual(SK.comboHints('thanh_moc', ['thanh_moc']), [], 'chiêu hồi máu không có liên kích')
+ok('gợi ý liên kích trong cây kỹ năng: báo có / thiếu Võ Kỹ gây trạng thái và chiêu ăn liên kích', () => {
+  const full = SK.comboHints('kiem_4', ['kiem_1', 'kiem_4'])
+  assert.ok(full.some((h) => h.ok && h.text.includes('Phá Giáp Trảm') && h.text.includes('Ngự Kiếm Quyết')))
+  const lacking = SK.comboHints('kiem_4', ['kiem_4'])
+  assert.ok(lacking.some((h) => !h.ok && h.text.includes('cần Võ Kỹ 1-3 gây Phá Giáp')))
+  const feeder = SK.comboHints('kiem_1', ['kiem_1', 'kiem_4'])
+  assert.ok(feeder.some((h) => h.ok && h.text.includes('Mở Phá Giáp Trảm cho Vạn Kiếm Quy Tông')))
+  assert.deepEqual(SK.comboHints('phu_7', ['phu_7']), [], 'Bí Kỹ không có liên kích')
 })
 
 ok('liên kích ghi tên để hiện trên cảnh trận; trạng thái hết hạn thì biến mất', () => {
   Math.random = () => 0.5
-  const x = arena()
-  learn(x.s, 'ngu_kiem')
+  const x = treeArena('kiem')
   x.b.enemy.def = 0
-  x.b.chillUntil = x.b.clock + 5
-  x.b.castSkill('ngu_kiem', x.s.combat)
+  x.b.pierceUntil = x.b.clock + 5
+  x.b.castSkill('kiem_4', x.s.combat)
   Math.random = realRandom
-  assert.equal(x.b.comboName, 'Băng Vỡ')
+  assert.equal(x.b.comboName, 'Phá Giáp Trảm')
   assert.ok(x.b.comboUntil > x.b.clock)
   x.b.clock += 10
   assert.ok(!(x.b.clock < x.b.comboUntil), 'hết hiển thị')

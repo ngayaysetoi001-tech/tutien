@@ -5,7 +5,7 @@
 // Thuần hàm trên state của store, không đổi trạng thái.
 // =====================================================================
 import { RECIPES } from './data.js'
-import { SKILLS, fragmentId, LEARN_COST } from './skills.js'
+import { treeMaxLevel, treeUpgradeCost } from './skilltree.js'
 import { ARTS, ART_LEARN_COST, artFragmentId } from './arts.js'
 import { PETS, PET_LEARN_COST, petFragmentId } from './pets.js'
 import { plotCount, seedCost } from './garden.js'
@@ -49,10 +49,10 @@ export function nextHints(g) {
 
   // 4. Mở rộng hệ thống khi đủ điều kiện
   if (g.talentPending) add('talent', 'Chọn một Thiên Phú cho kiếp này (3 lựa chọn ở màn Nhân Vật).', 'character')
-  if (g.canChoosePath) add('path', 'Đã đạt Trúc Cơ: hãy chọn Đạo Lộ (Kiếm Tu, Thể Tu, Pháp Tu, Đan Sư, Trận Pháp Sư).', 'character')
+  if (g.canChoosePath) add('path', 'Đã đạt Trúc Cơ: hãy chọn Đạo Lộ (Kiếm Tu, Đao Tu, Thể Tu, Phù Tu).', 'character')
   if (!g.sect.id && maxStage >= 4) add('sect', 'Gia nhập một tông môn để nhận đặc quyền và Cống Hiến.', 'sect')
-  const learnable = Object.keys(SKILLS).find((id) => !g.skills.owned[id] && g.itemCount(fragmentId(id)) >= LEARN_COST)
-  if (learnable) add('skill', 'Đủ tàn quyển để học một võ kỹ mới.', 'skills')
+  const upgradable = g.activeTreeIds.some((id) => g.skillLevel(id) < treeMaxLevel(id) && g.skills.points >= treeUpgradeCost(id, g.skillLevel(id)))
+  if (upgradable) add('skill', 'Đủ điểm kỹ năng để nâng cấp một kỹ năng.', 'tree')
   const learnableArt = Object.keys(ARTS).find((id) => !g.arts.owned[id] && g.itemCount(artFragmentId(id)) >= ART_LEARN_COST)
   if (learnableArt) add('art', 'Đủ tàn quyển để học một công pháp bị động mới.', 'skills')
   const learnablePet = Object.keys(PETS).find((id) => !g.pets.owned[id] && g.itemCount(petFragmentId(id)) >= PET_LEARN_COST)

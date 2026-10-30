@@ -13,7 +13,7 @@ export const ACHIEVEMENTS = [
   { id: 'clears', name: 'Vượt Ải', desc: 'Ải cao nhất từng vượt (mọi kiếp)', key: 'aiRecord', targets: [10, 30, 60, 100, 200, 400], stat: 'def' },
   { id: 'crafted', name: 'Đan Sư', desc: 'Luyện đan thành công', key: 'crafted', targets: [5, 25, 100, 300], stat: 'exp' },
   { id: 'forged', name: 'Thợ Rèn', desc: 'Rèn pháp khí', key: 'forged', targets: [1, 5, 20], stat: 'speed' },
-  { id: 'skills', name: 'Bách Gia Võ Học', desc: 'Học võ kỹ', key: 'skills', targets: [1, 3, 6, 10], stat: 'speed' },
+  { id: 'skills', name: 'Bách Gia Võ Học', desc: 'Nâng cấp kỹ năng trong cây', key: 'skills', targets: [5, 20, 50, 100], stat: 'speed' },
   { id: 'arts', name: 'Tâm Pháp Thâm Hậu', desc: 'Tổng cấp công pháp đã luyện', key: 'artLevels', targets: [3, 15, 40, 80], stat: 'exp' },
   { id: 'challenges', name: 'Vượt Thử Thách', desc: 'Hoàn thành Kiếp Thử Thách', key: 'challengesDone', targets: [1, 3, 6, 12], stat: 'hp' },
   { id: 'daily', name: 'Chuyên Cần', desc: 'Hoàn thành nhiệm vụ ngày', key: 'dailyTasks', targets: [3, 15, 45, 120], stat: 'exp' },

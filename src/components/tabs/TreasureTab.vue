@@ -8,7 +8,7 @@ import {
   MAX_TREASURE_SLOTS, TREASURES, TREASURE_LEARN_COST, TREASURE_MAX_TIER, TREASURE_SYNERGY, TREASURE_TIERS, treasureDesc, treasureFragmentId,
   treasureUpgradeCost,
 } from '../../game/treasures.js'
-import { SKILLS } from '../../game/skills.js'
+import { skillDef } from '../../game/skills.js'
 import { REALMS } from '../../game/constants.js'
 import { TREASURE_GLYPH, treasureImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
@@ -29,7 +29,7 @@ const canLearn = (id) => !tier(id) && !locked(id) && frags(id) >= TREASURE_LEARN
 const canUp = (id) => tier(id) > 0 && !maxed(id) && frags(id) >= treasureUpgradeCost(tier(id))
 const ready = (id) => canLearn(id) || canUp(id)
 // Có võ kỹ đang gắn cùng hệ → cộng hưởng
-const skillElements = computed(() => game.skills.slots.slice(0, game.skillSlots).filter(Boolean).map((id) => SKILLS[id].element))
+const skillElements = computed(() => game.activeTreeIds.map((id) => skillDef(id).element))
 const synergy = (id) => skillElements.value.includes(TREASURES[id].element)
 const tierColor = (id) => TREASURE_TIERS[Math.max(0, tier(id) - 1)].css
 

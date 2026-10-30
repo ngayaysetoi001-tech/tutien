@@ -2,7 +2,6 @@
 // sect.js - Tông Môn: chọn môn phái, thăng cấp bậc bằng Cống Hiến, mua đồ ở cửa hàng tông môn.
 // Cống Hiến kiếm từ nhiệm vụ và hạ boss. Giữ nguyên khi luân hồi.
 // =====================================================================
-import { SKILLS, fragmentId } from './skills.js'
 import { ARTS, artFragmentId } from './arts.js'
 import { PETS, petFragmentId } from './pets.js'
 import { TREASURES, treasureFragmentId } from './treasures.js'
@@ -64,8 +63,6 @@ export const SHOP = [
   { id: 'hon_don', item: 'hon_don_tinh', count: 1, cost: 600, rank: 3 },
   { id: 'ngo_dao', item: 'ngo_dao_dan', count: 1, cost: 3500, rank: 4 },
   { id: 'thien_pha', item: 'thien_pha_dan', count: 1, cost: 4000, rank: 4 },
-  // Tàn quyển võ kỹ: mỗi loại 40 Cống Hiến, từ Nội Môn
-  ...Object.keys(SKILLS).map((id) => ({ id: 'qk_' + id, item: fragmentId(id), count: 1, cost: 40, rank: 1 })),
   // Công Pháp Tàn Quyển: mỗi loại 60 Cống Hiến, từ Chân Truyền
   ...Object.keys(ARTS).map((id) => ({ id: 'cp_' + id, item: artFragmentId(id), count: 1, cost: 60, rank: 2 })),
   // Linh Thú Phách: mỗi loại 120 Cống Hiến, từ Trưởng Lão

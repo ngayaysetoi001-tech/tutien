@@ -4,11 +4,10 @@ import { computed, ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore.js'
 import { ELEMENTS } from '../../game/elements.js'
 import { REALMS, STAGES } from '../../game/constants.js'
-import { SKILLS } from '../../game/skills.js'
 import { ARTS } from '../../game/arts.js'
 import { PETS } from '../../game/pets.js'
 import { fmt } from '../../game/format.js'
-import { ART_GLYPH, PET_GLYPH, SKILL_GLYPH } from '../glyphs.js'
+import { ART_GLYPH, PET_GLYPH } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -43,7 +42,6 @@ const ladders = computed(() =>
 
 // Đồ giám
 const CODEX = computed(() => [
-  { key: 'skills', title: 'Võ kỹ', defs: SKILLS, glyph: SKILL_GLYPH, owned: game.skills.owned, where: (d) => (d.path ? 'Võ kỹ độc quyền của một Đạo Lộ' : `Rơi từ boss, cần ${REALMS[d.minRealm ?? 0].name} để gắn`) },
   { key: 'arts', title: 'Công pháp', defs: ARTS, glyph: ART_GLYPH, owned: game.arts.owned, where: (d) => `Rơi từ ải ${d.minAi} trở đi` },
   { key: 'pets', title: 'Linh thú', defs: PETS, glyph: PET_GLYPH, owned: game.pets.owned, where: (d) => `Rơi từ ải ${d.minAi} trở đi` },
 ])

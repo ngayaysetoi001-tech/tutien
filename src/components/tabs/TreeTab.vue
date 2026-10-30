@@ -108,7 +108,7 @@ const activeIds = computed(() => game.activeTreeIds)
         </div>
       </div>
     </div>
-    <p class="px-1 text-xs text-slate-500">Nút sáng viền vàng đang tự thi triển trong trận. Chấm đỏ = đủ điểm để nâng cấp. Bấm nút để xem chi tiết.</p>
+    <p class="px-1 text-xs text-slate-500">Nút viền vàng đang tự thi triển trong trận. Võ Kỹ 1-3 gây trạng thái của đạo lộ lên địch; Võ Kỹ 4 và Tuyệt Kỹ liên kích khi địch đang mang trạng thái đó. Chấm đỏ = đủ điểm để nâng cấp. Điểm kỹ năng nhận theo thời gian và khi hạ boss.</p>
 
     <!-- Chi tiết nút -->
     <BottomSheet :open="!!nd" :title="nd ? nd.name : ''" :color="nd ? elCss(nd.element) : undefined" @close="sel = null">
