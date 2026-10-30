@@ -8,7 +8,7 @@ import {
 } from '../../game/equipment.js'
 import { fmt } from '../../game/format.js'
 import { automationById, automationUnlocked } from '../../game/automation.js'
-import { SLOT_GLYPH } from '../glyphs.js'
+import { SLOT_GLYPH, gearImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -70,6 +70,7 @@ const open = computed(() => !!item.value)
         <ItemIcon
           v-for="[slot, it] in equipped"
           :key="slot"
+          :src="it ? gearImg(slot) : ''"
           :glyph="SLOT_GLYPH[slot]"
           :color="it ? itemColor(it) : '#475569'"
           :frame="it ? itemColor(it) : ''"
@@ -127,6 +128,7 @@ const open = computed(() => !!item.value)
         <ItemIcon
           v-for="it in sortedBag"
           :key="it.uid"
+          :src="gearImg(it.slot)"
           :glyph="SLOT_GLYPH[it.slot]"
           :color="itemColor(it)"
           :frame="itemColor(it)"
