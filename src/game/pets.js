@@ -16,6 +16,8 @@ export const PETS = {
   bang_ly: { name: 'Băng Ly', element: 'thuy', kind: 'hunter', minAi: 40, power: 0.7, interval: 5, perk: { cd: 0.015 }, text: 'Cắn địch mỗi 5 giây, võ kỹ hồi chiêu nhanh hơn' },
   thanh_long: { name: 'Thanh Long Ấu', element: 'moc', kind: 'guard', minAi: 60, perk: { hp: 0.03, atk: 0.02 }, text: 'Long uy: tăng khí huyết và công kích' },
   hoa_phuong: { name: 'Hỏa Phụng', element: 'hoa', kind: 'hunter', minAi: 80, power: 1.1, interval: 5, perk: { atk: 0.02, crit: 0.01 }, text: 'Phun lửa mỗi 5 giây rất mạnh' },
+  kim_ho: { name: 'Kim Hồ', element: 'kim', kind: 'hunter', minAi: 100, power: 0.9, interval: 4, perk: { crit: 0.02, atk: 0.01 }, text: 'Cào địch mỗi 4 giây, thêm chí mạng và công kích' },
+  ky_lan: { name: 'Kỳ Lân Ấu', element: 'hoa', kind: 'guard', minAi: 120, perk: { atk: 0.025, hp: 0.02, def: 0.02 }, text: 'Thụy thú hộ chủ: tăng công kích, khí huyết và phòng ngự' },
 }
 
 export const PET_MAX_LEVEL = 10

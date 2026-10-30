@@ -204,7 +204,7 @@ function createBot(s, b) {
     }
     // Công trình Động Phủ, linh thú, thám hiểm
     if (!OFF('dwell')) for (const id of BUILDING_IDS) while (s.upgradeBuilding(id) && s.spiritStones.gt(0));
-    const petOrder = ['hoa_phuong', 'thanh_long', 'bang_ly', 'van_ho', 'kim_thiem', 'linh_hac', 'quy_giap', 'tieu_ho']
+    const petOrder = ['ky_lan', 'kim_ho', 'hoa_phuong', 'thanh_long', 'bang_ly', 'van_ho', 'kim_thiem', 'linh_hac', 'quy_giap', 'tieu_ho']
     for (const id of OFF('pets') ? [] : petOrder) {
       s.learnPet(id)
       if (s.pets.owned[id]) while (s.upgradePet(id));

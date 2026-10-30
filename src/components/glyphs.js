@@ -63,7 +63,7 @@ export const ART_GLYPH = {
   tu_bao: 'coin', ho_phap: 'eye', thien_nhan: 'star', ngu_hanh: 'burst', luan_hoi: 'reborn',
 }
 export const PET_GLYPH = {
-  tieu_ho: 'paw', quy_giap: 'shell', linh_hac: 'wing', kim_thiem: 'claw', van_ho: 'mask', bang_ly: 'snow', thanh_long: 'wave', hoa_phuong: 'flame',
+  tieu_ho: 'paw', quy_giap: 'shell', linh_hac: 'wing', kim_thiem: 'claw', van_ho: 'mask', bang_ly: 'snow', thanh_long: 'wave', hoa_phuong: 'flame', kim_ho: 'paw', ky_lan: 'star',
 }
 export const TREASURE_GLYPH = {
   can_khon_dinh: 'refine', that_tinh_kiem: 'sword', ho_than_phu: 'scroll', tu_linh_binh: 'drop',
