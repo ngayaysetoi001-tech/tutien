@@ -94,3 +94,47 @@ Gửi mỗi dải thành một ảnh, ghi rõ đạo lộ. Tôi sẽ:
 1. Cắt từng ô, căn lại chân cho cùng đường nền (tránh nhân vật nhảy lên xuống giữa các khung), tách nền xanh.
 2. Đổi nhân vật sang phát hoạt ảnh khi ra đòn (khung 4 = lúc trúng đích), còn lại giữ ảnh đứng hiện tại.
 3. Nối vào hiệu ứng có sẵn (vệt chém, số sát thương, rung màn hình) nên không đổi nhịp chơi.
+
+---
+
+## Kiếm Tu: các hoạt ảnh bổ sung (làm trước, chưa làm ba đạo lộ kia)
+
+Dùng khối chung ở trên (đính kèm ảnh nhân vật Kiếm Tu hiện có, nền xanh lá, nhìn sang phải, chân cùng đường nền, KHÔNG vẽ vệt sáng hay hiệu ứng). Mỗi dải 6 khung (3 cột x 2 hàng, mỗi ô vuông bằng nhau). Mẹo từ lần trước: hãy chừa khoảng trống rộng giữa các ô vì kiếm vung xa dễ chạm mép ô.
+
+### A. Tuyệt Kỹ Tru Tiên Nhất Kiếm (6 khung, khung 4 là trúng đích)
+
+```
+[khối chung, N = 6] Đạo sĩ Kiếm Tu thi triển một nhát kiếm tối thượng, động tác lớn và dứt khoát hơn chém thường:
+1. Nhảy lên hơi nhún người, hai tay nâng kiếm lên cao qua đầu.
+2. Bay lên cao nhất, thân thẳng, kiếm giơ cao chếch về sau.
+3. Bắt đầu lao xuống: thân nghiêng chúi về trước, kiếm kéo sau lưng.
+4. TRÚNG ĐÍCH: thân lao ngang về trước, kiếm chém dài ra phía trước duỗi hết cỡ, nét mặt quyết liệt.
+5. Trượt đà: chân chạm đất, người còn nghiêng về trước, kiếm vừa chém qua.
+6. Thu thế: đứng thẳng, kiếm hạ xuống bên hông.
+```
+
+### B. Bí Kỹ tăng sức (6 khung, dùng cho các nút Bí Kỹ: tăng chí mạng, tăng tốc, lá chắn)
+
+```
+[khối chung, N = 6] Đạo sĩ Kiếm Tu vận công tăng sức, không tấn công:
+1. Đứng thế vững, kiếm chống xuống đất bên cạnh.
+2. Nhắm mắt hít sâu, hai bàn tay khép trước ngực.
+3. Hai tay mở ra hai bên, ngực nở.
+4. Mở mắt sáng quắc, tay phải nhấc kiếm lên ngang người, thân vững.
+5. Dậm chân, kiếm giơ chếch lên ra hiệu sẵn sàng.
+6. Thu thế: về thế chờ gập gối, kiếm sau lưng.
+```
+
+### C. Bị đánh (2 khung)
+
+```
+[khối chung, N = 2, dải 2 ô] Đạo sĩ Kiếm Tu bị đòn:
+1. Giật lùi về sau, thân nghiêng ra sau, nhăn mặt, một tay đưa lên đỡ, kiếm vẫn cầm.
+2. Loạng choạng gần lấy lại thăng bằng, thân còn hơi nghiêng, mặt cắn răng.
+```
+
+### Nên vẽ theo thứ tự nào?
+
+1. **Tuyệt Kỹ** trước: khác hẳn chém thường nên thấy ngay hiệu quả; Tru Tiên Nhất Kiếm là chiêu đẹp nhất của Kiếm Tu.
+2. **Bí Kỹ tăng sức**: hiện các Bí Kỹ (Kiếm Tâm Thông Minh, Đạp Vân Bộ, Kiếm Ý Hộ Thể) không có động tác riêng.
+3. **Bị đánh**: nhẹ nhất, chỉ 2 khung.
