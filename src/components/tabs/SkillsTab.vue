@@ -16,14 +16,14 @@ import {
 import { perkText } from '../../game/equipment.js'
 import { REALMS } from '../../game/constants.js'
 import { MAX_PET_SLOTS, PETS, PET_LEARN_COST, PET_MAX_LEVEL, petDesc, petFragmentId, petUpgradeCost } from '../../game/pets.js'
-import { ART_GLYPH, PET_GLYPH, SKILL_GLYPH, artImg, skillImg } from '../glyphs.js'
+import { ART_GLYPH, PET_GLYPH, SKILL_GLYPH, artImg, petImg, skillImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
 
 const game = useGameStore()
 const ui = useUiStore()
-const imgOf = (id) => (sub.value === 'skills' ? skillImg(id) : sub.value === 'arts' ? artImg(id) : '')
+const imgOf = (id) => (sub.value === 'skills' ? skillImg(id) : sub.value === 'arts' ? artImg(id) : sub.value === 'pets' ? petImg(id) : '')
 const elCss = (e) => ELEMENTS[e].css
 
 /** Ô trống đầu tiên đã mở; hết ô thì thay ô cuối. */

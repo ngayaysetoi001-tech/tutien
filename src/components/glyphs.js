@@ -77,6 +77,8 @@ const GENERIC_IMG = new Set(['ngu_kiem', 'liet_hoa', 'loi_dinh', 'hau_tho', 'pho
 export const skillImg = (id) => (/^(kiem|dao|the|phu)_[1-8]$/.test(id) || GENERIC_IMG.has(id) ? `${import.meta.env.BASE_URL}skills/${id}.png` : '')
 /** Ảnh vẽ (public/arts/*.png) của 10 công pháp. */
 export const artImg = (id) => (id in ART_GLYPH ? `${import.meta.env.BASE_URL}arts/${id}.png` : '')
+/** Ảnh vẽ (public/pets/*.png) của 8 linh thú. */
+export const petImg = (id) => (id in PET_GLYPH ? `${import.meta.env.BASE_URL}pets/${id}.png` : '')
 export const GROUP_GLYPH = { herbs: 'herb', ores: 'stone', scrolls: 'scroll', pills: 'pill' }
 
 /** Biểu tượng của một vật phẩm trong túi (tàn quyển theo võ kỹ / công pháp / linh thú tương ứng). */
