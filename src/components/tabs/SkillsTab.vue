@@ -16,7 +16,7 @@ import {
 import { perkText } from '../../game/equipment.js'
 import { REALMS } from '../../game/constants.js'
 import { MAX_PET_SLOTS, PETS, PET_LEARN_COST, PET_MAX_LEVEL, petDesc, petFragmentId, petUpgradeCost } from '../../game/pets.js'
-import { ART_GLYPH, PET_GLYPH, SKILL_GLYPH } from '../glyphs.js'
+import { ART_GLYPH, PET_GLYPH, SKILL_GLYPH, skillImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -193,6 +193,7 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
         <ItemIcon
           v-for="i in k.maxSlots"
           :key="i"
+          :src="k.slots()[i - 1] && sub === 'skills' ? skillImg(k.slots()[i - 1]) : ''"
           :glyph="k.slots()[i - 1] ? k.glyph[k.slots()[i - 1]] : 'dots'"
           :color="k.slots()[i - 1] ? elCss(k.defs[k.slots()[i - 1]].element) : '#475569'"
           :tint="k.slots()[i - 1] ? elCss(k.defs[k.slots()[i - 1]].element) : ''"
@@ -239,6 +240,7 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
         >
           <div class="w-11 shrink-0">
             <ItemIcon
+              :src="sub === 'skills' ? skillImg(id) : ''"
               :glyph="k.glyph[id]"
               :color="elCss(k.defs[id].element)"
               :tint="elCss(k.defs[id].element)"

@@ -70,7 +70,11 @@ export const TREASURE_GLYPH = {
   phong_loi_phien: 'wind', huyet_sat_chau: 'gem', hon_nguyen_chung: 'shield', thien_co_la_ban: 'target',
   van_loi_an: 'cloudbolt', tinh_ha_binh: 'star', huyen_vu_an: 'shell',
 }
-export const PATH_GLYPH = { kiem: 'sword', the: 'shield', phap: 'burst', dan: 'pill', tran: 'target' }
+export const PATH_GLYPH = { kiem: 'sword', dao: 'flame', the: 'shield', phu: 'scroll' }
+
+/** Ảnh vẽ (public/skills/*.png) của kỹ năng: nút cây kỹ năng (kiem_1...) và 8 kỹ năng chung có tranh. */
+const GENERIC_IMG = new Set(['ngu_kiem', 'liet_hoa', 'loi_dinh', 'hau_tho', 'phong_loi', 'huyen_bang', 'phan_chan', 'thanh_moc'])
+export const skillImg = (id) => (/^(kiem|dao|the|phu)_[1-8]$/.test(id) || GENERIC_IMG.has(id) ? `${import.meta.env.BASE_URL}skills/${id}.png` : '')
 export const GROUP_GLYPH = { herbs: 'herb', ores: 'stone', scrolls: 'scroll', pills: 'pill' }
 
 /** Biểu tượng của một vật phẩm trong túi (tàn quyển theo võ kỹ / công pháp / linh thú tương ứng). */

@@ -6,6 +6,7 @@
 
 export const SCREENS = [
   { id: 'character', label: 'Nhân Vật', icon: 'character', canvas: true, group: 'tuluyen' },
+  { id: 'tree', label: 'Kỹ Năng', icon: 'swords', canvas: false, group: 'tuluyen' },
   { id: 'skills', label: 'Công Pháp', icon: 'arts', canvas: false, group: 'tuluyen' },
   { id: 'pets', label: 'Linh Thú', icon: 'paw', canvas: false, group: 'tuluyen' },
   { id: 'dwelling', label: 'Động Phủ', icon: 'home', canvas: false, group: 'tuluyen' },
@@ -53,6 +54,7 @@ export const UNLOCKS = {
   journey: { text: 'Hạ yêu thú đầu tiên', test: (g) => g.stats.kills >= 1 || g.stats.breakthroughs > 0 || g.claimableCount > 0 },
   achievements: { text: 'Hạ yêu thú đầu tiên', test: (g) => g.stats.kills >= 1 || g.stats.breakthroughs > 0 || g.claimableCount > 0 },
   inventory: { text: 'Nhặt được vật phẩm đầu tiên', test: (g) => hasAnyItem(g) || g.stats.kills >= 5 },
+  tree: { text: 'Đạt Trúc Cơ Sơ Kỳ để chọn Đạo Lộ', test: (g) => !!g.path || maxStageOf(g) >= 9, progress: (g) => Math.min(1, maxStageOf(g) / 9) },
   pets: { text: 'Hạ Tiểu Boss đầu tiên (ải 5)', test: (g) => screenUnlocked('skills', g), progress: (g) => Math.min(1, g.campaign.record / 5) },
   skills: {
     text: 'Hạ Tiểu Boss đầu tiên (ải 5)',

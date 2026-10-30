@@ -64,6 +64,8 @@ export const useBattleStore = defineStore('battle', {
     lifestealAmt: 0,
     rageUntil: 0,
     rageAmt: 0,
+    critUntil: 0,
+    critAmt: 0,
     reflectUntil: 0,
     reflectAmt: 0,
     petNext: {}, // thời điểm ra đòn kế tiếp của từng linh thú (theo clock)
@@ -121,7 +123,7 @@ export const useBattleStore = defineStore('battle', {
       this.lastResult = ''
       this.cd = {}
       this.shield = this.shieldUntil = this.hasteUntil = this.slowUntil = 0
-      this.dotUntil = this.lifestealUntil = this.rageUntil = this.reflectUntil = 0
+      this.dotUntil = this.lifestealUntil = this.rageUntil = this.reflectUntil = this.critUntil = 0
       this.burnUntil = this.chillUntil = this.pierceUntil = 0
       this.comboUntil = 0
       this.hitCount = 0
@@ -230,17 +232,19 @@ export const useBattleStore = defineStore('battle', {
     /** Công pháp đã trang bị, đã hồi chiêu và có ích ở thời điểm hiện tại (theo thứ tự ô). */
     readySkill() {
       const game = useGameStore()
-      for (let i = 0; i < game.skillSlots; i++) {
-        const id = game.skills.slots[i]
+      // Kỹ năng của cây (tự thi triển, thứ tự ưu tiên trong activeTreeIds) rồi tới kỹ năng chung đã gắn
+      const ids = [...game.activeTreeIds, ...game.skills.slots.slice(0, game.skillSlots)]
+      for (const id of ids) {
         if (!id || (this.cd[id] ?? 0) > this.clock) continue
-        if (!SK.canEquip(id, game.realmIdx, game.path)) continue // tuyệt kỹ chưa đủ cảnh giới hoặc sai đạo lộ (ví dụ sau luân hồi)
-        const kind = SK.SKILLS[id].kind
+        if (!SK.isTreeSkill(id) && !SK.canEquip(id, game.realmIdx, game.path)) continue // tuyệt kỹ chưa đủ cảnh giới (ví dụ sau luân hồi)
+        const kind = SK.skillDef(id).kind
         if (kind === 'heal' && this.hp / this.maxHp > 0.8) continue
         if (kind === 'shield' && this.clock < this.shieldUntil) continue
         if (kind === 'haste' && this.clock < this.hasteUntil) continue
         if (kind === 'dot' && this.clock < this.dotUntil) continue
         if (kind === 'lifesteal' && this.clock < this.lifestealUntil) continue
         if (kind === 'rage' && this.clock < this.rageUntil) continue
+        if (kind === 'crit' && this.clock < this.critUntil) continue
         if (kind === 'reflect' && this.clock < this.reflectUntil) continue
         if (kind === 'stun' && this.nextEnemy > this.clock + 0.5) continue // địch đang bị choáng thì chưa tung
         return id
@@ -420,7 +424,7 @@ export const useBattleStore = defineStore('battle', {
       const game = useGameStore()
       const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
       const bossCrit = this.enemy.boss ? game.treasureFx.bossCrit : 0 // Thiên Cơ La Bàn
-      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + bossCrit, mult, B.CRIT_MULT + game.battlePerk.critMult)
+      const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + bossCrit + (this.clock < this.critUntil ? this.critAmt : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
       const damage = this.hurtEnemy(raw)
       this.lifestealFrom(damage)
       fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
@@ -439,10 +443,10 @@ export const useBattleStore = defineStore('battle', {
 
     castSkill(id, stats) {
       const game = useGameStore()
-      const skill = SK.SKILLS[id]
-      const level = game.skills.owned[id]
+      const skill = SK.skillDef(id)
+      const level = game.skillLevel(id)
       const branch = game.skills.branch?.[id] ?? null
-      const lv = SK.skillLevelMult(level) * SK.branchPower(branch) // nhánh Cường Lực: +30% hiệu lực
+      const lv = SK.skillLevelMult(level, id) * SK.branchPower(branch) // nhánh Cường Lực: +30% hiệu lực
       const attack = SK.isAttack(skill.kind)
       const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1) * (attack ? 1 + game.battlePerk.skillDmg : 1)
       this.cd[id] = this.clock + SK.skillCooldown(id, level, branch) * (1 - game.battlePerk.cd) // Pháp Tu: hồi chiêu nhanh hơn; nhánh Tốc Biến
@@ -460,7 +464,7 @@ export const useBattleStore = defineStore('battle', {
           game.addLog(`Liên kích ${combo.name}! ${skill.name} gây thêm ${Math.round((combo.mult - 1) * 100)}% sát thương.`, 'good')
         }
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
-        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + (this.enemy.boss ? game.treasureFx.bossCrit : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
+        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + (this.enemy.boss ? game.treasureFx.bossCrit : 0) + (this.clock < this.critUntil ? this.critAmt : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
         const damage = this.hurtEnemy(raw, true)
         this.lifestealFrom(damage)
         if (skill.slow) {
@@ -491,6 +495,9 @@ export const useBattleStore = defineStore('battle', {
       } else if (skill.kind === 'lifesteal') {
         this.lifestealAmt = power
         this.lifestealUntil = this.clock + skill.seconds
+      } else if (skill.kind === 'crit') {
+        this.critAmt = power
+        this.critUntil = this.clock + skill.seconds
       } else if (skill.kind === 'rage') {
         this.rageAmt = power
         this.rageUntil = this.clock + skill.seconds

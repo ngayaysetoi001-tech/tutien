@@ -191,17 +191,22 @@ Màn **Công Pháp** có hai tab con (`src/components/tabs/SkillsTab.vue`):
 - **Công Pháp** (`src/game/arts.js`) là tăng bị động, 10 loại: linh khí, khí huyết, công kích, phòng ngự, Thân pháp, linh thạch, thu nhập thụ động từ ải, tỉ lệ rơi đồ, sát thương khi khắc hệ, Đạo Vận khi luân hồi. Học xong là cộng chỉ số trực tiếp cho nhân vật (không cần ô trang bị, mọi công pháp đã học đều có hiệu lực), cấp 1-10, mỗi cấp cộng +1,5-2,5%, thăng cấp bằng Công Pháp Tàn Quyển. Công pháp cùng hệ ngũ hành với tông môn được +50%. Tàn quyển rơi từ Tiểu Boss trở lên (công pháp mạnh hơn mở dần theo số ải) và bán ở cửa hàng tông môn từ Chân Truyền.
 - Cả hai được giữ nguyên khi luân hồi. Save cũ tải bình thường: 6 võ kỹ cũ giữ nguyên cấp và ô trang bị.
 
-## Đạo Lộ
+## Đạo Lộ và cây kỹ năng
 
-Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó (đặt lại khi luân hồi để chọn lại; `src/game/paths.js`, thẻ "Đạo Lộ" ở màn Nhân Vật). Mỗi đạo lộ đổi cách chơi và có một **võ kỹ độc quyền** (chỉ trang bị được khi theo đúng đạo lộ; tàn quyển chỉ rơi cho người theo đạo lộ đó):
+Từ **Trúc Cơ**, người chơi chọn một **Đạo Lộ** cho kiếp đó (đặt lại khi luân hồi để chọn lại; `src/game/paths.js`). Bốn đạo lộ: Kiếm, Đao, Thể, Phù. Mỗi đạo lộ có đặc quyền riêng và một **cây kỹ năng 8 nút** (`src/game/skilltree.js`, màn Kỹ Năng):
 
-| Đạo lộ | Đặc quyền | Võ kỹ độc quyền |
-|---|---|---|
-| Kiếm Tu | +15% công kích, +10% chí mạng, chí mạng mạnh hơn, +15% sát thương võ kỹ tấn công | Vạn Kiếm Quy Tông |
-| Thể Tu | +15% khí huyết, +15% phòng ngự, mọi đòn hút 5% sát thương | Bất Diệt Kim Thân |
-| Pháp Tu | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ (tối đa 5 ô) | Ngũ Lôi Chính Pháp |
-| Đan Sư | +25% hiệu quả đan tăng chỉ số, +10% luyện đan ra gấp đôi | Đan Hỏa Phần Thân |
-| Trận Pháp Sư | +15% Tụ Linh Trận, +15% công pháp bị động, +20% sản lượng đệ tử | Địa Cực Phản Trận |
+| Đạo lộ | Đặc quyền | Võ Kỹ (4) | Tuyệt Kỹ | Bí Kỹ (buff, 3) |
+|---|---|---|---|---|
+| Kiếm Tu (Kim) | +15% công kích, +10% chí mạng, chí mạng mạnh hơn, +15% sát thương võ kỹ | Ngự Kiếm Quyết, Phi Kiếm Liên Hoàn, Phong Lôi Kiếm Quyết, Vạn Kiếm Quy Tông | Tru Tiên Nhất Kiếm | Kiếm Tâm Thông Minh, Đạp Vân Bộ, Kiếm Ý Hộ Thể |
+| Đao Tu (Hỏa) | +20% công kích, +5% chí mạng, chí mạng mạnh hơn một chút | Liệt Hỏa Trảm, Tâm Nguyệt Đao, Hỏa Hoàn Thuật, Phá Quân Đao | Thiên Hỏa Phần Thế | Đao Ý Cuồng Phong, Chiến Ý Sôi Trào, Bất Khuất Huyết Đao |
+| Thể Tu (Thổ) | +15% khí huyết, +15% phòng ngự, mọi đòn hút 5% sát thương | Bách Lôi Quyền, Đoạn Kim Chưởng, Hắc Hổ Đảo Tâm, Chưởng Tâm Lôi | Thái Sơn Áp Đỉnh | Kim Cương Nộ Mục, Huyền Quy Tế Thể, Bất Hoại Kim Thân |
+| Phù Tu (Thủy) | võ kỹ hồi chiêu nhanh hơn 15%, thêm 1 ô võ kỹ chung, +10% công pháp | Hỏa Phù Thuật, Lôi Phù Chấn, Băng Phù Phong Tỏa, Ngũ Hành Phù Trận | Thiên Lôi Chân Phù | Linh Phù Hộ Thể, Tụ Linh Phù, Phản Phù Chú |
+
+- **Tự mở theo cảnh giới:** chọn đạo lộ rồi đủ đại cảnh giới thì nút tự mở ở cấp 1 (Võ Kỹ 1 ở Trúc Cơ, Tuyệt Kỹ ở Nguyên Anh, nút chốt ở Luyện Hư...) và **tự thi triển trong trận, không chiếm ô võ kỹ**. Kỹ năng chung (học bằng tàn quyển) vẫn gắn vào ô như cũ.
+- **Nâng cấp bằng điểm kỹ năng:** nhận theo thời gian (khoảng 1 điểm mỗi 10 phút ở đầu game, tăng 12% mỗi bậc), cả khi vắng mặt. Võ Kỹ và Bí Kỹ tối đa cấp 10 (tốn số điểm bằng cấp hiện tại), Tuyệt Kỹ tối đa cấp 5 (gấp đôi). Cấp nút và điểm giữ qua luân hồi.
+- **Bí Kỹ** là kỹ năng buff trong trận (tăng chí mạng, tăng tốc, lá chắn, tăng công, hút máu, phản sát thương, hồi máu), độc lập với Công Pháp. Đơn Nhất tắt cả cây.
+- Tranh icon cắt từ bảng vẽ và nằm ở `public/skills/`.
+- Save cũ: Pháp Tu, Đan Sư, Trận Pháp Sư thành Phù Tu; võ kỹ độc quyền cũ bị bỏ (đã thay bằng cây kỹ năng).
 
 ## Đặc tính yêu thú và kỹ năng boss
 

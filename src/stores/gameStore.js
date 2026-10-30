@@ -26,6 +26,7 @@ import { fmt } from '../game/format.js'
 import { ITEMS, MONSTERS, RECIPES, dungeonById, DUNGEONS, itemName } from '../game/data.js'
 import { ELEMENT_IDS, elementMult } from '../game/elements.js'
 import * as SK from '../game/skills.js'
+import * as TT from '../game/skilltree.js'
 import * as AR from '../game/arts.js'
 import * as PT from '../game/pets.js'
 import * as TR from '../game/treasures.js'
@@ -121,7 +122,7 @@ function createPlayerState(minRoot = 0) {
     pets: { owned: {}, active: [null, null] }, // Linh thú. owned: { id: cấp }, active: id linh thú ra trận
     treasures: { owned: {}, slots: [null, null, null, null] }, // Pháp Bảo: owned { id: phẩm 1..5 }, slots: id đã gắn
     arts: { owned: {}, awaken: {} }, // Công pháp (bị động, học xong là cộng ngay). owned: { id: cấp }, awaken: { id: đặc tính ngộ đạo }
-    skills: { owned: {}, slots: [null, null, null, null, null], branch: {} }, // Võ kỹ. owned: { id: cấp }, slots: id đã trang bị, branch: { id: 0|1 } nhánh tiến hoá
+    skills: { owned: {}, slots: [null, null, null, null, null], branch: {}, tree: {}, points: 0 }, // tree: { id nút: cấp }, points: điểm kỹ năng đang có; // Võ kỹ. owned: { id: cấp }, slots: id đã trang bị, branch: { id: 0|1 } nhánh tiến hoá
     gear: { bag: [], equipped: { weapon: null, armor: null, helm: null, boots: null, ring: null, jade: null } }, // equipped lưu uid
     achTier: {}, // { id thành tựu: số mốc đã nhận }
     stats: {
@@ -276,6 +277,15 @@ export const useGameStore = defineStore('game', {
       for (const slot of EQ.SLOT_IDS) out.push(this.gear.bag.find((it) => it.uid === this.gear.equipped[slot]) ?? null)
       return out
     },
+    /** Điểm kỹ năng nhận mỗi giây (theo bậc tu vi). */
+    skillPointRate() {
+      return TT.skillPointRate(this.stageIdx)
+    },
+    /** Các nút kỹ năng của đạo lộ đã mở (tự thi triển trong trận); Đơn Nhất: tắt cây, chỉ dùng một võ kỹ. */
+    activeTreeIds() {
+      if (this.challenge === 'don_nhat') return []
+      return TT.activeTreeIds(this.path, this.realmIdx)
+    },
     skillSlots() {
       if (this.challenge === 'don_nhat') return 1 // Đơn Nhất: chỉ một võ kỹ
       return Math.min(SK.MAX_SKILL_SLOTS, SK.slotCount(this.realmIdx) + this.pathPerk.slots)
@@ -333,7 +343,7 @@ export const useGameStore = defineStore('game', {
     /** Thần thông của các pháp bảo đang gắn (cho trận đánh). */
     treasureFx() {
       const slots = this.treasures.slots.slice(0, this.treasureSlots)
-      const elements = this.skills.slots.slice(0, this.skillSlots).filter(Boolean).map((id) => SK.SKILLS[id].element)
+      const elements = [...this.activeTreeIds, ...this.skills.slots.slice(0, this.skillSlots)].filter(Boolean).map((id) => SK.skillDef(id).element)
       return TR.treasureEffects(slots, this.treasures.owned, elements)
     },
     /** Tổng bị động từ mọi công pháp đã học (đã tính thưởng cùng hệ với tông môn). */
@@ -487,6 +497,7 @@ export const useGameStore = defineStore('game', {
       this.stats.playSeconds += dt
       if (this.tribulation.active) return // đang độ kiếp: tạm dừng tu luyện
       this.spiritStones = this.spiritStones.add(this.stonesRate.mul(dt))
+      this.skills.points += this.skillPointRate * dt
       this.gainExp(this.expRate.mul(dt))
       this.grantCampaignItems(dt)
       this.autoTimer += dt
@@ -560,6 +571,7 @@ export const useGameStore = defineStore('game', {
       })
       this.gainExp(gain.exp)
       this.spiritStones = this.spiritStones.add(gain.stones)
+      this.skills.points += this.skillPointRate * seconds
       this.stats.playSeconds += seconds
       this.offlineReport = {
         seconds,
@@ -812,12 +824,7 @@ export const useGameStore = defineStore('game', {
     choosePath(id) {
       if (!PATHS[id] || !this.canChoosePath) return false
       this.path = id
-      const sk = PATHS[id].skill
-      if (this.skills.owned[sk] && !this.skills.slots.includes(sk)) {
-        const free = this.skills.slots.findIndex((x, i) => i < this.skillSlots && !x)
-        if (free >= 0) this.skills.slots[free] = sk
-      }
-      this.addLog(`Chọn đạo lộ ${PATHS[id].name}: ${PATHS[id].perkText}.`, 'event')
+      this.addLog(`Chọn đạo lộ ${PATHS[id].name}: ${PATHS[id].perkText}. Cây kỹ năng tự mở theo cảnh giới.`, 'event')
       return true
     },
 
@@ -842,6 +849,38 @@ export const useGameStore = defineStore('game', {
       this.skills.owned[id] = level + 1
       this.addLog(`${SK.SKILLS[id].name} lên cấp ${level + 1}.`, 'good')
       return true
+    },
+
+    /** Cấp hiện tại của một kỹ năng: kỹ năng chung (đã học) hoặc nút cây kỹ năng (đã mở, tối thiểu cấp 1). */
+    skillLevel(id) {
+      if (this.skills.owned[id]) return this.skills.owned[id]
+      if (TT.TREE_SKILLS[id] && TT.treeUnlocked(id, this.path, this.realmIdx)) return Math.max(1, this.skills.tree[id] ?? 1)
+      return 0
+    },
+
+    /** Nâng một nút cây kỹ năng lên một cấp bằng điểm kỹ năng. */
+    upgradeTreeNode(id) {
+      const level = this.skillLevel(id)
+      if (!TT.TREE_SKILLS[id] || !level || level >= TT.treeMaxLevel(id)) return false
+      const cost = TT.treeUpgradeCost(id, level)
+      if (this.skills.points < cost) return false
+      this.skills.points -= cost
+      this.skills.tree[id] = level + 1
+      this.addLog(`${TT.TREE_SKILLS[id].name} lên cấp ${level + 1}.`, 'good')
+      return true
+    },
+
+    /** Dồn điểm vào nút rẻ nhất có thể nâng (ưu tiên Võ Kỹ / Bí Kỹ cấp thấp); trả về số lần nâng. */
+    autoSpendSkillPoints() {
+      let n = 0
+      for (let guard = 0; guard < 500; guard++) {
+        const cands = this.activeTreeIds.filter((id) => this.skillLevel(id) < TT.treeMaxLevel(id) && TT.treeUpgradeCost(id, this.skillLevel(id)) <= this.skills.points)
+        if (!cands.length) break
+        cands.sort((a, b) => TT.treeUpgradeCost(a, this.skillLevel(a)) - TT.treeUpgradeCost(b, this.skillLevel(b)))
+        this.upgradeTreeNode(cands[0])
+        n++
+      }
+      return n
     },
 
     /** Chọn (hoặc đổi) nhánh tiến hoá của võ kỹ đã đạt cấp tối đa. */

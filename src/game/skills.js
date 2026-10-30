@@ -12,6 +12,7 @@
 //   heal      hồi khí huyết    shield  lá chắn    haste  tăng tốc ra đòn
 //   lifesteal hút máu: đòn đánh hồi `power` x sát thương gây ra trong `seconds` giây
 //   rage      tăng `power` công kích trong `seconds` giây
+//   crit      tăng `power` tỉ lệ chí mạng trong `seconds` giây
 //   reflect   phản lại `power` x sát thương nhận vào trong `seconds` giây
 // Ô võ kỹ mở theo đại cảnh giới (1 -> 2 ở Trúc Cơ -> 3 ở Kim Đan -> 4 ở Hóa Thần).
 //
@@ -20,6 +21,9 @@
 // Nhánh tiến hoá: võ kỹ đạt cấp tối đa chọn một trong hai nhánh (Cường Lực: +30% hiệu lực, Tốc Biến: -25% hồi chiêu).
 // =====================================================================
 
+import { TREE_POWER_SCALE, TREE_SKILLS } from './skilltree.js'
+
+// Kỹ năng CHUNG (học bằng tàn quyển, gắn vào ô võ kỹ). Kỹ năng theo đạo lộ nằm trong cây kỹ năng (skilltree.js).
 export const SKILLS = {
   ngu_kiem: { name: 'Ngự Kiếm Thuật', element: 'kim', kind: 'damage', power: 1.8, cd: 6 },
   liet_hoa: { name: 'Liệt Hỏa Chưởng', element: 'hoa', kind: 'damage', power: 2.6, cd: 10 },
@@ -34,12 +38,6 @@ export const SKILLS = {
   bao_nhan: { name: 'Cuồng Bạo Thuật', element: 'hoa', kind: 'rage', power: 0.4, cd: 15, seconds: 8 },
   phan_chan: { name: 'Phản Chấn Thể', element: 'tho', kind: 'reflect', power: 0.5, cd: 16, seconds: 6 },
   thien_ha: { name: 'Thiên Hà Tuyệt Kích', element: 'thuy', kind: 'ultimate', power: 5, cd: 40, minRealm: 3 },
-  // Võ kỹ độc quyền của đạo lộ (xem paths.js): chỉ trang bị được khi theo đạo lộ tương ứng
-  van_kiem: { name: 'Vạn Kiếm Quy Tông', element: 'kim', kind: 'damage', power: 3, cd: 10, path: 'kiem' },
-  kim_than: { name: 'Bất Diệt Kim Thân', element: 'tho', kind: 'shield', power: 0.5, cd: 18, seconds: 10, path: 'the' },
-  ngu_loi: { name: 'Ngũ Lôi Chính Pháp', element: 'hoa', kind: 'stun', power: 1.6, cd: 12, seconds: 2.5, path: 'phap' },
-  dan_hoa: { name: 'Đan Hỏa Phần Thân', element: 'hoa', kind: 'dot', power: 0.8, cd: 14, seconds: 8, path: 'dan' },
-  tran_dia: { name: 'Địa Cực Phản Trận', element: 'tho', kind: 'reflect', power: 0.8, cd: 16, seconds: 8, path: 'tran' },
 }
 
 export const SKILL_MAX_LEVEL = 5
@@ -100,21 +98,21 @@ export const branchCd = (b) => BRANCHES[b]?.cd ?? 1
  *  - chiêu gây trạng thái: mở liên kích cho chiêu nào trong ô.
  */
 export function comboHints(id, equipped) {
-  const s = SKILLS[id]
+  const s = skillDef(id)
   const others = equipped.filter((x) => x && x !== id)
-  const gives = (x, status) => SKILLS[x].kind !== 'heal' && STATUS_OF_ELEMENT[SKILLS[x].element] === status && (isAttack(SKILLS[x].kind) || SKILLS[x].kind === 'dot')
+  const gives = (x, status) => skillDef(x).kind !== 'heal' && STATUS_OF_ELEMENT[skillDef(x).element] === status && (isAttack(skillDef(x).kind) || skillDef(x).kind === 'dot')
   const out = []
   if (isAttack(s.kind)) {
     for (const c of COMBOS.filter((x) => x.element === s.element)) {
       const src = others.filter((x) => gives(x, c.status))
-      out.push({ ok: src.length > 0, text: src.length ? `${c.name} (+${Math.round((c.mult - 1) * 100)}%): có ${STATUS[c.status].name} từ ${src.map((x) => SKILLS[x].name).join(', ')}` : `${c.name} (+${Math.round((c.mult - 1) * 100)}%): thiếu chiêu gây ${STATUS[c.status].name}` })
+      out.push({ ok: src.length > 0, text: src.length ? `${c.name} (+${Math.round((c.mult - 1) * 100)}%): có ${STATUS[c.status].name} từ ${src.map((x) => skillDef(x).name).join(', ')}` : `${c.name} (+${Math.round((c.mult - 1) * 100)}%): thiếu chiêu gây ${STATUS[c.status].name}` })
     }
   }
   const st = STATUS_OF_ELEMENT[s.element]
   if (st && (isAttack(s.kind) || s.kind === 'dot')) {
     for (const c of COMBOS.filter((x) => x.status === st)) {
-      const use = others.filter((x) => isAttack(SKILLS[x].kind) && SKILLS[x].element === c.element)
-      out.push({ ok: use.length > 0, text: use.length ? `Mở ${c.name} cho ${use.map((x) => SKILLS[x].name).join(', ')}` : `Hợp với chiêu hệ ${c.element === 'kim' ? 'Kim' : c.element === 'thuy' ? 'Thủy' : c.element === 'hoa' ? 'Hỏa' : 'khác'} để ra ${c.name} (chưa gắn)` })
+      const use = others.filter((x) => isAttack(skillDef(x).kind) && skillDef(x).element === c.element)
+      out.push({ ok: use.length > 0, text: use.length ? `Mở ${c.name} cho ${use.map((x) => skillDef(x).name).join(', ')}` : `Hợp với chiêu hệ ${c.element === 'kim' ? 'Kim' : c.element === 'thuy' ? 'Thủy' : c.element === 'hoa' ? 'Hỏa' : 'khác'} để ra ${c.name} (chưa gắn)` })
     }
   }
   return out
@@ -122,7 +120,7 @@ export function comboHints(id, equipped) {
 
 /** Gợi ý trạng thái và liên kích của một võ kỹ (để hiển thị). */
 export function statusLine(id) {
-  const s = SKILLS[id]
+  const s = skillDef(id)
   const st = STATUS_OF_ELEMENT[s.element]
   const parts = []
   if (st && (isAttack(s.kind) || s.kind === 'dot')) parts.push(`Gây ${STATUS[st].name}${STATUS[st].seconds ? ` ${STATUS[st].seconds}s` : ''} (${STATUS[st].text})`)
@@ -134,9 +132,12 @@ export function statusLine(id) {
 export const LEARN_COST = 5 // số tàn quyển để học
 
 export const fragmentId = (id) => 'qk_' + id
-/** Mỗi cấp +20% hiệu lực, hồi chiêu giảm 5%. */
-export const skillLevelMult = (level) => 1 + 0.2 * (level - 1)
-export const skillCooldown = (id, level, branch = null) => SKILLS[id].cd * (1 - 0.05 * (level - 1)) * branchCd(branch)
+/** Định nghĩa kỹ năng theo id: kỹ năng chung hoặc nút trong cây kỹ năng. */
+export const skillDef = (id) => SKILLS[id] ?? TREE_SKILLS[id]
+export const isTreeSkill = (id) => !!TREE_SKILLS[id]
+/** Kỹ năng chung: mỗi cấp +20% hiệu lực, hồi chiêu giảm 5%. Kỹ năng trong cây: mỗi cấp +12% hiệu lực (x TREE_POWER_SCALE), hồi chiêu giảm 2% (tối đa 30%). */
+export const skillLevelMult = (level, id = null) => (id && TREE_SKILLS[id] ? TREE_POWER_SCALE * (1 + 0.12 * (level - 1)) : 1 + 0.2 * (level - 1))
+export const skillCooldown = (id, level, branch = null) => skillDef(id).cd * (TREE_SKILLS[id] ? Math.max(0.7, 1 - 0.02 * (level - 1)) : 1 - 0.05 * (level - 1)) * branchCd(branch)
 /** Số tàn quyển để lên từ cấp `level` lên cấp kế. */
 export const upgradeCost = (level) => 5 * level
 /** Số ô võ kỹ theo đại cảnh giới. */
@@ -150,15 +151,15 @@ export const canEquip = (id, realmIdx, path = null) =>
 /** Loại hiệu ứng hình ảnh/âm thanh: các chiêu tấn công dùng cảnh bay của sát thương, chiêu tăng cường dùng cảnh tăng tốc/lá chắn. */
 export function visualKind(kind) {
   if (kind === 'heal' || kind === 'shield' || kind === 'haste') return kind
-  if (kind === 'lifesteal' || kind === 'rage') return 'haste'
+  if (kind === 'lifesteal' || kind === 'rage' || kind === 'crit') return 'haste'
   if (kind === 'reflect') return 'shield'
   return 'damage'
 }
 
 /** Mô tả hiệu quả ở cấp `level`. */
 export function skillDesc(id, level = 1) {
-  const s = SKILLS[id]
-  const p = s.power * skillLevelMult(level)
+  const s = skillDef(id)
+  const p = s.power * skillLevelMult(level, id)
   const cd = skillCooldown(id, level).toFixed(1)
   const pct = Math.round(p * 100)
   switch (s.kind) {
@@ -180,6 +181,8 @@ export function skillDesc(id, level = 1) {
       return `Hút ${pct}% sát thương gây ra thành khí huyết trong ${s.seconds}s. Hồi ${cd}s.`
     case 'rage':
       return `Tăng ${pct}% công kích trong ${s.seconds}s. Hồi ${cd}s.`
+    case 'crit':
+      return `Tăng ${pct}% tỉ lệ chí mạng trong ${s.seconds}s. Hồi ${cd}s.`
     case 'reflect':
       return `Phản ${pct}% sát thương nhận vào cho địch trong ${s.seconds}s. Hồi ${cd}s.`
     default:

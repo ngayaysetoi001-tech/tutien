@@ -13,10 +13,12 @@ import SectTab from './tabs/SectTab.vue'
 import DisciplesTab from './tabs/DisciplesTab.vue'
 import JourneyTab from './tabs/JourneyTab.vue'
 import TreasureTab from './tabs/TreasureTab.vue'
+import TreeTab from './tabs/TreeTab.vue'
 import StoryTab from './tabs/StoryTab.vue'
 
 export const SCREEN_COMPONENTS = {
   character: CharacterTab,
+  tree: TreeTab,
   skills: SkillsTab,
   pets: SkillsTab,
   gear: EquipmentTab,

@@ -14,8 +14,9 @@ import { ARTS, ART_MAX_LEVEL, awakenOffer } from '../game/arts.js'
 import { MAX_PET_SLOTS, PETS, PET_MAX_LEVEL } from '../game/pets.js'
 import { MAX_PARTY, MISSIONS } from '../game/expedition.js'
 import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL } from '../game/dwelling.js'
-import { PATHS } from '../game/paths.js'
+import { LEGACY_PATH, PATHS } from '../game/paths.js'
 import { MAX_SKILL_SLOTS } from '../game/skills.js'
+import { TREE_SKILLS, treeMaxLevel } from '../game/skilltree.js'
 import { MAX_TREASURE_SLOTS, TREASURES, TREASURE_MAX_TIER } from '../game/treasures.js'
 import { AFFIXES, BAG_LIMIT, LEGENDS, MAX_AFFIXES, MAX_ENHANCE, RARITIES, SLOTS, TIERS } from '../game/equipment.js'
 import { ACHIEVEMENTS } from '../game/achievements.js'
@@ -143,6 +144,12 @@ export function deserialize(save, defaults) {
     const id = d.skills?.slots?.[i]
     return owned[id] ? id : null
   })
+  // Cây kỹ năng: chỉ nút có thật, cấp trong khoảng hợp lệ; điểm kỹ năng không âm
+  const tree = {}
+  for (const [k, v] of Object.entries(d.skills?.tree && typeof d.skills.tree === 'object' ? d.skills.tree : {})) {
+    if (TREE_SKILLS[k]) tree[k] = Math.floor(num(v, 1, 1, treeMaxLevel(k)))
+  }
+  const skillPoints = num(d.skills?.points, 0, 0, 1e9)
   // Nhánh tiến hoá: chỉ võ kỹ đã đạt cấp tối đa, giá trị 0 hoặc 1
   const branch = {}
   for (const [k, v] of Object.entries(d.skills?.branch && typeof d.skills.branch === 'object' ? d.skills.branch : {})) {
@@ -321,13 +328,13 @@ export function deserialize(save, defaults) {
     garden: { plots },
     mineAt: num(d.mineAt, Date.now(), 0, Date.now()),
     element: ELEMENTS[d.element] ? d.element : defaults.element,
-    skills: { owned, slots, branch },
+    skills: { owned, slots, branch, tree, points: skillPoints },
     treasures: { owned: trOwned, slots: trSlots },
     arts: { owned: artsOwned, awaken: artsAwaken },
     pets: { owned: petsOwned, active: petActive },
     dwelling,
     expeditions,
-    path: PATHS[d.path] ? d.path : null,
+    path: PATHS[d.path] ? d.path : PATHS[LEGACY_PATH[d.path]] ? LEGACY_PATH[d.path] : null, // save cũ có 5 đạo lộ: Pháp Tu / Đan Sư / Trận Pháp Sư thành Phù Tu
     challenge: CHALLENGES[d.challenge] ? d.challenge : null,
     talent: TALENTS[d.talent] ? d.talent : null,
     talentOffer: TALENTS[d.talent] ? [] : [...new Set(Array.isArray(d.talentOffer) ? d.talentOffer : [])].filter((id) => TALENTS[id]).slice(0, TALENT_OFFER_SIZE),

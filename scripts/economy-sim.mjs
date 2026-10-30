@@ -261,6 +261,8 @@ function createBot(s, b) {
       // Ngộ đạo khi đạt cấp tối đa: chọn đặc tính đầu tiên được chào
       if (s.arts.owned[id] >= 10 && !s.arts.awaken[id]) s.awakenArt(id, awakenOffer(id)[0])
     }
+    // Cây kỹ năng của đạo lộ: dồn điểm kỹ năng nhận theo thời gian
+    s.autoSpendSkillPoints()
     // Nhánh tiến hoá võ kỹ cấp tối đa: Cường Lực
     for (const id of Object.keys(s.skills.owned)) if (s.skills.owned[id] >= 5 && s.skills.branch[id] == null) s.chooseBranch(id, 0)
     // Pháp Bảo: luyện hoá, nâng phẩm, gắn theo thứ tự ưu tiên

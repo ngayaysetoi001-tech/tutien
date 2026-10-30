@@ -14,6 +14,7 @@ import { QUEST_TEMPLATES } from '../../game/quests.js'
 import { REALMS, STAGES } from '../../game/constants.js'
 import { screenUnlocked } from '../../game/screens.js'
 import { PATH_GLYPH } from '../glyphs.js'
+import { TREES } from '../../game/skilltree.js'
 import Icon from '../Icon.vue'
 import BottomSheet from '../BottomSheet.vue'
 
@@ -248,7 +249,7 @@ function pickPath(id) {
       <template v-else-if="sheet === 'path'">
         <template v-if="game.path">
           <p><b :style="{ color: PATHS[game.path].css }">{{ PATHS[game.path].name }}</b>: {{ PATHS[game.path].perkText }}.</p>
-          <p class="mt-1 text-xs text-slate-500">Võ kỹ độc quyền: {{ SKILLS[PATHS[game.path].skill].name }}. Luân hồi để chọn lại đạo lộ.</p>
+          <p class="mt-1 text-xs text-slate-500">Cây kỹ năng: {{ TREES[game.path].map((n) => n.name).slice(0, 4).join(', ') }}... tự mở theo cảnh giới (màn Kỹ Năng). Luân hồi để chọn lại đạo lộ.</p>
         </template>
         <p v-else-if="!game.canChoosePath" class="text-slate-400">Đạt {{ REALMS[PATH_MIN_REALM].name }} để chọn đạo lộ (mỗi kiếp chọn một lần).</p>
         <template v-else>
@@ -259,7 +260,7 @@ function pickPath(id) {
               <button class="btn-gold min-h-[40px] !px-4" @click="pickPath(id)">Chọn</button>
             </div>
             <p class="mt-0.5 text-sm text-slate-400">{{ PATHS[id].desc }}</p>
-            <p class="text-xs text-slate-300">{{ PATHS[id].perkText }}. Võ kỹ độc quyền: {{ SKILLS[PATHS[id].skill].name }}.</p>
+            <p class="text-xs text-slate-300">{{ PATHS[id].perkText }}. Cây kỹ năng: {{ TREES[id][0].name }}, {{ TREES[id][4].name }}...</p>
           </div>
         </template>
       </template>

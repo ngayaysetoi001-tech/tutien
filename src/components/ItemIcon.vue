@@ -2,6 +2,7 @@
 // ItemIcon.vue - Ô biểu tượng vuông: khung theo độ hiếm, glyph theo ngũ hành, huy hiệu cấp, thanh tiến độ.
 const props = defineProps({
   glyph: { type: String, default: 'star' },
+  src: { type: String, default: '' }, // ảnh vẽ (huy chương tròn không viền); có thì thay cho glyph
   color: { type: String, default: '#e8d9a8' }, // màu glyph (ngũ hành)
   frame: { type: String, default: '' }, // màu khung (độ hiếm); trống = khung vàng mờ
   label: { type: String, default: '' }, // tên ngắn dưới ô
@@ -30,9 +31,10 @@ watch(
 </script>
 
 <template>
-  <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected, 'is-flash': flash }">
+  <button type="button" class="item-icon" :class="{ 'is-dim': dim && !locked, 'is-selected': selected, 'is-flash': flash, 'is-round': !!src }">
     <span class="item-icon__box" :style="{ borderColor: frame || undefined, background: tint ? `radial-gradient(circle at 50% 35%, ${tint}44, rgb(12 16 30 / 0.92))` : undefined }">
-      <Icon :name="locked ? 'lock' : glyph" :size="26" :style="{ color: locked ? '#64748b' : color }" />
+      <img v-if="src && !locked" :src="src" alt="" class="item-icon__img" draggable="false" />
+      <Icon v-else :name="locked ? 'lock' : glyph" :size="26" :style="{ color: locked ? '#64748b' : color }" />
       <span v-if="badge !== ''" class="item-icon__badge">{{ badge }}</span>
       <span v-if="dot" class="item-icon__dot"></span>
       <span v-if="progress >= 0" class="item-icon__bar"><i :style="{ width: Math.min(100, progress * 100) + '%' }"></i></span>
@@ -65,6 +67,18 @@ watch(
   border-radius: 10px;
   background: radial-gradient(circle at 50% 35%, rgb(40 52 84 / 0.7), rgb(12 16 30 / 0.9));
   transition: transform 0.12s, box-shadow 0.12s;
+}
+.is-round .item-icon__box {
+  border-radius: 50%;
+  overflow: visible;
+  background: radial-gradient(circle at 50% 35%, rgb(40 52 84 / 0.7), rgb(12 16 30 / 0.9));
+}
+.item-icon__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
 }
 .item-icon:active .item-icon__box {
   transform: scale(0.94);
