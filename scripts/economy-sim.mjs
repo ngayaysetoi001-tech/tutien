@@ -67,7 +67,7 @@ const { useGameStore } = await import('../src/stores/gameStore.js')
 const { useBattleStore } = await import('../src/stores/battleStore.js')
 const { STAGES, MAX_STAGE_IDX } = await import('../src/game/constants.js')
 const { RECIPES, ITEMS } = await import('../src/game/data.js')
-const { FORGE, SLOT_IDS } = await import('../src/game/equipment.js')
+const { FORGE, SLOT_IDS, forgeCost } = await import('../src/game/equipment.js')
 const { awakenOffer } = await import('../src/game/arts.js')
 const { SKILLS, fragmentId, canEquip: canEquipSkill, COMBOS, STATUS_OF_ELEMENT } = await import('../src/game/skills.js')
 const { ARTS } = await import('../src/game/arts.js')
@@ -282,7 +282,7 @@ function createBot(s, b) {
     if (now - lastGear > 300) {
       lastGear = now
       for (let tier = FORGE.length - 1; tier >= 0; tier--) {
-        if (s.canForge(tier) && s.spiritStones.gte(FORGE[tier].stones * 3)) {
+        if (s.canForge(tier) && s.spiritStones.gte(forgeCost(tier).mul(3))) {
           s.forge(tier, SLOT_IDS[forgeSlot++ % SLOT_IDS.length])
           break
         }

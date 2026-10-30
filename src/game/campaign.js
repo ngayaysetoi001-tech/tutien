@@ -208,6 +208,33 @@ export const campaignStonesPerSecond = (best, stageIdx = Infinity, mult = 1, cap
   return n <= 0 ? new Decimal(0) : new Decimal(1.45).pow(equivStage(n)).mul(AI_STONE_PER_CLEAR * n * mult)
 }
 
+// ---------------------------------------------------------------------
+// Giá các khoản chi linh thạch (trừ Tụ Linh Trận) tính theo THU NHẬP THAM CHIẾU của bậc tu vi.
+// Thu nhập từ ải tăng ~4,4 lần mỗi bậc; nếu giá chỉ tăng ~1,45 lần mỗi bậc thì sau ít phút linh thạch dư thừa
+// và mọi khoản chi thành miễn phí. Nên mỗi khoản chi có giá = N giây thu nhập tham chiếu tại bậc mà nó mở khoá,
+// luôn lớn lên cùng nhịp thu nhập (Tụ Linh Trận vẫn là khoản chi chính, giá nhân theo cấp).
+// ---------------------------------------------------------------------
+/** Linh thạch/giây từ ải khi đã đạt trần thu nhập của bậc `stageIdx` (thu nhập tham chiếu). */
+export const stoneRef = (stageIdx) => campaignStonesPerSecond(INCOME_AI_BASE + INCOME_AI_PER_STAGE * stageIdx, stageIdx)
+
+/** Số giây thu nhập tham chiếu của từng khoản chi. */
+export const COST_SECONDS = {
+  building: 120, // công trình Động Phủ, nhân (1 + 0.3 x cấp)
+  forge: 45, // rèn một món
+  enhance: 9, // cường hoá, nhân (cấp hiện tại + 1)
+  reroll: 20, // đổi dòng phụ, nhân (độ hiếm + 1), khoá một dòng gấp đôi
+  seed: 5, // hạt giống
+  recruit: 30, // thu nhận đệ tử, nhân 2^số đệ tử đang có
+  discipleLevel: 10, // nâng đệ tử, nhân 1.5^(cấp - 1)
+  refresh: 15, // làm mới bảng nhiệm vụ
+}
+
+/** `seconds` giây thu nhập tham chiếu của bậc `stageIdx`. */
+export const refCost = (stageIdx, seconds) => stoneRef(stageIdx).mul(seconds)
+
+/** Linh thạch luyện một lò theo công thức `r` (có `sec` giây thu nhập tham chiếu tại bậc mở khoá, xem RECIPES). */
+export const craftCost = (r) => refCost(r.minStage, r.sec)
+
 /**
  * Nguyên liệu nhận mỗi giờ theo chương hiện tại: lấy thảo dược/khoáng thạch trong bảng rơi
  * của bối cảnh ải `best`, số lượng tăng theo ải. Trả về [{ id, perHour }].

@@ -3,7 +3,7 @@
 // Cấp L của một công trình cần bậc tu vi tối thiểu minStage + L - 1. perk là thưởng mỗi cấp (cộng gộp ở extraPerk,
 // 'forge' là tăng xác suất rèn ra đồ hiếm hơn).
 // =====================================================================
-import Decimal from 'break_infinity.js'
+import { COST_SECONDS, refCost } from './campaign.js'
 
 export const BUILDING_MAX_LEVEL = 10
 
@@ -17,11 +17,11 @@ export const BUILDINGS = {
 export const BUILDING_IDS = Object.keys(BUILDINGS)
 export const emptyDwelling = () => Object.fromEntries(BUILDING_IDS.map((id) => [id, 0]))
 
-/** Linh thạch để nâng công trình `id` từ cấp `level` lên cấp kế. */
-export const buildingCost = (id, level) => new Decimal(1.45).pow(BUILDINGS[id].minStage + 2 * level).mul(40)
-
 /** Bậc tu vi tối thiểu để lên cấp kế tiếp của công trình (từ cấp `level`). */
 export const buildingNeedStage = (id, level) => BUILDINGS[id].minStage + level
+
+/** Linh thạch để nâng công trình `id` từ cấp `level` lên cấp kế: vài phút thu nhập tham chiếu tại bậc mở khoá cấp đó (xem stoneRef ở campaign.js). */
+export const buildingCost = (id, level) => refCost(buildingNeedStage(id, level), COST_SECONDS.building * (1 + 0.3 * level))
 
 /** Tổng thưởng từ mọi công trình: { exp, double, arts, forge, atk, def } (khoá thiếu là 0). */
 export function dwellingPerks(levels) {

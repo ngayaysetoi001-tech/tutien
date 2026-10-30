@@ -6,6 +6,7 @@
 import Decimal from 'break_infinity.js'
 import { CROPS, mineInfo } from './garden.js'
 import { stonesPerSecond } from './formulas.js'
+import { COST_SECONDS, refCost } from './campaign.js'
 
 export const GRADES = [
   { name: 'Phàm', mult: 1, weight: 55, css: '#cbd5e1' },
@@ -28,15 +29,13 @@ export const MAX_ACCRUE_SECONDS = 8 * 3600
 export const SAME_ELEMENT_BONUS = 0.1
 
 /** Linh thạch thu nhận đệ tử thứ (owned + 1). */
-export const recruitCost = (stageIdx, owned) =>
-  new Decimal(1.45).pow(Math.max(stageIdx, 6)).mul(40 * Math.pow(2, owned))
+export const recruitCost = (stageIdx, owned) => refCost(Math.max(stageIdx, 4), COST_SECONDS.recruit * Math.pow(2, owned))
 
 /** Cấp tối đa của đệ tử theo tu vi của chủ nhân. */
 export const levelCap = (stageIdx) => Math.min(MAX_LEVEL, 3 + Math.floor(stageIdx / 2))
 
 /** Linh thạch để nâng đệ tử từ cấp `level` lên cấp kế. */
-export const levelCost = (stageIdx, level) =>
-  new Decimal(1.45).pow(Math.max(stageIdx, 4)).mul(20 * Math.pow(1.5, level - 1))
+export const levelCost = (stageIdx, level) => refCost(Math.max(stageIdx, 3), COST_SECONDS.discipleLevel * Math.pow(1.5, level - 1))
 
 export function rollGrade(rng = Math.random) {
   const total = GRADES.reduce((n, g) => n + g.weight, 0)

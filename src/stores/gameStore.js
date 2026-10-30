@@ -34,6 +34,7 @@ import { MAX_PARTY, MISSIONS, expeditionSlots, missionEffects, partyPower, succe
 import { BUILDINGS, BUILDING_MAX_LEVEL, buildingCost, buildingNeedStage, dwellingPerks, emptyDwelling } from '../game/dwelling.js'
 import { PATHS, PATH_MIN_REALM, pathPerk } from '../game/paths.js'
 import * as EQ from '../game/equipment.js'
+import { COST_SECONDS, craftCost, refCost } from '../game/campaign.js'
 import { enemyStats, simulateFight } from '../game/battle.js'
 import * as C from '../game/campaign.js'
 import { MIN_STAGE, daoGain, perkById, perkCost } from '../game/reincarnation.js'
@@ -45,7 +46,7 @@ import {
 import { BOSS_CHOICE_SECONDS, bossChoiceOptions } from '../game/bossChoice.js'
 import { CROPS, cropById, mineAmount, mineInfo, plotCount, seedCost, MAX_PLOTS } from '../game/garden.js'
 import { RANKS, RANK_PERK_STEP, SHOP, SWITCH_PENALTY, discipleCap, rankIndex, sectById } from '../game/sect.js'
-import { BOARD_SIZE, REFRESH_COST_BASE, generateQuest, questReward, questTarget, templateById } from '../game/quests.js'
+import { BOARD_SIZE, generateQuest, questReward, questTarget, templateById } from '../game/quests.js'
 import {
   GRADES, JOBS, NAMES as DISCIPLE_NAMES, collectResult, levelCap, levelCost, recruitCost, rollGrade,
 } from '../game/disciples.js'
@@ -230,7 +231,7 @@ export const useGameStore = defineStore('game', {
       return discipleCap(this.rankIdx, !!this.sect.id)
     },
     questRefreshCost() {
-      return new Decimal(1.45).pow(this.stageIdx).mul(REFRESH_COST_BASE)
+      return refCost(this.stageIdx, COST_SECONDS.refresh)
     },
     daoPreview() {
       return this.daoWithArts(daoGain(this.stageIdx))
@@ -712,7 +713,7 @@ export const useGameStore = defineStore('game', {
       const r = RECIPES.find((x) => x.id === recipeId)
       if (!r || this.tribulation.active) return false
       if (this.stageIdx < r.minStage || this.alchemy.level < r.minAlchemy) return false
-      if (this.spiritStones.lt(r.stones)) return false
+      if (this.spiritStones.lt(craftCost(r))) return false
       return Object.entries(r.ingredients).every(([id, n]) => this.itemCount(id) >= n)
     },
 
@@ -722,7 +723,7 @@ export const useGameStore = defineStore('game', {
       let made = 0
       for (let i = 0; i < times && this.canCraft(recipeId); i++) {
         for (const [id, n] of Object.entries(r.ingredients)) this.removeItem(id, n)
-        this.spiritStones = this.spiritStones.sub(r.stones)
+        this.spiritStones = this.spiritStones.sub(craftCost(r))
         const count = Math.random() < F.alchemyDoubleChance(this.alchemy.level) + this.pathPerk.double + this.extraPerk.double ? 2 : 1
         this.addItem('pills', r.id, count)
         made += count
@@ -1245,7 +1246,7 @@ export const useGameStore = defineStore('game', {
 
     canForge(tier) {
       const r = EQ.FORGE[tier]
-      if (!r || this.tribulation.active || this.stageIdx < r.minStage || this.spiritStones.lt(r.stones)) return false
+      if (!r || this.tribulation.active || this.stageIdx < r.minStage || this.spiritStones.lt(EQ.forgeCost(tier))) return false
       return Object.entries(r.ingredients).every(([id, n]) => this.itemCount(id) >= n)
     },
 
@@ -1254,7 +1255,7 @@ export const useGameStore = defineStore('game', {
       if (!this.canForge(tier) || !EQ.SLOTS[slot]) return null
       const r = EQ.FORGE[tier]
       for (const [id, n] of Object.entries(r.ingredients)) this.removeItem(id, n)
-      this.spiritStones = this.spiritStones.sub(r.stones)
+      this.spiritStones = this.spiritStones.sub(EQ.forgeCost(tier))
       // Luyện Khí Phòng: tăng trọng số các độ hiếm cao
       const weights = EQ.FORGE_RARITY_WEIGHTS.map((w, i) => (i === 0 ? w : w * (1 + this.extraPerk.forge)))
       const item = EQ.generateItem(slot, tier, weights)

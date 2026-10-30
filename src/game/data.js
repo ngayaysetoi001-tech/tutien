@@ -100,20 +100,20 @@ for (const [id, skill] of Object.entries(SKILLS)) {
 
 export const itemName = (id) => ITEMS[id]?.name ?? id
 
-/** Công thức luyện đan. Điều kiện mở: bậc tu vi + cấp luyện đan. */
+/** Công thức luyện đan. Điều kiện mở: bậc tu vi + cấp luyện đan. Giá linh thạch = `sec` giây thu nhập tham chiếu tại bậc mở khoá (craftCost ở campaign.js). */
 export const RECIPES = [
-  { id: 'tu_khi_dan', ingredients: { linh_thao: 3 }, stones: 5, minStage: 0, minAlchemy: 1 },
-  { id: 'hoi_huyet_dan', ingredients: { linh_thao: 2, huyet_sam: 1 }, stones: 8, minStage: 0, minAlchemy: 1 },
-  { id: 'duong_the_dan', ingredients: { linh_thao: 3, huyet_sam: 2 }, stones: 20, minStage: 2, minAlchemy: 2 },
-  { id: 'kim_cang_dan', ingredients: { linh_thao: 3, thiet_tinh: 3 }, stones: 20, minStage: 2, minAlchemy: 2 },
-  { id: 'cuong_can_dan', ingredients: { huyet_sam: 3, thiet_tinh: 2 }, stones: 30, minStage: 4, minAlchemy: 3 },
-  { id: 'than_phap_dan', ingredients: { tu_van_thao: 3, huyen_thiet: 1 }, stones: 120, minStage: 9, minAlchemy: 4 },
-  { id: 'pha_canh_dan', ingredients: { bang_lien: 2, tinh_kim: 1, huyen_thiet: 2 }, stones: 400, minStage: 9, minAlchemy: 5 },
-  { id: 'ho_kiep_dan', ingredients: { tu_van_thao: 3, huyen_thiet: 3 }, stones: 300, minStage: 9, minAlchemy: 5 },
-  { id: 'bao_the_dan', ingredients: { hoa_than_qua: 3, hu_khong_thach: 2 }, stones: 40000, minStage: 18, minAlchemy: 9 },
-  { id: 'kim_than_dan', ingredients: { hoa_than_qua: 3, tinh_kim: 3 }, stones: 60000, minStage: 18, minAlchemy: 10 },
-  { id: 'thien_pha_dan', ingredients: { hoa_than_qua: 4, hon_don_tinh: 2, hu_khong_thach: 3 }, stones: 300000, minStage: 21, minAlchemy: 12 },
-  { id: 'ngo_dao_dan', ingredients: { thien_nien_chi: 2, tinh_kim: 2 }, stones: 1500, minStage: 12, minAlchemy: 7 },
+  { id: 'tu_khi_dan', ingredients: { linh_thao: 3 }, sec: 3, minStage: 0, minAlchemy: 1 },
+  { id: 'hoi_huyet_dan', ingredients: { linh_thao: 2, huyet_sam: 1 }, sec: 4, minStage: 0, minAlchemy: 1 },
+  { id: 'duong_the_dan', ingredients: { linh_thao: 3, huyet_sam: 2 }, sec: 8, minStage: 2, minAlchemy: 2 },
+  { id: 'kim_cang_dan', ingredients: { linh_thao: 3, thiet_tinh: 3 }, sec: 8, minStage: 2, minAlchemy: 2 },
+  { id: 'cuong_can_dan', ingredients: { huyet_sam: 3, thiet_tinh: 2 }, sec: 10, minStage: 4, minAlchemy: 3 },
+  { id: 'than_phap_dan', ingredients: { tu_van_thao: 3, huyen_thiet: 1 }, sec: 15, minStage: 9, minAlchemy: 4 },
+  { id: 'pha_canh_dan', ingredients: { bang_lien: 2, tinh_kim: 1, huyen_thiet: 2 }, sec: 30, minStage: 9, minAlchemy: 5 },
+  { id: 'ho_kiep_dan', ingredients: { tu_van_thao: 3, huyen_thiet: 3 }, sec: 23, minStage: 9, minAlchemy: 5 },
+  { id: 'bao_the_dan', ingredients: { hoa_than_qua: 3, hu_khong_thach: 2 }, sec: 45, minStage: 18, minAlchemy: 9 },
+  { id: 'kim_than_dan', ingredients: { hoa_than_qua: 3, tinh_kim: 3 }, sec: 60, minStage: 18, minAlchemy: 10 },
+  { id: 'thien_pha_dan', ingredients: { hoa_than_qua: 4, hon_don_tinh: 2, hu_khong_thach: 3 }, sec: 120, minStage: 21, minAlchemy: 12 },
+  { id: 'ngo_dao_dan', ingredients: { thien_nien_chi: 2, tinh_kim: 2 }, sec: 50, minStage: 12, minAlchemy: 7 },
 ]
 
 /**

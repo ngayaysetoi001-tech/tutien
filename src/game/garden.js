@@ -2,7 +2,7 @@
 // garden.js - Hoạt động theo giờ thật: Linh Điền (gieo trồng thảo dược) và Khoáng Mạch.
 // Dùng mốc thời gian (Date.now) nên vẫn tiếp tục lớn khi đóng tab / offline.
 // =====================================================================
-import Decimal from 'break_infinity.js'
+import { COST_SECONDS, refCost } from './campaign.js'
 
 /** Cây trồng: thời gian lớn (giây), sản lượng [min, max], mở theo bậc tu vi. */
 export const CROPS = [
@@ -20,7 +20,7 @@ export const cropById = (id) => CROPS.find((c) => c.id === id)
 export const plotCount = (stageIdx) => Math.min(MAX_PLOTS, 2 + Math.floor(stageIdx / 6))
 
 /** Giá hạt giống (linh thạch). */
-export const seedCost = (crop) => new Decimal(1.45).pow(crop.power).mul(8)
+export const seedCost = (crop) => refCost(crop.minStage, COST_SECONDS.seed)
 
 /** Khoáng mạch: loại quặng và sản lượng/giờ theo bậc tu vi (lấy dòng cuối cùng phù hợp). */
 const MINE_TABLE = [

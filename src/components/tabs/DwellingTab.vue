@@ -10,7 +10,8 @@ import { BUILDINGS, BUILDING_IDS, BUILDING_MAX_LEVEL, buildingCost, buildingNeed
 import Icon from '../Icon.vue'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
-import { FORGE, FORGE_RARITY_WEIGHTS, RARITIES, SLOTS, SLOT_IDS, TIERS, itemFullName } from '../../game/equipment.js'
+import { craftCost } from '../../game/campaign.js'
+import { FORGE, forgeCost, FORGE_RARITY_WEIGHTS, RARITIES, SLOTS, SLOT_IDS, TIERS, itemFullName } from '../../game/equipment.js'
 
 const BUILDING_GLYPH = { linh_mach: 'wave', luyen_dan: 'pill', tang_kinh: 'arts', luyen_khi: 'hammer', dien_vo: 'swords' }
 const selB = ref(null) // công trình đang xem
@@ -40,7 +41,7 @@ function lockReason(r) {
 function maxBatches(r) {
   let n = Infinity
   for (const [id, need] of Object.entries(r.ingredients)) n = Math.min(n, Math.floor(game.itemCount(id) / need))
-  const stones = game.spiritStones.div(r.stones).floor().toNumber()
+  const stones = game.spiritStones.div(craftCost(r)).floor().toNumber()
   return Math.max(0, Math.min(n, stones, 99))
 }
 </script>
@@ -125,8 +126,8 @@ function maxBatches(r) {
         >
           {{ itemName(id) }} {{ game.itemCount(id) }}/{{ need }}
         </span>
-        <span class="inline-flex items-center gap-1" :class="game.spiritStones.gte(FORGE[forgeTier].stones) ? 'text-gold-300' : 'text-cinnabar-400'">
-          <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(FORGE[forgeTier].stones) }}
+        <span class="inline-flex items-center gap-1" :class="game.spiritStones.gte(forgeCost(forgeTier)) ? 'text-gold-300' : 'text-cinnabar-400'">
+          <Icon name="stone" :size="14" class="text-gold-400" />{{ fmt(forgeCost(forgeTier)) }}
         </span>
       </div>
       <div v-if="game.stageIdx < FORGE[forgeTier].minStage" class="mt-1 text-xs text-cinnabar-400">
@@ -157,7 +158,7 @@ function maxBatches(r) {
         >
           {{ itemName(id) }} {{ game.itemCount(id) }}/{{ need }}
         </span>
-        <span :class="game.spiritStones.gte(r.stones) ? 'text-gold-300' : 'text-cinnabar-400'">{{ r.stones }} linh thạch</span>
+        <span :class="game.spiritStones.gte(craftCost(r)) ? 'text-gold-300' : 'text-cinnabar-400'">{{ fmt(craftCost(r)) }} linh thạch</span>
       </div>
       <div v-if="lockReason(r)" class="mt-1 text-xs text-cinnabar-400">🔒 {{ lockReason(r) }}</div>
       <div v-else class="mt-1.5 flex gap-1.5">

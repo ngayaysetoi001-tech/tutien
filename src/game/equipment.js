@@ -8,6 +8,7 @@
 // Huyền Thoại: chỉ rơi từ Chúa Tể, đặc hiệu cố định.
 // =====================================================================
 import Decimal from 'break_infinity.js'
+import { COST_SECONDS, refCost } from './campaign.js'
 
 export const SLOTS = { weapon: 'Vũ khí', armor: 'Y phục', helm: 'Mũ', boots: 'Giày', ring: 'Nhẫn', jade: 'Ngọc bội' }
 export const SLOT_IDS = Object.keys(SLOTS)
@@ -36,15 +37,18 @@ export const TIERS = [
 ]
 
 /** Công thức rèn theo phẩm cấp. */
+/** Linh thạch rèn một món ở phẩm cấp `tier`: vài chục giây thu nhập tham chiếu tại bậc mở khoá (xem stoneRef ở campaign.js). */
+export const forgeCost = (tier) => refCost(FORGE[tier].minStage, COST_SECONDS.forge)
+
 export const FORGE = [
-  { ingredients: { thiet_tinh: 6 }, stones: 20, minStage: 0 },
-  { ingredients: { thiet_tinh: 12, huyen_thiet: 2 }, stones: 150, minStage: 4 },
-  { ingredients: { huyen_thiet: 6 }, stones: 800, minStage: 9 },
-  { ingredients: { huyen_thiet: 8, tinh_kim: 2 }, stones: 4000, minStage: 12 },
-  { ingredients: { tinh_kim: 5 }, stones: 20000, minStage: 15 },
-  { ingredients: { hu_khong_thach: 6 }, stones: 100000, minStage: 18 },
-  { ingredients: { hu_khong_thach: 8, hon_don_tinh: 2 }, stones: 500000, minStage: 21 },
-  { ingredients: { hon_don_tinh: 5 }, stones: 2500000, minStage: 24 },
+  { ingredients: { thiet_tinh: 6 }, minStage: 0 },
+  { ingredients: { thiet_tinh: 12, huyen_thiet: 2 }, minStage: 4 },
+  { ingredients: { huyen_thiet: 6 }, minStage: 9 },
+  { ingredients: { huyen_thiet: 8, tinh_kim: 2 }, minStage: 12 },
+  { ingredients: { tinh_kim: 5 }, minStage: 15 },
+  { ingredients: { hu_khong_thach: 6 }, minStage: 18 },
+  { ingredients: { hu_khong_thach: 8, hon_don_tinh: 2 }, minStage: 21 },
+  { ingredients: { hon_don_tinh: 5 }, minStage: 24 },
 ]
 
 let uidSeq = 0
@@ -209,7 +213,7 @@ export function rerollItemAffixes(item, rng = Math.random, lock = -1) {
   item.affixes = rollAffixes(item.slot, item.tier, affixCount(item.rarity), rng, keep)
 }
 /** Linh thạch đổi dòng phụ; khoá một dòng thì đắt gấp đôi. */
-export const rerollCost = (item, locked = false) => new Decimal(2.1).pow(item.tier).mul(60 * (item.rarity + 1) * (locked ? 2 : 1))
+export const rerollCost = (item, locked = false) => refCost(TIERS[item.tier].power, COST_SECONDS.reroll * (item.rarity + 1) * (locked ? 2 : 1))
 
 /** Điểm so sánh trang bị để tự mặc: Huyền Thoại > phẩm cấp > độ hiếm > cường hoá > số dòng phụ. */
 export const gearScore = (item) => (item.legend ? 1000 : 0) + item.tier * 100 + item.rarity * 10 + item.enh + (item.affixes?.length ?? 0) * 3
@@ -228,7 +232,7 @@ export function itemStats(item) {
 }
 
 /** Linh thạch cường hóa từ +enh lên +enh+1. */
-export const enhanceCost = (item) => new Decimal(2.1).pow(item.tier).mul(30 * (item.enh + 1))
+export const enhanceCost = (item) => refCost(TIERS[item.tier].power, COST_SECONDS.enhance * (item.enh + 1))
 
 /** Linh thạch khi bán / phân giải. */
 export const sellValue = (item) =>

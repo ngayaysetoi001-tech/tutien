@@ -65,6 +65,9 @@ ok('linh khí không vượt yêu cầu', () => {
 })
 
 // 3. Đột phá thường
+const ECO = await import('../src/game/campaign.js')
+/** Linh thạch dồi dào so với giá của bậc hiện tại (sec giây thu nhập tham chiếu), tránh số cứng lệch khi giá đổi theo bậc. */
+const RICH = (st, sec = 1e5) => ECO.refCost(Math.max(st.stageIdx, 10), sec)
 const realRandom = Math.random
 ok('đột phá thành công lên tầng 2', () => {
   Math.random = () => 0 // luôn thành công
@@ -1264,7 +1267,7 @@ ok('Đan Sư: đan tăng chỉ số mạnh hơn 25%, luyện đan dễ ra gấp 
   s.stageIdx = 9
   s.path = 'dan'
   s.alchemy.level = 1 // gốc 0%, Đan Sư +10%
-  s.spiritStones = new Decimal(1e6)
+  s.spiritStones = RICH(s)
   s.addItem('herbs', 'linh_thao', 30)
   Math.random = () => 0.05
   s.craft('tu_khi_dan', 3)
@@ -1273,7 +1276,7 @@ ok('Đan Sư: đan tăng chỉ số mạnh hơn 25%, luyện đan dễ ra gấp 
   const t = freshStore()
   t.init()
   t.stageIdx = 9
-  t.spiritStones = new Decimal(1e6)
+  t.spiritStones = RICH(t)
   t.addItem('herbs', 'linh_thao', 30)
   Math.random = () => 0.05
   t.craft('tu_khi_dan', 3)
@@ -1604,7 +1607,7 @@ ok('đổi dòng phụ: tốn linh thạch, giữ số dòng, không áp dụng 
   const it = EQ.generateItem('jade', 2, [0, 0, 1, 0]) // Bảo: 2 dòng
   s.addGear(it)
   assert.equal(s.rerollAffixes(it.uid), false, 'chưa đủ linh thạch')
-  s.spiritStones = new Decimal(1e9)
+  s.spiritStones = ECO.refCost(20, 1e5)
   const before = JSON.stringify(it.affixes)
   let changed = false
   for (let i = 0; i < 20 && !changed; i++) {
@@ -1720,7 +1723,7 @@ ok('mọi gợi ý có tab đích đều trỏ tới màn đã mở (không dẫ
     s.init()
     s.stageIdx = stage
     s.stats.maxStage = stage
-    s.spiritStones = new Decimal(1e9)
+    s.spiritStones = RICH(s)
     s.exp = s.requirement
     s.addItem('herbs', 'linh_thao', 9)
     s.addItem('scrolls', SK.fragmentId('liet_hoa'), 5)
@@ -1872,7 +1875,7 @@ ok('tự động hoá: dữ liệu hợp lệ, mặc định tắt, chỉ chạy
   // bật khi chưa mở khoá thì không chạy
   s.settings.auto.array = true
   s.stageIdx = 2
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   s.runAutomation()
   assert.equal(s.arrayLevel, 0)
   // mở khoá (bậc 5) thì chạy
@@ -1955,7 +1958,7 @@ ok('tự nhận thưởng: nhiệm vụ xong, thành tựu, rương mốc; tự 
   t.stageIdx = 3
   t.stats.harvests = 10
   t.settings.auto.collect = true
-  t.spiritStones = new Decimal(1e9)
+  t.spiritStones = RICH(t)
   t.runAutomation() // gieo
   assert.ok(t.garden.plots.some((p) => p))
   t.garden.plots = t.garden.plots.map((p) => (p ? { ...p, readyAt: 0 } : p))
@@ -1972,7 +1975,7 @@ ok('tự luyện đan chọn công thức; tự phân giải chỉ đồ Phàm k
   s.settings.auto.craft = true
   s.settings.autoCraft = 'tu_khi_dan'
   s.addItem('herbs', 'linh_thao', 20)
-  s.spiritStones = new Decimal(1e6)
+  s.spiritStones = RICH(s)
   s.runAutomation()
   assert.ok(s.itemCount('tu_khi_dan') >= 1)
   s.settings.autoCraft = null
@@ -2141,7 +2144,7 @@ ok('Kiếp Thử Thách Độc Hành: không tông môn, không đệ tử, côn
   const s = freshStore()
   s.init()
   s.stageIdx = 6
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   s.joinSect('van_moc')
   s.arts.owned.pha_quan = 5
   assert.ok(s.artBonus.atk > 0 && s.sectPerk.herb > 0)
@@ -2983,7 +2986,7 @@ ok('Luyện Khí Phòng làm rèn ra đồ hiếm hơn; Luyện Đan Phòng tăn
   s.dwelling.luyen_khi = 10
   assert.ok(Math.abs(s.extraPerk.forge - 0.8) < 1e-9)
   s.addItem('ores', 'thiet_tinh', 50)
-  s.spiritStones = new Decimal(1e9)
+  s.spiritStones = RICH(s)
   const item = s.forge(0, 'weapon')
   assert.ok(item && s.gear.bag.length === 1)
   // Luyện Đan Phòng: rng 0.05 dưới ngưỡng cộng thêm 15% (cấp 10 x 1.5%)
@@ -2991,7 +2994,7 @@ ok('Luyện Khí Phòng làm rèn ra đồ hiếm hơn; Luyện Đan Phòng tăn
   t.init()
   t.stageIdx = 9
   t.dwelling.luyen_dan = 10
-  t.spiritStones = new Decimal(1e6)
+  t.spiritStones = RICH(t)
   t.addItem('herbs', 'linh_thao', 30)
   Math.random = () => 0.1
   t.craft('tu_khi_dan', 3)
@@ -3611,11 +3614,12 @@ ok('nhiệm vụ: thưởng Cống Hiến cho người có tông môn; làm mớ
   if (QS.templateById(done.tpl).key === 'aiRecord') s.campaign.record = done.target + 50
   s.spiritStones = new Decimal(0)
   assert.equal(s.refreshQuests(), false) // chưa đủ linh thạch
-  s.spiritStones = new Decimal(1e6)
+  s.spiritStones = s.questRefreshCost.mul(5)
+  const richBefore = s.spiritStones
   assert.equal(s.refreshQuests(), true)
   assert.ok(s.quests.some((x) => x.uid === done.uid), 'nhiệm vụ đã xong được giữ lại')
   assert.equal(s.quests.length, QS.BOARD_SIZE)
-  assert.ok(s.spiritStones.lt(1e6))
+  assert.ok(s.spiritStones.lt(richBefore), 'đã trừ linh thạch làm mới')
 })
 
 ok('nhiệm vụ: mục tiêu tăng theo tu vi, độ khó cao thưởng nhiều hơn', () => {
@@ -3633,7 +3637,7 @@ ok('luân hồi làm mới nhiệm vụ nhưng giữ tông môn và đệ tử',
   s.joinSect('thien_kiem')
   s.addContribution(70)
   s.stageIdx = 10
-  s.spiritStones = new Decimal(1e9)
+  s.spiritStones = RICH(s)
   s.recruit()
   const oldUids = s.quests.map((q) => q.uid)
   s.reincarnate()
@@ -3649,7 +3653,7 @@ ok('đệ tử: thu nhận tốn linh thạch tăng dần, giới hạn theo tô
   s.init()
   assert.equal(s.discipleLimit, 2)
   assert.equal(s.recruit(), null) // không đủ linh thạch
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   const c0 = DS.recruitCost(s.stageIdx, 0)
   const c1 = DS.recruitCost(s.stageIdx, 1)
   assert.ok(c1.gt(c0))
@@ -3664,7 +3668,7 @@ ok('đệ tử: thu nhận tốn linh thạch tăng dần, giới hạn theo tô
 ok('đệ tử: giao việc, tích luỹ theo giờ thật, thu hoạch giữ phần lẻ, chặn 8 giờ', () => {
   const s = freshStore()
   s.init()
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   const d = s.recruit()
   const t0 = d.since
   assert.equal(s.assignJob(d.uid, 'herb', t0), true)
@@ -3686,7 +3690,7 @@ ok('đệ tử: giao việc, tích luỹ theo giờ thật, thu hoạch giữ ph
 ok('đệ tử: Trấn Thủ thu linh thạch, Khai Khoáng thu quặng hợp bậc, đổi việc chốt sản lượng cũ', () => {
   const s = freshStore()
   s.init()
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   const d = s.recruit()
   const t0 = d.since
   s.assignJob(d.uid, 'guard', t0)
@@ -3711,7 +3715,7 @@ ok('đệ tử: phẩm cấp, cấp độ và cùng hệ tông môn tăng sản 
   assert.ok(DS.discipleMult({ ...base, grade: 3 }, null) > DS.discipleMult(base, null))
   assert.ok(DS.discipleMult(base, 'kim') > DS.discipleMult(base, 'hoa')) // cùng hệ +10%
   // nâng cấp
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   const d = s.recruit()
   assert.equal(s.levelUpDisciple(d.uid), true)
   assert.equal(d.level, 2)
@@ -3723,7 +3727,7 @@ ok('đệ tử: phẩm cấp, cấp độ và cùng hệ tông môn tăng sản 
 ok('đệ tử: save/load giữ đệ tử và mốc thời gian (tích luỹ cả khi offline)', () => {
   const s = freshStore()
   s.init()
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   const d = s.recruit()
   s.assignJob(d.uid, 'herb', Date.now() - 4 * 3600 * 1000)
   s.joinSect('van_moc')
@@ -4434,7 +4438,7 @@ ok('gợi ý: nhiệm vụ xong, thành tựu, tông môn, công pháp, trang b�
   assert.ok(ids(s).includes('gear'))
   s.equipGear(it.uid)
   assert.ok(!ids(s).includes('gear'))
-  s.spiritStones = new Decimal(1e9)
+  s.spiritStones = RICH(s)
   assert.ok(ids(s).includes('disciple'))
   s.recruit()
   assert.ok(!ids(s).includes('disciple'))
@@ -4457,7 +4461,7 @@ ok('gợi ý: mọi gợi ý trỏ tới tab có thật, có nội dung và id d
   s.stageIdx = 25
   s.stats.maxStage = 25
   s.exp = s.requirement
-  s.spiritStones = new Decimal(1e9)
+  s.spiritStones = RICH(s)
   s.addItem('herbs', 'linh_thao', 9)
   s.addItem('scrolls', fragmentId('liet_hoa'), 5)
   s.addGear(EQ.generateItem('armor', 0))
@@ -4646,7 +4650,7 @@ ok('trang bị 6 ô: mỗi ô rèn được và có tên; tổng chỉ số 6 ô
   const s = freshStore()
   s.init()
   s.addItem('ores', 'thiet_tinh', 60)
-  s.spiritStones = new Decimal(1e6)
+  s.spiritStones = RICH(s)
   for (const slot of EQ.SLOT_IDS) assert.ok(s.forge(0, slot), 'rèn ' + slot)
   assert.equal(s.gear.bag.length, 6)
   assert.equal(s.autoEquipBest(), 6)
@@ -4674,13 +4678,14 @@ ok('đổi dòng phụ có khoá một dòng: giữ dòng đã khoá, tốn gấ
   s.init()
   const it = { uid: 'lk', slot: 'jade', tier: 2, rarity: 3, enh: 0, affixes: [{ id: 'cd', v: 0.05 }, { id: 'crit', v: 0.04 }, { id: 'luck', v: 0.1 }] }
   s.addGear(it)
-  s.spiritStones = new Decimal(1e12)
+  s.spiritStones = RICH(s)
   assert.ok(EQ.rerollCost(it, true).eq(EQ.rerollCost(it).mul(2)))
   for (let i = 0; i < 15; i++) {
     const before = s.spiritStones
+    const cost = EQ.rerollCost(it, true)
     const li = it.affixes.findIndex((a) => a.id === 'crit') // dòng khoá nằm ở vị trí đầu sau mỗi lần đổi
     assert.equal(s.rerollAffixes('lk', li), true)
-    assert.ok(before.sub(s.spiritStones).eq(EQ.rerollCost(it, true)), 'trừ giá khoá')
+    assert.ok(Math.abs(before.sub(s.spiritStones).div(cost).toNumber() - 1) < 1e-6, 'trừ giá khoá')
     assert.ok(it.affixes.some((a) => a.id === 'crit'), 'dòng khoá còn')
     assert.equal(new Set(it.affixes.map((a) => a.id)).size, 3, 'không trùng dòng')
     assert.ok(it.affixes.some((a) => a.id === 'crit' && a.v === 0.04), 'giữ nguyên giá trị')
@@ -5279,6 +5284,53 @@ ok('liên kích ghi tên để hiện trên cảnh trận; trạng thái hết h
   x.b.clock += 10
   assert.ok(!(x.b.clock < x.b.comboUntil), 'hết hiển thị')
   assert.ok(!x.b.hasStatus('chill') && !x.b.hasStatus('pierce'))
+})
+
+// =====================================================================
+// Kinh tế linh thạch: giá các khoản chi tính theo thu nhập tham chiếu của bậc, thưởng ải bị chặn theo bậc
+// =====================================================================
+
+ok('giá các khoản chi lớn lên cùng nhịp thu nhập (3-6 lần mỗi bậc), không còn miễn phí sau vài bậc', () => {
+  const costs = {
+    'công trình': (st) => C.refCost(st, C.COST_SECONDS.building),
+    'rèn đồ': (st) => C.refCost(st, C.COST_SECONDS.forge),
+    'hạt giống': (st) => C.refCost(st, C.COST_SECONDS.seed),
+    'đệ tử': (st) => DS.levelCost(st, 1),
+    'làm mới nhiệm vụ': (st) => C.refCost(st, C.COST_SECONDS.refresh),
+  }
+  for (const [name, f] of Object.entries(costs)) {
+    for (let st = 6; st < 24; st++) {
+      const r = f(st + 1).div(f(st)).toNumber()
+      assert.ok(r > 3 && r < 6, `${name}: bậc ${st} -> ${st + 1} tăng ${r.toFixed(2)} lần`)
+    }
+  }
+  // so với thu nhập: một khoản chi luôn là vài chục giây đến vài phút thu nhập tham chiếu, ở mọi bậc
+  for (const st of [0, 5, 12, 20, 28]) {
+    const ref = C.stoneRef(st)
+    assert.ok(Math.abs(EQ.forgeCost(0).div(C.stoneRef(EQ.FORGE[0].minStage)).toNumber() - C.COST_SECONDS.forge) < 1e-6)
+    assert.ok(ref.gt(0))
+  }
+  // công trình / cường hoá / đổi dòng phụ: cấp càng cao càng đắt, phẩm cấp càng cao càng đắt
+  assert.ok(DW.buildingCost('linh_mach', 5).gt(DW.buildingCost('linh_mach', 0)))
+  assert.ok(DW.buildingCost('dien_vo', 0).gt(DW.buildingCost('linh_mach', 0)))
+  const it = (tier, enh = 0, rarity = 1) => ({ uid: 'x', slot: 'weapon', tier, rarity, enh, affixes: [] })
+  assert.ok(EQ.enhanceCost(it(0, 5)).gt(EQ.enhanceCost(it(0, 0))))
+  assert.ok(EQ.enhanceCost(it(5)).gt(EQ.enhanceCost(it(2))))
+  assert.ok(EQ.rerollCost(it(3)).gt(EQ.rerollCost(it(1))) && EQ.rerollCost(it(3, 0, 3)).gt(EQ.rerollCost(it(3, 0, 1))))
+  // hạt giống và công thức đan theo bậc mở khoá
+  assert.ok(GD.seedCost(GD.CROPS[5]).gt(GD.seedCost(GD.CROPS[0]).mul(1000)))
+  const cheap = RECIPES.find((r) => r.id === 'tu_khi_dan')
+  const dear = RECIPES.find((r) => r.id === 'thien_pha_dan')
+  assert.ok(C.craftCost(dear).gt(C.craftCost(cheap).mul(1e6)))
+  for (const r of RECIPES) assert.ok(r.sec > 0 && !('stones' in r), r.id)
+})
+
+ok('cường hoá +10 tốn nhiều thu nhập: tổng giá nâng một món lên +10 bằng 18 x 55 giây thu nhập tham chiếu của phẩm cấp', () => {
+  const it = { uid: 'e', slot: 'weapon', tier: 3, rarity: 1, enh: 0, affixes: [] }
+  let total = C.refCost(0, 0)
+  for (let e = 0; e < EQ.MAX_ENHANCE; e++) { it.enh = e; total = total.add(EQ.enhanceCost(it)) }
+  const expected = C.stoneRef(EQ.TIERS[3].power).mul(C.COST_SECONDS.enhance * 55)
+  assert.ok(Math.abs(total.div(expected).toNumber() - 1) < 1e-9)
 })
 
 console.log(`\nTất cả ${passed} kiểm tra đã đạt.`)
