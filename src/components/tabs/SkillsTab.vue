@@ -86,11 +86,6 @@ const maxedOf = (kd, id) => lvOf(kd, id) >= kd.maxLevel
 const canUpOf = (kd, id) => lvOf(kd, id) > 0 && !maxedOf(kd, id) && kd.frags(id) >= kd.upCost(lvOf(kd, id))
 const canLearnOf = (kd, id) => lvOf(kd, id) === 0 && !kd.locked(id) && kd.frags(id) >= kd.learnCost
 const readyOf = (kd, id) => canLearnOf(kd, id) || canUpOf(kd, id)
-const progressOf = (kd, id) => {
-  const lv = lvOf(kd, id)
-  if (!lv) return Math.min(1, kd.frags(id) / kd.learnCost)
-  return maxedOf(kd, id) ? 1 : Math.min(1, kd.frags(id) / kd.upCost(lv))
-}
 const kindHot = (key) => Object.keys(KINDS[key].defs).some((id) => readyOf(KINDS[key], id))
 
 // Mở tab đầu tiên có việc để làm (không có thì Võ Kỹ)
@@ -247,7 +242,6 @@ const frameOf = (def) => (def.kind === 'ultimate' ? '#e5493a' : def.path ? PATHS
               :frame="frameOf(k.defs[id])"
               :locked="s.fold"
               :badge="lvOf(k, id) || ''"
-              :progress="lvOf(k, id) && maxedOf(k, id) ? -1 : progressOf(k, id)"
             />
           </div>
           <div class="min-w-0 flex-1">

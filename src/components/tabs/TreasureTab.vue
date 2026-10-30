@@ -28,7 +28,6 @@ const locked = (id) => !tier(id) && game.campaign.record < TREASURES[id].minAi
 const canLearn = (id) => !tier(id) && !locked(id) && frags(id) >= TREASURE_LEARN_COST
 const canUp = (id) => tier(id) > 0 && !maxed(id) && frags(id) >= treasureUpgradeCost(tier(id))
 const ready = (id) => canLearn(id) || canUp(id)
-const progress = (id) => (tier(id) ? (maxed(id) ? 1 : Math.min(1, frags(id) / treasureUpgradeCost(tier(id)))) : Math.min(1, frags(id) / TREASURE_LEARN_COST))
 // Có võ kỹ đang gắn cùng hệ → cộng hưởng
 const skillElements = computed(() => game.skills.slots.slice(0, game.skillSlots).filter(Boolean).map((id) => SKILLS[id].element))
 const synergy = (id) => skillElements.value.includes(TREASURES[id].element)
@@ -104,7 +103,6 @@ function equip(id) {
               :frame="tier(id) ? tierColor(id) : ''"
               :locked="s.key === 'locked'"
               :badge="tier(id) || ''"
-              :progress="tier(id) && maxed(id) ? -1 : progress(id)"
             />
           </div>
           <div class="min-w-0 flex-1">

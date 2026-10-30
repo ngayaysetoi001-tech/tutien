@@ -7,7 +7,6 @@ const props = defineProps({
   frame: { type: String, default: '' }, // màu khung (độ hiếm); trống = khung vàng mờ
   label: { type: String, default: '' }, // tên ngắn dưới ô
   badge: { type: [String, Number], default: '' }, // góc dưới phải (cấp / số lượng)
-  progress: { type: Number, default: -1 }, // 0..1, <0 = ẩn
   locked: { type: Boolean, default: false },
   dim: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
@@ -37,7 +36,6 @@ watch(
       <Icon v-else :name="locked ? 'lock' : glyph" :size="26" :style="{ color: locked ? '#64748b' : color }" />
       <span v-if="badge !== ''" class="item-icon__badge">{{ badge }}</span>
       <span v-if="dot" class="item-icon__dot"></span>
-      <span v-if="progress >= 0" class="item-icon__bar"><i :style="{ width: Math.min(100, progress * 100) + '%' }"></i></span>
     </span>
     <span v-if="label" class="item-icon__label">{{ label }}</span>
   </button>
@@ -123,21 +121,6 @@ watch(
   border-radius: 50%;
   background: #ef4444;
   box-shadow: 0 0 0 2px #0b1020;
-}
-.item-icon__bar {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  bottom: 3px;
-  height: 3px;
-  border-radius: 2px;
-  background: rgb(0 0 0 / 0.55);
-  overflow: hidden;
-}
-.item-icon__bar i {
-  display: block;
-  height: 100%;
-  background: #fcd979;
 }
 .item-icon__label {
   max-width: 100%;

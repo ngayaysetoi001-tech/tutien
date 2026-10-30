@@ -73,7 +73,6 @@ function maxBatches(r) {
           :badge="game.dwelling[id]"
           :locked="buildingLocked(id) && game.dwelling[id] === 0"
           :dot="canBuild(id)"
-          :progress="game.dwelling[id] / BUILDING_MAX_LEVEL"
           @click="selB = id"
         />
       </div>
