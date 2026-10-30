@@ -10,7 +10,7 @@ import {
 } from '../../game/treasures.js'
 import { SKILLS } from '../../game/skills.js'
 import { REALMS } from '../../game/constants.js'
-import { TREASURE_GLYPH } from '../glyphs.js'
+import { TREASURE_GLYPH, treasureImg } from '../glyphs.js'
 import ItemIcon from '../ItemIcon.vue'
 import BottomSheet from '../BottomSheet.vue'
 import Icon from '../Icon.vue'
@@ -70,6 +70,7 @@ function equip(id) {
         <ItemIcon
           v-for="i in MAX_TREASURE_SLOTS"
           :key="i"
+          :src="game.treasures.slots[i - 1] ? treasureImg(game.treasures.slots[i - 1]) : ''"
           :glyph="game.treasures.slots[i - 1] ? TREASURE_GLYPH[game.treasures.slots[i - 1]] : 'dots'"
           :color="game.treasures.slots[i - 1] ? elCss(TREASURES[game.treasures.slots[i - 1]].element) : '#475569'"
           :tint="game.treasures.slots[i - 1] ? elCss(TREASURES[game.treasures.slots[i - 1]].element) : ''"
@@ -97,6 +98,7 @@ function equip(id) {
         >
           <div class="w-11 shrink-0">
             <ItemIcon
+              :src="treasureImg(id)"
               :glyph="TREASURE_GLYPH[id]"
               :color="elCss(TREASURES[id].element)"
               :tint="elCss(TREASURES[id].element)"
