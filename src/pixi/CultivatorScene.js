@@ -29,6 +29,9 @@ const HERO_ATK = { kiem: 6 }
 const ATK_FPS = 18
 const ATK_START = 1 // bắt đầu từ khung thứ 2: sự kiện trúng đòn tới cùng lúc nên đòn phải chạm đích sớm (khung 4)
 const ATK_FRAME = { w: 760, h: 440, feet: 428, charH: 330 }
+// Mũi kiếm ở từng khung (toạ độ trong khung 760x440; null = không dùng): vệt sáng đi theo mũi kiếm từ khung 2 tới khung 5
+const HERO_ATK_TIP = { kiem: [null, [243, 276], [151, 350], [642, 244], [621, 221]] }
+const TRAIL_LIFE = 0.28 // giây một điểm của vệt sáng sống
 const HERO_HEIGHT = { sword: 175, meditate: 125 } // chiều cao hiển thị (đơn vị nhân vật)
 
 // ---- Bảng màu nền trời theo đại cảnh giới: [đỉnh, giữa, chân trời] ----
@@ -109,6 +112,8 @@ export class CultivatorScene {
     this.path = null // đạo lộ: chọn tranh tư thế chiến đấu
     this.heroTex = {}
     this.atkTex = {} // { đạo lộ: [khung] }
+    this.trailPts = [] // vệt sáng theo mũi kiếm: { x, y, age }
+    this.curTip = null // mũi kiếm hiện tại (toạ độ cục bộ của sprite) khi đang phát hoạt ảnh
     this.atkTime = -1 // giây đã phát của hoạt ảnh ra đòn (-1 = không phát)
     this.monsterTex = {}
     this.enemyId = null
@@ -326,6 +331,8 @@ export class CultivatorScene {
     this.heroSprite.visible = false
     this.particleLayer = new Container()
     this.fxGfx = new Graphics() // vòng sóng đột phá
+    this.trailGfx = new Graphics() // vệt sáng theo mũi kiếm khi chém
+    this.trailGfx.blendMode = 'add'
     this.boltLayer = new Container()
     this.stormLayer = new Container()
     this.darkGfx = new Graphics()
@@ -343,6 +350,7 @@ export class CultivatorScene {
     this.foxLayer.addChild(this.foxGfx)
     this.foxLayer.visible = false
     this.vfx = new Vfx(this) // hiệu ứng chiêu thức & đột phá
+    this.vfx.layer.addChild(this.trailGfx)
 
     this.decorLayer.addChild(this.decorGfx)
     this.mountainLayers.forEach((layer, i) => layer.addChild(this.mountainGfx[i]))
@@ -607,11 +615,16 @@ export class CultivatorScene {
 
   /** Bắt đầu phát hoạt ảnh ra đòn (nếu đạo lộ hiện tại có tranh và đang ở tư thế chiến đấu). */
   playAttack() {
-    if (this.pose === 'sword' && this.heroArt && this.atkTex[this.path ?? 'kiem']) this.atkTime = ATK_START / ATK_FPS
+    if (this.pose === 'sword' && this.heroArt && this.atkTex[this.path ?? 'kiem']) {
+      this.atkTime = ATK_START / ATK_FPS
+      return true
+    }
+    return false
   }
 
   /** Phát hoạt ảnh ra đòn: đổi khung theo thời gian; hết thì về tranh đứng. */
   updateAttackAnim(dt) {
+    this.curTip = null
     if (this.atkTime < 0) return
     const frames = this.atkTex[this.path ?? 'kiem']
     if (!frames || this.pose !== 'sword') {
@@ -629,6 +642,43 @@ export class CultivatorScene {
     this.heroSprite.texture = frames[i]
     this.heroSprite.anchor.set(0.5, ATK_FRAME.feet / ATK_FRAME.h)
     this.heroSprite.scale.set(HERO_HEIGHT.sword / ATK_FRAME.charH)
+    // Mũi kiếm: nội suy mượt giữa các khung theo đường cong lượn dưới thân (lưỡi kiếm quét từ sau ra trước)
+    const tips = HERO_ATK_TIP[this.path ?? 'kiem']
+    const f = this.atkTime * ATK_FPS
+    const k = Math.floor(f)
+    if (tips && f >= 1 && k + 1 < tips.length && tips[k] && tips[k + 1]) {
+      const u = f - k
+      const [ax, ay] = tips[k]
+      const [bx, by] = tips[k + 1]
+      const cx = (ax + bx) / 2
+      const cy = Math.max(ay, by) + 55 // điểm điều khiển lệch xuống dưới: vệt cong ôm dưới thân
+      const x = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * cx + u * u * bx
+      const y = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * cy + u * u * by
+      this.curTip = [x - ATK_FRAME.w / 2, y - ATK_FRAME.feet]
+    }
+  }
+
+  /** Vệt sáng theo mũi kiếm: thêm điểm mới ở mũi kiếm hiện tại, các điểm cũ mờ dần rồi bỏ. */
+  updateTrail(dt) {
+    if (this.curTip) {
+      const g = this.heroSprite.toGlobal({ x: this.curTip[0], y: this.curTip[1] })
+      const p = this.world.toLocal(g)
+      this.trailPts.push({ x: p.x, y: p.y, age: 0 })
+    }
+    for (const pt of this.trailPts) pt.age += dt
+    this.trailPts = this.trailPts.filter((pt) => pt.age < TRAIL_LIFE)
+    const g = this.trailGfx
+    g.clear()
+    const pts = this.trailPts
+    if (pts.length < 2) return
+    const u = this.u
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]
+      const b = pts[i]
+      const life = 1 - b.age / TRAIL_LIFE
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 11 * u * life + 2, color: 0x7fd8ff, alpha: 0.55 * life, cap: 'round', join: 'round' })
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 4 * u * life + 1, color: 0xffffff, alpha: 0.9 * life, cap: 'round' })
+    }
   }
 
   /** Vẽ lại thân, kiếm và mặt khi đổi tư thế / cảnh giới / vũ khí. */
@@ -636,13 +686,18 @@ export class CultivatorScene {
     this.atkTime = -1
     this.heroSprite.anchor.set(0.5, 1)
     // Có tranh: dùng sprite, ẩn hình vẽ bằng code (hào quang heroFx vẫn vẽ sau lưng)
-    const tex = this.pose === 'sword' ? this.heroTex[this.path ?? 'kiem'] ?? this.heroTex.kiem : this.heroTex.meditate
+    // Có hoạt ảnh ra đòn thì tư thế chờ là khung đầu tiên của hoạt ảnh (sạch, không dính vệt chém dựng sẵn trong tranh đứng)
+    const waitFrame = this.pose === 'sword' ? this.atkTex[this.path ?? 'kiem']?.[0] : null
+    const tex = waitFrame ?? (this.pose === 'sword' ? this.heroTex[this.path ?? 'kiem'] ?? this.heroTex.kiem : this.heroTex.meditate)
     this.heroArt = !!tex
     this.heroSprite.visible = this.heroArt
     for (const g of [this.bodyGfx, this.faceGfx, this.swordGfx, this.ribbonGfx]) g.visible = !this.heroArt && (g !== this.swordGfx || this.pose === 'sword')
     if (this.heroArt) {
       this.heroSprite.texture = tex
-      this.heroSprite.scale.set(HERO_HEIGHT[this.pose === 'sword' ? 'sword' : 'meditate'] / tex.height)
+      if (waitFrame) {
+        this.heroSprite.anchor.set(0.5, ATK_FRAME.feet / ATK_FRAME.h)
+        this.heroSprite.scale.set(HERO_HEIGHT.sword / ATK_FRAME.charH)
+      } else this.heroSprite.scale.set(HERO_HEIGHT[this.pose === 'sword' ? 'sword' : 'meditate'] / tex.height)
       return
     }
     this.bodyGfx.clear()
@@ -783,8 +838,9 @@ export class CultivatorScene {
     if (target === 'enemy') {
       if (!skill) {
         this.playerLunge = 1
-        this.playAttack()
-        this.vfx.slashArc(!!crit)
+        const animated = this.playAttack()
+        if (animated) this.vfx.slashImpact(!!crit)
+        else this.vfx.slashArc(!!crit)
       }
       this.foxHop = 1
       this.enemyHit = 1
@@ -1234,6 +1290,7 @@ export class CultivatorScene {
     }
     // Chớp đỏ khi trúng lôi / thất bại
     this.updateAttackAnim(dt)
+    this.updateTrail(dt)
     this.hitFlash = Math.max(0, this.hitFlash - dt * 2.5)
     this.char.tint = this.hitFlash > 0 ? mix(0xffffff, 0xff6a5a, this.hitFlash) : 0xffffff
 

@@ -212,6 +212,25 @@ export class Vfx {
     }, { blend: 'add' })
   }
 
+  /** Chớp trúng đòn khi nhân vật có hoạt ảnh chém: tia toả ra và vòng sáng ở chỗ địch (vệt chém do mũi kiếm vẽ). */
+  slashImpact(crit) {
+    const s = this.scene
+    const u = s.u
+    const cx = s.enemyX - 20 * u
+    const cy = s.groundY - 62 * u
+    const color = crit ? 0xffd36b : 0xbfeaff
+    this.add(0.26, (g, t) => {
+      const k = ease(t)
+      g.circle(cx, cy, lerp(6, crit ? 46 : 34, k) * u).stroke({ width: (crit ? 4 : 3) * u * (1 - t), color, alpha: 1 - t })
+      for (let i = 0; i < 6; i++) {
+        const a = -0.5 + i * 0.55
+        const r0 = lerp(8, 26, k) * u
+        const r1 = lerp(16, crit ? 58 : 44, k) * u
+        g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0).lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1).stroke({ width: 2.5 * u * (1 - t), color: 0xffffff, alpha: 1 - t, cap: 'round' })
+      }
+    }, { blend: 'add' })
+  }
+
   healEffect(color) {
     const s = this.scene
     const u = s.u
