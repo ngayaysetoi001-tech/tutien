@@ -17,7 +17,6 @@ import { REALMS } from '../game/constants.js'
 import { MONSTERS } from '../game/data.js'
 import { THEMES, drawDecor } from './themes.js'
 import { Vfx } from './vfx.js'
-import { loadSkillFx } from './skillfx.js'
 import * as ART from './art.js'
 
 // Tranh nhân vật (public/heroes): tư thế chiến đấu theo đạo lộ và tư thế thiền; thiếu tranh thì dùng hình vẽ bằng code
@@ -166,7 +165,7 @@ export class CultivatorScene {
   // ------------------------------------------------------------------
   async init(host) {
     // Nạp tranh trước khi gán this.app: không để khoảng chờ bất đồng bộ giữa lúc có app và lúc dựng lớp (watcher gọi setState sẽ gặp lớp chưa có)
-    await Promise.all([this.loadHeroArt(), this.loadMonsterArt(), loadSkillFx(import.meta.env.BASE_URL)])
+    await Promise.all([this.loadHeroArt(), this.loadMonsterArt()])
     if (this.destroyed) return
     const app = new Application()
     await app.init({

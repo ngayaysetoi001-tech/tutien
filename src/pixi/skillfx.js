@@ -4,41 +4,7 @@
 // vfx = Vfx (add/later/time), ev = { id, name, color, kind, element, seconds }, from/to = điểm đầu (nhân vật) và đích (quái).
 // Trả về true nếu kỹ năng có hiệu ứng riêng (Vfx.castSkill bỏ hiệu ứng chung theo hệ).
 // =====================================================================
-import { Assets, Rectangle, Sprite, Texture } from 'pixi.js'
-
-// ---------------------------------------------------------------------
-// Sprite sheet (ảnh vẽ tay): dải khung ngang trên nền đen, phát bằng chế độ cộng sáng nên nền tự biến mất.
-// Chưa có ảnh (hoặc tải lỗi) thì chiêu dùng lại hiệu ứng vẽ bằng code bên dưới.
-// ---------------------------------------------------------------------
-/** file trong public/skillfx/, số khung, kích thước một khung. */
-const SHEET_DEFS = {
-  ngu_kiem_fly: { file: 'ngu_kiem_fly.webp', frames: 4, w: 512, h: 220 },
-  ngu_kiem_hit: { file: 'ngu_kiem_hit.webp', frames: 9, w: 310, h: 310 },
-}
-const SHEETS = {}
-
-/** Nạp các sprite sheet; file nào lỗi thì bỏ qua. */
-export async function loadSkillFx(base) {
-  await Promise.all(
-    Object.entries(SHEET_DEFS).map(async ([id, def]) => {
-      try {
-        const tex = await Assets.load(`${base}skillfx/${def.file}`)
-        SHEETS[id] = Array.from({ length: def.frames }, (_, i) => new Texture({ source: tex.source, frame: new Rectangle(i * def.w, 0, def.w, def.h) }))
-      } catch {
-        /* thiếu ảnh thì dùng hiệu ứng vẽ bằng code */
-      }
-    }),
-  )
-}
-
-/** Tạo Sprite phát khung `id`; kích thước theo chiều rộng `width` (px), tâm ở giữa khung. */
-function sheetSprite(id, width) {
-  const frames = SHEETS[id]
-  const sp = new Sprite(frames[0])
-  sp.anchor.set(0.5)
-  sp.scale.set(width / SHEET_DEFS[id].w)
-  return sp
-}
+import { Sprite } from 'pixi.js'
 
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
@@ -111,41 +77,10 @@ function stunStars(vfx, seconds) {
   }, { blend: 'add' })
 }
 
-/** Ngự Kiếm Quyết: một thanh phi kiếm xé gió tới quái (ảnh vẽ tay nếu đã nạp, không thì vẽ bằng code). */
+/** Ngự Kiếm Quyết: một thanh phi kiếm xé gió tới quái. */
 function ngu(vfx, from, to) {
-  const DUR = 0.3
-  if (!SHEETS.ngu_kiem_fly || !SHEETS.ngu_kiem_hit) {
-    vfx.landAt = vfx.time + 0.28
-    flySword(vfx, from, to, { dur: 0.28, bulge: -12, L: 34, W: 4.5, trail: 0.5 })
-    return
-  }
-  const u = vfx.scene.u
-  vfx.landAt = vfx.time + DUR
-  const fly = SHEETS.ngu_kiem_fly
-  const hit = SHEETS.ngu_kiem_hit
-  const ctrl = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 12 * u }
-  const sp = sheetSprite('ngu_kiem_fly', 150 * u)
-  vfx.add(DUR, (node, t) => {
-    const k = ease(t)
-    const p = bez(from, ctrl, to, k)
-    const q = bez(from, ctrl, to, Math.min(1, k + 0.02))
-    node.position.set(p.x, p.y)
-    node.rotation = Math.atan2(q.y - p.y, q.x - p.x)
-    node.texture = fly[Math.floor(t * DUR * 16) % fly.length]
-    node.alpha = Math.min(1, t * 10)
-  }, {
-    node: sp,
-    blend: 'add',
-    onEnd: () => {
-      const burst = sheetSprite('ngu_kiem_hit', 118 * u)
-      burst.position.set(to.x, to.y)
-      burst.rotation = rand(0, Math.PI * 2)
-      vfx.add(0.5, (node, t) => {
-        node.texture = hit[Math.min(hit.length - 1, Math.floor(t * hit.length))]
-        node.alpha = 1 - t * t * 0.6
-      }, { node: burst, blend: 'add' })
-    },
-  })
+  vfx.landAt = vfx.time + 0.28
+  flySword(vfx, from, to, { dur: 0.28, bulge: -12, L: 34, W: 4.5, trail: 0.5 })
 }
 
 /** Phi Kiếm Liên Hoàn: năm thanh kiếm nhỏ xoè quạt rồi lao vào quái lần lượt. */
