@@ -477,9 +477,16 @@ export const useBattleStore = defineStore('battle', {
           game.addLog(`Liên kích ${combo.name}! ${skill.name} gây thêm ${Math.round((combo.mult - 1) * 100)}% sát thương.`, 'good')
         }
         const mult = elementMult(skill.element, this.enemy.element) * game.artElementMult(skill.element, this.enemy.element)
-        const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw, this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + (this.enemy.boss ? game.treasureFx.bossCrit : 0) + (this.clock < this.critUntil ? this.critAmt : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
-        const damage = this.hurtEnemy(raw, true)
-        this.lifestealFrom(damage)
+        // Chiêu nhiều đòn (Phi Kiếm Liên Hoàn): chia sát thương đều, mỗi đòn chí mạng riêng và hiện số riêng
+        const strikes = skill.hits || 1
+        const critRate = B.CRIT_CHANCE + game.battlePerk.crit + (this.enemy.boss ? game.treasureFx.bossCrit : 0) + (this.clock < this.critUntil ? this.critAmt : 0)
+        const hitList = []
+        for (let i = 0; i < strikes && this.enemy.hp > 0; i++) {
+          const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw / strikes, this.enemyDef(), Math.random, critRate, mult, B.CRIT_MULT + game.battlePerk.critMult)
+          const damage = this.hurtEnemy(raw, true)
+          this.lifestealFrom(damage)
+          hitList.push({ damage, crit })
+        }
         if (skill.slow) {
           this.slowUntil = this.clock + skill.seconds
           this.slowAmt = skill.slow
@@ -493,7 +500,7 @@ export const useBattleStore = defineStore('battle', {
           this.hasteAmt = Math.max(ch, this.clock < this.hasteUntil ? this.hasteAmt : 0)
           this.hasteUntil = Math.max(this.hasteUntil, this.clock + 3)
         }
-        fx('battle-hit', { target: 'enemy', damage, crit, skill: true, color: ELEMENTS[skill.element].color, edge: elementEdge(skill.element, this.enemy.element) })
+        hitList.forEach((h, i) => fx('battle-hit', { target: 'enemy', damage: h.damage, crit: h.crit, skill: true, color: ELEMENTS[skill.element].color, edge: elementEdge(skill.element, this.enemy.element), strike: i, strikes }))
       } else if (skill.kind === 'dot') {
         this.dotUntil = this.clock + skill.seconds
         this.dotElem = skill.element

@@ -787,7 +787,13 @@ export class CultivatorScene {
       on('battle-enemy-spawn', (e) => this.mode === 'battle' && this.spawnEnemy(e)),
       on('battle-hit', (hit) => {
         if (this.mode !== 'battle') return
-        if (hit.target === 'enemy') this.vfx.defer(() => this.onBattleHit(hit))
+        if (hit.target === 'enemy') {
+          // chiêu nhiều đòn: mỗi số sát thương rơi đúng lúc thanh kiếm tương ứng chạm quái (cách nhau 0,07 giây)
+          const early = hit.strikes > 1 ? (hit.strikes - 1 - hit.strike) * 0.07 : 0
+          const wait = this.vfx.landAt - this.vfx.time - early
+          if (wait > 0) this.vfx.later(wait, () => this.onBattleHit(hit))
+          else this.onBattleHit(hit)
+        }
         else this.onBattleHit(hit)
       }),
       on('battle-skill', (ev) => {

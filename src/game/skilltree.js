@@ -34,7 +34,7 @@ const col = (n) => (n <= 4 ? 'vo' : n === 5 ? 'tuyet' : 'bi')
 const RAW = {
   kiem: [
     ['Ngự Kiếm Quyết', 'kim', 'damage', 1, 0, { basic: true }], // đòn đánh cơ bản của đạo lộ: thay đòn chém thường, không hồi chiêu
-    ['Phi Kiếm Liên Hoàn', 'kim', 'damage', 2, 8],
+    ['Phi Kiếm Liên Hoàn', 'kim', 'damage', 2, 8, { hits: 5 }], // 5 thanh kiếm, mỗi thanh một đòn riêng (chí mạng riêng)
     ['Phong Lôi Kiếm Quyết', 'kim', 'stun', 1.5, 12, { seconds: 1.5 }],
     ['Vạn Kiếm Quy Tông', 'kim', 'damage', 3.2, 14],
     ['Tru Tiên Nhất Kiếm', 'kim', 'ultimate', 7, 40],

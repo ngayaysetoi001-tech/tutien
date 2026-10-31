@@ -118,6 +118,7 @@ export function skillDesc(id, level = 1) {
   const pct = Math.round(p * 100)
   switch (s.kind) {
     case 'damage':
+      if (s.hits) return `Phóng ${s.hits} thanh phi kiếm, mỗi thanh gây ${Math.round(pct / s.hits)}% công kích và chí mạng riêng (tổng ${pct}%). Hồi ${cd}s.`
       return `Gây ${pct}% công kích${s.slow ? `, làm chậm địch ${Math.round(s.slow * 100)}% trong ${s.seconds}s` : ''}. Hồi ${cd}s.`
     case 'dot':
       return `Gây ${pct}% công kích mỗi giây trong ${s.seconds}s (bỏ qua nhịp ra đòn). Hồi ${cd}s.`
