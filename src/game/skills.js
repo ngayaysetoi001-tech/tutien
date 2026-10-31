@@ -118,6 +118,7 @@ export function skillDesc(id, level = 1) {
   const pct = Math.round(p * 100)
   switch (s.kind) {
     case 'damage':
+      if (s.defStack) return `${s.hits} đợt kiếm rơi, mỗi đợt gây ${Math.round(pct / s.hits)}% công kích (tổng ${pct}%), chí mạng riêng; mỗi đợt sau phòng ngự địch yếu thêm ${Math.round(s.defStack * 100)}%. Hồi ${cd}s.`
       if (s.hits) return `Phóng ${s.hits} thanh phi kiếm, mỗi thanh gây ${Math.round(pct / s.hits)}% công kích và chí mạng riêng (tổng ${pct}%). Hồi ${cd}s.`
       return `Gây ${pct}% công kích${s.slow ? `, làm chậm địch ${Math.round(s.slow * 100)}% trong ${s.seconds}s` : ''}. Hồi ${cd}s.`
     case 'dot':
@@ -127,7 +128,7 @@ export function skillDesc(id, level = 1) {
     case 'execute':
       return `Gây ${pct}% công kích, gấp ${1 + s.bonus} lần khi địch dưới ${Math.round(s.threshold * 100)}% khí huyết. Hồi ${cd}s.`
     case 'ultimate':
-      return `Tuyệt kỹ: gây ${pct}% công kích. Hồi ${cd}s.`
+      return `Tuyệt kỹ: gây ${pct}% công kích${s.pierceBonus ? `; nếu địch đang Phá Giáp, trảm tan giáp: thêm ${Math.round(s.pierceBonus * 100)}% sát thương rồi xoá Phá Giáp` : ''}. Hồi ${cd}s.`
     case 'heal':
       return `Hồi ${pct}% khí huyết tối đa. Hồi ${cd}s.`
     case 'shield':

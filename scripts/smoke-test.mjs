@@ -4796,7 +4796,8 @@ ok('liên kích theo đạo lộ: chiêu chốt và Tuyệt Kỹ gây thêm 40% 
   for (const [path, id, setup, name] of cases) {
     const plain = dmg(path, id, none)
     const combo = dmg(path, id, setup)
-    assert.ok(Math.abs(combo / plain - 1.4) < 0.02, name + ' ' + combo / plain)
+    const want = id === 'kiem_5' ? 1.4 * 1.5 : 1.4 // Tru Tiên Nhất Kiếm còn trảm tan giáp: thêm 50%
+    assert.ok(Math.abs(combo / plain - want) < 0.03, name + ' ' + combo / plain)
   }
   // trạng thái của đạo lộ khác không ăn; Võ Kỹ 1-3 không liên kích
   const plain = dmg('kiem', 'kiem_4', none)

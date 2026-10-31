@@ -126,9 +126,11 @@ function phongLoi(vfx, from, to, seconds) {
 function vanKiem(vfx, from, to) {
   const s = vfx.scene
   const u = s.u
-  vfx.landAt = vfx.time + 0.4
+  const WAVES = 3
+  const GAP = 0.45 // khớp `gap` của kiem_4: mỗi đợt kiếm rơi chạm quái cách nhau 0,45 giây
+  vfx.landAt = vfx.time + 0.4 + (WAVES - 1) * GAP
   // Trận pháp kiếm dưới chân quái
-  vfx.add(0.75, (g, t) => {
+  vfx.add(0.75 + (WAVES - 1) * GAP, (g, t) => {
     const env = Math.min(1, t * 6, (1 - t) * 2.5)
     const rx = 62 * u
     const ry = 16 * u
@@ -146,7 +148,8 @@ function vanKiem(vfx, from, to) {
   // Mưa kiếm
   const n = 22
   for (let i = 0; i < n; i++) {
-    const delay = rand(0.05, 0.36)
+    const wave = i % WAVES
+    const delay = wave * GAP + rand(0.05, 0.36)
     const x = to.x + rand(-74, 74) * u
     const ground = s.groundY - rand(-6, 46) * u
     const top = -30 * u
@@ -161,10 +164,12 @@ function vanKiem(vfx, from, to) {
       }, { blend: 'add' }),
     )
   }
-  vfx.later(0.38, () => {
-    s.shake = Math.max(s.shake, 8)
-    s.burst(18, to.x, to.y, CYAN)
-  })
+  for (let wv = 0; wv < WAVES; wv++) {
+    vfx.later(0.38 + wv * GAP, () => {
+      s.shake = Math.max(s.shake, 8)
+      s.burst(14, to.x, to.y, CYAN)
+    })
+  }
 }
 
 /** Tru Tiên Nhất Kiếm: tối màn hình, ngưng tụ kiếm ánh sáng khổng lồ, chém chéo, sóng xung kích. */

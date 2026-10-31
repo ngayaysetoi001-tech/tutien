@@ -36,8 +36,8 @@ const RAW = {
     ['Ngự Kiếm Quyết', 'kim', 'damage', 1, 0, { basic: true }], // đòn đánh cơ bản của đạo lộ: thay đòn chém thường, không hồi chiêu
     ['Phi Kiếm Liên Hoàn', 'kim', 'damage', 2, 8, { hits: 5 }], // 5 thanh kiếm, mỗi thanh một đòn riêng (chí mạng riêng)
     ['Phong Lôi Kiếm Quyết', 'kim', 'stun', 1.5, 12, { seconds: 1.5 }],
-    ['Vạn Kiếm Quy Tông', 'kim', 'damage', 3.2, 14],
-    ['Tru Tiên Nhất Kiếm', 'kim', 'ultimate', 7, 40],
+    ['Vạn Kiếm Quy Tông', 'kim', 'damage', 3.2, 14, { hits: 3, gap: 0.45, defStack: 0.1 }], // 3 đợt kiếm rơi, mỗi đợt giáp địch yếu thêm 10%
+    ['Tru Tiên Nhất Kiếm', 'kim', 'ultimate', 7, 40, { pierceBonus: 0.5 }], // trảm tan giáp địch đang Phá Giáp: +50% sát thương, xoá Phá Giáp
     ['Kiếm Tâm Thông Minh', 'kim', 'crit', 0.25, 16, { seconds: 8 }],
     ['Đạp Vân Bộ', 'moc', 'haste', 0.35, 18, { seconds: 8 }],
     ['Kiếm Ý Hộ Thể', 'kim', 'shield', 0.3, 20, { seconds: 10 }],

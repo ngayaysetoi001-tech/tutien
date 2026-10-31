@@ -482,7 +482,7 @@ export const useBattleStore = defineStore('battle', {
         const critRate = B.CRIT_CHANCE + game.battlePerk.crit + (this.enemy.boss ? game.treasureFx.bossCrit : 0) + (this.clock < this.critUntil ? this.critAmt : 0)
         const hitList = []
         for (let i = 0; i < strikes && this.enemy.hp > 0; i++) {
-          const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw / strikes, this.enemyDef(), Math.random, critRate, mult, B.CRIT_MULT + game.battlePerk.critMult)
+          const { damage: raw, crit } = B.rollHit(this.atkNow(stats) * pw / strikes, this.enemyDef() * (1 - (skill.defStack || 0) * i), Math.random, critRate, mult, B.CRIT_MULT + game.battlePerk.critMult)
           const damage = this.hurtEnemy(raw, true)
           this.lifestealFrom(damage)
           hitList.push({ damage, crit })
@@ -500,7 +500,15 @@ export const useBattleStore = defineStore('battle', {
           this.hasteAmt = Math.max(ch, this.clock < this.hasteUntil ? this.hasteAmt : 0)
           this.hasteUntil = Math.max(this.hasteUntil, this.clock + 3)
         }
-        hitList.forEach((h, i) => fx('battle-hit', { target: 'enemy', damage: h.damage, crit: h.crit, skill: true, color: ELEMENTS[skill.element].color, edge: elementEdge(skill.element, this.enemy.element), strike: i, strikes }))
+        // Tru Tiên Nhất Kiếm: địch đang Phá Giáp thì trảm tan giáp, thêm sát thương rồi xoá trạng thái
+        if (skill.pierceBonus && this.hasStatus('pierce')) {
+          const extra = this.hurtEnemy(Math.round(hitList.reduce((a, h) => a + h.damage, 0) * skill.pierceBonus), true)
+          hitList[0].damage += extra
+          this.lifestealFrom(extra)
+          this.pierceUntil = this.clock
+          game.addLog(`${skill.name} trảm tan giáp, thêm ${Math.round(skill.pierceBonus * 100)}% sát thương!`, 'good')
+        }
+        hitList.forEach((h, i) => fx('battle-hit', { target: 'enemy', damage: h.damage, crit: h.crit, skill: true, color: ELEMENTS[skill.element].color, edge: elementEdge(skill.element, this.enemy.element), strike: i, strikes, gap: skill.gap }))
       } else if (skill.kind === 'dot') {
         this.dotUntil = this.clock + skill.seconds
         this.dotElem = skill.element
