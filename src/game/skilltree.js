@@ -33,7 +33,7 @@ const col = (n) => (n <= 4 ? 'vo' : n === 5 ? 'tuyet' : 'bi')
 /** Dữ liệu 8 nút của từng đạo lộ: [tên, hệ, kind, power, cd, thêm]. n = thứ tự 1..8 (xem TREE_POS). */
 const RAW = {
   kiem: [
-    ['Ngự Kiếm Quyết', 'kim', 'damage', 1.4, 5],
+    ['Ngự Kiếm Quyết', 'kim', 'damage', 1, 0, { basic: true }], // đòn đánh cơ bản của đạo lộ: thay đòn chém thường, không hồi chiêu
     ['Phi Kiếm Liên Hoàn', 'kim', 'damage', 2, 8],
     ['Phong Lôi Kiếm Quyết', 'kim', 'stun', 1.5, 12, { seconds: 1.5 }],
     ['Vạn Kiếm Quy Tông', 'kim', 'damage', 3.2, 14],

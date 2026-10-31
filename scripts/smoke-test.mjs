@@ -771,7 +771,7 @@ ok('kỹ năng trong cây: dữ liệu hợp lệ, có mô tả; không còn võ
   assert.equal(Object.keys(TTN.TREE_SKILLS).length, 32)
   for (const [id, sk] of Object.entries(TTN.TREE_SKILLS)) {
     assert.ok(kinds.includes(sk.kind), id + ' kind')
-    assert.ok(sk.cd > 0 && sk.power > 0 && ['kim', 'moc', 'thuy', 'hoa', 'tho'].includes(sk.element), id)
+    assert.ok((sk.cd > 0 || sk.basic) && sk.power > 0 && ['kim', 'moc', 'thuy', 'hoa', 'tho'].includes(sk.element), id)
     assert.ok(['damage', 'haste', 'heal', 'shield'].includes(SK.visualKind(sk.kind)))
     assert.ok(SK.skillDesc(id, 3).length > 10)
     if (['dot', 'stun', 'lifesteal', 'rage', 'reflect', 'crit'].includes(sk.kind)) assert.ok(sk.seconds > 0, id + ' seconds')
@@ -1174,7 +1174,7 @@ ok('cây kỹ năng: nút tự mở theo đạo lộ và cảnh giới, thi tri�
   s.settings.autoHeal = false
   b.start()
   b.cd = {}
-  assert.equal(b.readySkill(), 'kiem_1')
+  assert.equal(b.readySkill(), null, 'Võ Kỹ 1 là đòn cơ bản, không tính vào lượt tung chiêu')
   s.path = 'dao'
   assert.equal(b.readySkill(), 'dao_1')
   s.path = null
@@ -1255,11 +1255,11 @@ ok('kỹ năng cây trong trận: Võ Kỹ tấn công, Bí Kỹ buff (chí mạ
     Math.random = realRandom
     return { dmg: hp0 - x.b.enemy.hp, cd: x.b.cd[id] - x.b.clock }
   }
-  const lv1 = damageAt('kiem_1', 1)
-  const lv10 = damageAt('kiem_1', 10)
+  const lv1 = damageAt('kiem_2', 1)
+  const lv10 = damageAt('kiem_2', 10)
   assert.ok(lv1.dmg > 0 && lv10.dmg / lv1.dmg > 1.9 && lv10.dmg / lv1.dmg < 2.2, 'cấp 10 gần gấp đôi cấp 1: ' + lv10.dmg / lv1.dmg)
   assert.ok(lv10.cd < lv1.cd && lv10.cd >= lv1.cd * 0.7 - 1e-9, 'hồi chiêu giảm tối đa 30%')
-  assert.ok(Math.abs(SK.skillLevelMult(1, 'kiem_1') - TT2.TREE_POWER_SCALE) < 1e-9)
+  assert.ok(Math.abs(SK.skillLevelMult(1, 'kiem_2') - TT2.TREE_POWER_SCALE) < 1e-9)
   // Bí Kỹ
   const crit = arena()
   crit.s.path = 'kiem'

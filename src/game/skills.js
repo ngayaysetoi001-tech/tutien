@@ -40,6 +40,11 @@ export const PATH_COMBO = {
 /** Chiêu gây sát thương tức thời (được tính liên kích). */
 export const isAttack = (kind) => kind === 'damage' || kind === 'stun' || kind === 'execute' || kind === 'ultimate'
 
+/** Nút là đòn đánh cơ bản của đạo lộ (thay đòn đánh thường, không hồi chiêu, không tính vào lượt tung chiêu). */
+export const isBasicSkill = (id) => !!TREE_SKILLS[id]?.basic
+/** Hệ số sát thương của đòn cơ bản theo cấp: +4% mỗi cấp (cấp 1 = đòn thường). */
+export const basicLevelMult = (level) => 1 + 0.04 * (Math.max(1, level) - 1)
+
 /** Định nghĩa kỹ năng theo id (nút trong cây kỹ năng). */
 export const skillDef = (id) => TREE_SKILLS[id]
 export const isTreeSkill = (id) => !!TREE_SKILLS[id]
@@ -109,6 +114,7 @@ export function skillDesc(id, level = 1) {
   const s = skillDef(id)
   const p = s.power * skillLevelMult(level)
   const cd = skillCooldown(id, level).toFixed(1)
+  if (s.basic) return `Đòn đánh cơ bản của đạo lộ, thay đòn chém thường (không hồi chiêu): sát thương +${Math.round((basicLevelMult(level) - 1) * 100)}%, gây trạng thái đặc trưng.`
   const pct = Math.round(p * 100)
   switch (s.kind) {
     case 'damage':

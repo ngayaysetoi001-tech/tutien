@@ -26,7 +26,7 @@ export function bindAudio() {
       if (skill) setTimeout(() => sfx.hit(true), 300)
       else throttled(() => sfx.hit(crit))
     }),
-    on('battle-skill', ({ kind }) => sfx.skill(kind)),
+    on('battle-skill', ({ kind, basic }) => !basic && sfx.skill(kind)),
     on('battle-heal', () => sfx.heal()),
     on('battle-enemy-die', ({ boss }) => setTimeout(() => sfx.die(boss), 120)),
     on('breakthrough-success', ({ realmChanged }) => sfx.breakthrough(realmChanged)),

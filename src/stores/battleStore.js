@@ -237,6 +237,7 @@ export const useBattleStore = defineStore('battle', {
       // Kỹ năng của cây (tự thi triển, thứ tự ưu tiên trong activeTreeIds)
       for (const id of game.activeTreeIds) {
         if ((this.cd[id] ?? 0) > this.clock) continue
+        if (SK.isBasicSkill(id)) continue // đòn cơ bản đánh qua basicAttack
         const kind = SK.skillDef(id).kind
         if (kind === 'heal' && this.hp / this.maxHp > 0.8) continue
         if (kind === 'shield' && this.clock < this.shieldUntil) continue
@@ -425,6 +426,13 @@ export const useBattleStore = defineStore('battle', {
 
     basicAttack(stats) {
       const game = useGameStore()
+      // Đòn cơ bản của đạo lộ (Ngự Kiếm Quyết...) thay chém chay: mạnh theo cấp, gây trạng thái, có hiệu ứng riêng
+      const bid = game.activeTreeIds.find((id) => SK.isBasicSkill(id))
+      if (bid) {
+        const bs = SK.skillDef(bid)
+        fx('battle-skill', { id: bid, name: bs.name, color: ELEMENTS[bs.element].color, kind: 'damage', element: bs.element, basic: true })
+        stats = { ...stats, atk: stats.atk * SK.basicLevelMult(game.skillLevel(bid)) }
+      }
       const mult = elementMult(game.element, this.enemy.element) * game.artElementMult(game.element, this.enemy.element)
       const bossCrit = this.enemy.boss ? game.treasureFx.bossCrit : 0 // Thiên Cơ La Bàn
       const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + bossCrit + (this.clock < this.critUntil ? this.critAmt : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
@@ -434,6 +442,8 @@ export const useBattleStore = defineStore('battle', {
       // Thất Tinh Kiếm: mỗi n đòn thường, một đòn gây thêm sát thương
       const perk = game.battlePerk
       if (perk.ignite > 0 && this.enemy.hp > 0 && Math.random() < perk.ignite) this.applyStatus('burn', this.atkNow(stats)) // dòng đặc tính: gây Thiêu
+      const bst = bid && this.enemy.hp > 0 ? SK.statusOfSkill(bid) : null
+      if (bst) this.applyStatus(bst, this.atkNow(stats))
       const nth = game.treasureFx.nth
       this.hitCount += 1
       if (perk.hitCd > 0 && this.hitCount % 5 === 0) for (const id of Object.keys(this.cd)) this.cd[id] -= perk.hitCd // mỗi 5 đòn giảm hồi chiêu

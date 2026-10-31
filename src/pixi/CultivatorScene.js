@@ -792,6 +792,7 @@ export class CultivatorScene {
       }),
       on('battle-skill', (ev) => {
         if (this.mode !== 'battle') return
+        if (ev.basic) return this.vfx.castSkill(ev) // đòn cơ bản: hoạt ảnh chém do battle-hit lo, không hiện tên
         if (ev.kind === 'damage') {
           this.playerLunge = 1
           this.playAttack()
