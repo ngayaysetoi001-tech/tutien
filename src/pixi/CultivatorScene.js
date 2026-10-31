@@ -17,6 +17,7 @@ import { REALMS } from '../game/constants.js'
 import { MONSTERS } from '../game/data.js'
 import { THEMES, drawDecor } from './themes.js'
 import { Vfx } from './vfx.js'
+import { loadSkillFx } from './skillfx.js'
 import * as ART from './art.js'
 
 // Tranh nhân vật (public/heroes): tư thế chiến đấu theo đạo lộ và tư thế thiền; thiếu tranh thì dùng hình vẽ bằng code
@@ -26,7 +27,10 @@ const MONSTER_HEIGHT = 112 // chiều cao hiển thị của yêu thú thường
 // Hoạt ảnh ra đòn (public/heroes/<đạo lộ>_atk_<n>.png): số khung theo đạo lộ; chưa có thì chỉ lao tới bằng code.
 // Mỗi khung là khung 760x440, chân sát đáy (y = 428), tâm đầu ở giữa, nhân vật cao 330 (= chiều cao hiển thị HERO_HEIGHT.sword).
 const HERO_ATK = { kiem: 6 }
-const ATK_FPS = 18
+const ATK_FPS = 12 // tốc độ phát mặc định (trước là 18: quá nhanh, khó nhìn thấy động tác)
+const ATK_FPS_MIN = 10 // đánh chậm: phát chậm rãi nhưng không lê thê
+const ATK_FPS_MAX = 14 // đánh nhanh: tối đa, không để động tác thành một vệt
+const HIT_FRAME = 3 // khung (đánh số từ 0) lưỡi kiếm chạm đích: số sát thương, rung màn hình đợi tới khung này
 const ATK_START = 1 // bắt đầu từ khung thứ 2: sự kiện trúng đòn tới cùng lúc nên đòn phải chạm đích sớm (khung 4)
 const ATK_FRAME = { w: 760, h: 440, feet: 428, charH: 330 }
 // Mũi kiếm ở từng khung (toạ độ trong khung 760x440; null = không dùng): vệt sáng đi theo mũi kiếm từ khung 2 tới khung 5
@@ -115,6 +119,7 @@ export class CultivatorScene {
     this.trailPts = [] // vệt sáng theo mũi kiếm: { x, y, age }
     this.curTip = null // mũi kiếm hiện tại (toạ độ cục bộ của sprite) khi đang phát hoạt ảnh
     this.atkTime = -1 // giây đã phát của hoạt ảnh ra đòn (-1 = không phát)
+    this.atkFps = ATK_FPS // tốc độ phát của đòn đang đánh (đặt lại mỗi đòn theo nhịp đánh)
     this.monsterTex = {}
     this.enemyId = null
     this.fill = 0
@@ -161,7 +166,7 @@ export class CultivatorScene {
   // ------------------------------------------------------------------
   async init(host) {
     // Nạp tranh trước khi gán this.app: không để khoảng chờ bất đồng bộ giữa lúc có app và lúc dựng lớp (watcher gọi setState sẽ gặp lớp chưa có)
-    await Promise.all([this.loadHeroArt(), this.loadMonsterArt()])
+    await Promise.all([this.loadHeroArt(), this.loadMonsterArt(), loadSkillFx(import.meta.env.BASE_URL)])
     if (this.destroyed) return
     const app = new Application()
     await app.init({
@@ -613,10 +618,14 @@ export class CultivatorScene {
     this.redrawHero()
   }
 
-  /** Bắt đầu phát hoạt ảnh ra đòn (nếu đạo lộ hiện tại có tranh và đang ở tư thế chiến đấu). */
-  playAttack() {
+  /**
+   * Bắt đầu phát hoạt ảnh ra đòn (nếu đạo lộ hiện tại có tranh và đang ở tư thế chiến đấu).
+   * `interval` = giây giữa hai đòn thường: đánh càng nhanh thì phát nhanh hơn một chút, nhưng không quá ATK_FPS_MAX để còn nhìn rõ động tác.
+   */
+  playAttack(interval = null) {
     if (this.pose === 'sword' && this.heroArt && this.atkTex[this.path ?? 'kiem']) {
-      this.atkTime = ATK_START / ATK_FPS
+      this.atkFps = interval ? Math.min(ATK_FPS_MAX, Math.max(ATK_FPS_MIN, 5 / (interval * 0.9))) : ATK_FPS
+      this.atkTime = ATK_START / this.atkFps
       return true
     }
     return false
@@ -633,7 +642,7 @@ export class CultivatorScene {
       return
     }
     this.atkTime += dt
-    const i = Math.floor(this.atkTime * ATK_FPS)
+    const i = Math.floor(this.atkTime * this.atkFps)
     if (i >= frames.length) {
       this.atkTime = -1
       this.redrawHero()
@@ -644,7 +653,7 @@ export class CultivatorScene {
     this.heroSprite.scale.set(HERO_HEIGHT.sword / ATK_FRAME.charH)
     // Mũi kiếm: nội suy mượt giữa các khung theo đường cong lượn dưới thân (lưỡi kiếm quét từ sau ra trước)
     const tips = HERO_ATK_TIP[this.path ?? 'kiem']
-    const f = this.atkTime * ATK_FPS
+    const f = this.atkTime * this.atkFps
     const k = Math.floor(f)
     if (tips && f >= 1 && k + 1 < tips.length && tips[k] && tips[k + 1]) {
       const u = f - k
@@ -831,23 +840,33 @@ export class CultivatorScene {
     this.enemyGlow.visible = boss
   }
 
-  /** hit: { target, damage, crit, skill?, color?, edge? } - edge 'up'/'down' = lợi/hại về ngũ hành */
-  onBattleHit({ target, damage, crit, skill, color, edge }) {
+  /** hit: { target, damage, crit, skill?, color?, edge?, interval? } - edge 'up'/'down' = lợi/hại về ngũ hành; interval = giây giữa hai đòn thường */
+  onBattleHit({ target, damage, crit, skill, color, edge, interval }) {
     const y = this.groundY - 110 * this.u
     const arrow = edge === 'up' ? '▲' : edge === 'down' ? '▼' : ''
     if (target === 'enemy') {
+      let delay = 0
+      let animated = false
       if (!skill) {
         this.playerLunge = 1
-        const animated = this.playAttack()
-        if (animated) this.vfx.slashImpact(!!crit)
-        else this.vfx.slashArc(!!crit)
+        animated = this.playAttack(interval)
+        // Đòn thường có hoạt ảnh: số sát thương, rung màn hình và vệt chém đợi tới lúc lưỡi kiếm chạm (khung 4)
+        if (animated) delay = (HIT_FRAME - ATK_START) / this.atkFps
       }
-      this.foxHop = 1
-      this.enemyHit = 1
-      this.shake = Math.max(this.shake, crit || skill ? 7 : 3)
-      const tint = skill ? css(color) : crit ? '#ffd36b' : '#ffffff'
-      this.spawnText(damage + arrow, this.enemyX + rand(-12, 12), y, tint, crit || skill ? 28 : 20)
-      this.burst(crit || skill ? 12 : 5, this.enemyX, this.groundY - 50 * this.u, skill ? color : crit ? 0xffd36b : 0xffffff)
+      const land = () => {
+        if (!skill) {
+          if (animated) this.vfx.slashImpact(!!crit)
+          else this.vfx.slashArc(!!crit)
+        }
+        this.foxHop = 1
+        this.enemyHit = 1
+        this.shake = Math.max(this.shake, crit || skill ? 7 : 3)
+        const tint = skill ? css(color) : crit ? '#ffd36b' : '#ffffff'
+        this.spawnText(damage + arrow, this.enemyX + rand(-12, 12), y, tint, crit || skill ? 28 : 20)
+        this.burst(crit || skill ? 12 : 5, this.enemyX, this.groundY - 50 * this.u, skill ? color : crit ? 0xffd36b : 0xffffff)
+      }
+      if (delay > 0) this.vfx.later(delay, land)
+      else land()
     } else {
       this.enemyLunge = 1
       this.hitFlash = damage > 0 ? 1 : 0
@@ -1270,7 +1289,7 @@ export class CultivatorScene {
     const bob = Math.sin(t * 0.9) * 2.5 * this.u
     // Trượt ngang giữa màn hình (tu luyện) <-> bên trái (chiến đấu); lao tới khi ra đòn
     this.px += (this.targetPx() - this.px) * Math.min(1, dt * 4)
-    this.playerLunge = Math.max(0, this.playerLunge - dt * 3.2)
+    this.playerLunge = Math.max(0, this.playerLunge - dt * 2.4)
     const lunge = Math.sin(Math.PI * this.playerLunge) * 26 * this.u
     this.char.x = this.px + lunge
     this.char.rotation = Math.sin(Math.PI * this.playerLunge) * 0.1 // nghiêng người khi chém

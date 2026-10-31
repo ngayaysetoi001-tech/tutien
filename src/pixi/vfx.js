@@ -4,6 +4,7 @@
 // Scene cung cấp: px, enemyX, groundY, u, glowTex, burst(), addRing(), spawnText().
 // =====================================================================
 import { Container, Graphics, Sprite } from 'pixi.js'
+import { skillFx } from './skillfx.js'
 
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
@@ -50,17 +51,27 @@ export class Vfx {
       if (this.timers[i].at <= this.time) {
         const { fn } = this.timers[i]
         this.timers.splice(i, 1)
-        fn()
+        try {
+          fn()
+        } catch (err) {
+          console.warn('[vfx] lỗi hẹn giờ', err) // một hiệu ứng lỗi không được làm dừng cả cảnh
+        }
       }
     }
     for (let i = this.fx.length - 1; i >= 0; i--) {
       const e = this.fx[i]
       e.t += dt
       const p = clamp(e.t / e.dur, 0, 1)
-      if (e.node.clear) e.node.clear()
-      e.draw(e.node, p, dt)
-      if (p >= 1) {
-        e.onEnd?.()
+      let failed = false
+      try {
+        if (e.node.clear) e.node.clear()
+        e.draw(e.node, p, dt)
+      } catch (err) {
+        console.warn('[vfx] lỗi hiệu ứng', err)
+        failed = true
+      }
+      if (p >= 1 || failed) {
+        if (!failed) e.onEnd?.()
         e.node.destroy()
         this.fx.splice(i, 1)
       }
@@ -83,7 +94,9 @@ export class Vfx {
       g.ellipse(s.px, s.groundY - 4 * u, lerp(20, 78, ease(t)) * u, lerp(6, 18, ease(t)) * u).stroke({ width: 3 * u, color, alpha: 1 - t })
     }, { blend: 'add' })
 
-    if (ev.kind === 'damage') {
+    if (skillFx(this, ev, from, to)) {
+      // kỹ năng có hiệu ứng riêng (skillfx.js)
+    } else if (ev.kind === 'damage') {
       this.landAt = this.time + 0.3
       this.damageSkill(ev.element, from, to, color)
     } else if (ev.kind === 'heal') {

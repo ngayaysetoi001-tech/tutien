@@ -430,7 +430,7 @@ export const useBattleStore = defineStore('battle', {
       const { damage: raw, crit } = B.rollHit(this.atkNow(stats), this.enemyDef(), Math.random, B.CRIT_CHANCE + game.battlePerk.crit + bossCrit + (this.clock < this.critUntil ? this.critAmt : 0), mult, B.CRIT_MULT + game.battlePerk.critMult)
       const damage = this.hurtEnemy(raw)
       this.lifestealFrom(damage)
-      fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element) })
+      fx('battle-hit', { target: 'enemy', damage, crit, edge: elementEdge(game.element, this.enemy.element), interval: B.actionInterval(stats.speed * (this.clock < this.hasteUntil ? 1 + this.hasteAmt : 1)) })
       // Thất Tinh Kiếm: mỗi n đòn thường, một đòn gây thêm sát thương
       const perk = game.battlePerk
       if (perk.ignite > 0 && this.enemy.hp > 0 && Math.random() < perk.ignite) this.applyStatus('burn', this.atkNow(stats)) // dòng đặc tính: gây Thiêu
@@ -452,7 +452,7 @@ export const useBattleStore = defineStore('battle', {
       const attack = SK.isAttack(skill.kind)
       const power = skill.power * lv * (attack || skill.kind === 'dot' ? 1 + game.sectPerk.skill : 1) * (attack ? 1 + game.battlePerk.skillDmg : 1)
       this.cd[id] = this.clock + SK.skillCooldown(id, level) * (1 - game.battlePerk.cd) // Phù Tu: hồi chiêu nhanh hơn
-      fx('battle-skill', { name: skill.name, color: ELEMENTS[skill.element].color, kind: SK.visualKind(skill.kind), element: skill.element, seconds: skill.seconds })
+      fx('battle-skill', { id, name: skill.name, color: ELEMENTS[skill.element].color, kind: SK.visualKind(skill.kind), element: skill.element, seconds: skill.seconds })
       if (attack) {
         let pw = power
         // Tuyệt Sát: gấp bội khi địch sắp gục

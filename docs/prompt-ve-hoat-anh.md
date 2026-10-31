@@ -138,3 +138,35 @@ Dùng khối chung ở trên (đính kèm ảnh nhân vật Kiếm Tu hiện có
 1. **Tuyệt Kỹ** trước: khác hẳn chém thường nên thấy ngay hiệu quả; Tru Tiên Nhất Kiếm là chiêu đẹp nhất của Kiếm Tu.
 2. **Bí Kỹ tăng sức**: hiện các Bí Kỹ (Kiếm Tâm Thông Minh, Đạp Vân Bộ, Kiếm Ý Hộ Thể) không có động tác riêng.
 3. **Bị đánh**: nhẹ nhất, chỉ 2 khung.
+
+---
+
+## Hiệu ứng kỹ năng: tranh cho Tuyệt Kỹ và Vạn Kiếm Quy Tông
+
+Hiệu ứng 8 chiêu của Kiếm Tu đã có bản vẽ bằng code (`src/pixi/skillfx.js`). Hai chiêu lớn nhất nên có tranh. Hiệu ứng KHÔNG có nhân vật, nền XANH LÁ #00FF00 phẳng (hoặc ĐEN thuần nếu là ánh sáng: ánh sáng trên nền đen tôi trộn cộng thẳng vào cảnh, đẹp hơn tách nền).
+
+### A. Kiếm ánh sáng khổng lồ cho Tru Tiên Nhất Kiếm (1 ảnh 2048x1024, nền ĐEN thuần)
+
+```
+Một thanh kiếm ánh sáng khổng lồ nằm ngang chiếm gần hết bề rộng ảnh, mũi kiếm chỉ sang phải: lưỡi kiếm trắng xanh lam phát sáng chói, đường nét kiếm cổ thanh thoát có hoa văn rồng vàng nhạt ở sống kiếm, chuôi và hộ thủ vàng kim bên trái, hào quang xanh lam toả ra quanh lưỡi kiếm, vài tia sáng và hạt sáng bay quanh. NỀN ĐEN THUẦN #000000, không chữ, không viền, không nhân vật.
+```
+
+### B. Bốn khung chém ánh sáng cho Tru Tiên Nhất Kiếm (dải 4 khung, 4096x512, nền ĐEN thuần)
+
+```
+Dải 4 khung ngang bằng nhau mô tả một nhát chém kiếm khổng lồ chéo từ trên trái xuống dưới phải, nền ĐEN THUẦN #000000: 1. vệt sáng hẹp mới xuất hiện ở góc trên trái; 2. vệt chém dài chéo xuyên ô, lõi trắng, viền xanh lam; 3. vệt chém đạt độ sáng và độ dày cực đại kèm tia nổ ở cuối đường chém; 4. vệt chém mờ dần, rải hạt sáng tan ra. Không chữ, không viền ô.
+```
+
+### C. Trận pháp kiếm cho Vạn Kiếm Quy Tông (1 ảnh 1024x512, nền ĐEN thuần)
+
+```
+Trận pháp tròn nhìn nghiêng ba phần tư (dẹt hình elip, như vẽ trên mặt đất) toả sáng vàng và xanh lam: hai vòng đồng tâm, giữa có hoa văn bát quái và phù văn cổ, tám thanh kiếm nhỏ cắm đứng quanh vòng ngoài, ánh sáng phát lên trên. NỀN ĐEN THUẦN #000000, không chữ, không viền.
+```
+
+### D. Thanh kiếm rơi cho Vạn Kiếm Quy Tông (1 ảnh 512x1024, nền ĐEN thuần)
+
+```
+Một thanh trường kiếm thẳng đứng mũi chúc xuống, đang rơi nhanh: lưỡi kiếm trắng xanh, chuôi vàng ở trên, vệt sáng xanh kéo dài phía trên chuôi như đang lao xuống. NỀN ĐEN THUẦN #000000, không chữ.
+```
+
+Gửi ảnh lên, tôi sẽ thay phần vẽ bằng code của hai chiêu này bằng tranh, vẫn giữ chuyển động và rung màn hình.
